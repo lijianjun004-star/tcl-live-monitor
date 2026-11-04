@@ -1,0 +1,33 @@
+name: tcl-ops-status
+# Manual, read-only poll of TCL ops platform (management-approved). Outputs states only; no cron.
+on:
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: '轮数 (1-12)'
+        default: '3'
+      interval_min:
+        description: '每轮间隔分钟 (1-15)'
+        default: '5'
+permissions:
+  contents: read
+concurrency:
+  group: tcl-ops-status
+jobs:
+  poll:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tests/*.test.mjs
+      - name: Poll
+        env:
+          BASE: ${{ secrets.TCL_OPS_BASE_URL || 'http://101.96.215.251' }}
+          ROUNDS: ${{ inputs.rounds }}
+          INTERVAL_MIN: ${{ inputs.interval_min }}
+        run: node probes/tcl-ops-status.mjs --rounds "$ROUNDS" --interval-min "$INTERVAL_MIN"
+      - if: always()
+        run: test -f tcl-ops-summary.md && cat tcl-ops-summary.md >> "$GITHUB_STEP_SUMMARY" || true
