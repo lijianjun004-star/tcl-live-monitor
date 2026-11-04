@@ -1,0 +1,26 @@
+name: jd-reference-reachability
+# One-off manual check: can a GitHub-hosted runner reach the TCL-provided JD inspection page?
+# Prints ONLY status code / timing / content-type / size / redirect host. Never prints page content.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Reachability (no body output)
+        run: |
+          URL='http://101.96.215.251/?start=2026-10-21&end=2026-10-21&platform=jd&category=%E5%85%A8%E5%93%81%E7%B1%BB&shop_id=17'
+          for i in 1 2; do
+            out=$(curl -sS -o body.bin -m 25 --connect-timeout 15 \
+              -w 'http=%{http_code} connect_s=%{time_connect} total_s=%{time_total} type=%{content_type} bytes=%{size_download} redirect=%{redirect_url}' \
+              "$URL" 2>&1) || true
+            # keep only redirect host, drop any query
+            echo "attempt $i: $(echo "$out" | sed -E 's#redirect=(https?://[^/?]+)[^ ]*#redirect=\1#')"
+            if [ -s body.bin ]; then
+              echo "  has_html_title=$(grep -qi '<title' body.bin && echo yes || echo no) login_hint=$(grep -qiE 'login|登录|password|密码' body.bin && echo yes || echo no)"
+            fi
+            rm -f body.bin
+          done
