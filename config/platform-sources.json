@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-11-04",
+  "note": "validatedForFormalScoring=true 需达到验收 L2（真实 LIVE + 真实 OFFLINE + 动态房间 ID）并经用户确认。当前三平台均未达到，所有场次只能是 PROVISIONAL/BLOCKED。",
+  "platforms": {
+    "tmall": {
+      "validatedForFormalScoring": false,
+      "level": "L1-L2 partial",
+      "source": "公开访客直播详情页被动响应 (mtop.mediaplatform.live.livedetail)，需无头浏览器",
+      "evidence": ["https://github.com/2257007157-gif/-/actions/runs/41597818792", "https://github.com/2257007157-gif/-/actions/runs/41597245048"],
+      "blockers": ["曾出现 6/6 UNKNOWN API_ERROR", "仅 1 店 userConfirmed", "未做连续监测"]
+    },
+    "douyin": {
+      "validatedForFormalScoring": false,
+      "level": "L1",
+      "source": "公开主页直播徽标 + 直播间页身份交叉校验，需无头浏览器",
+      "evidence": ["https://github.com/2257007157-gif/-/actions/runs/41601583066", "https://github.com/2257007157-gif/-/actions/runs/41610588536"],
+      "blockers": ["现有脚本没有 OFFLINE 判定路径，只能输出 LIVE/UNKNOWN", "无真实停播样本", "纯 HTTP 4/4 UNKNOWN"]
+    },
+    "jd": {
+      "validatedForFormalScoring": false,
+      "level": "L0",
+      "source": null,
+      "evidence": [],
+      "blockers": ["无任何已验证的公开状态源", "参考网页与飞书表格未能读取"]
+    }
+  }
+}
