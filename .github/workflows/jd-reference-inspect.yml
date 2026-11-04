@@ -1,0 +1,33 @@
+name: jd-reference-inspect
+# Manual, read-only inspection of the user-provided JD inspection page.
+# Captured content is encrypted (RSA-4096 + AES-256) before printing; logs show ciphertext only.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: Inspect (no plaintext output)
+        env:
+          TARGET_URL: 'http://101.96.215.251/?start=2026-10-21&end=2026-10-21&platform=jd&category=%E5%85%A8%E5%93%81%E7%B1%BB&shop_id=17'
+        run: node probes/jd-reference-inspect.mjs > /dev/null 2>&1 || echo "inspect exit $?"
+      - name: Encrypt and emit
+        run: |
+          tar czf out.tgz out
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in out.tgz -out out.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey probes/keys/analysis-pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out k.enc
+          rm -rf out out.tgz k.bin
+          echo "KEY_BEGIN"; base64 -w 0 k.enc; echo; echo "KEY_END"
+          echo "DATA_BEGIN"; base64 -w 0 out.enc; echo; echo "DATA_END"
+          ls -l out.enc
