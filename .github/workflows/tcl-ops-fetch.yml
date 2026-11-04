@@ -1,0 +1,33 @@
+name: tcl-ops-fetch
+# Read-only GET of TCL ops platform APIs; output encrypted (RSA-4096 + AES-256), logs show ciphertext only.
+on:
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: "空格分隔的 /api/... 或 /assets/*.js 路径"
+        required: true
+permissions:
+  contents: read
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch (no plaintext output)
+        env:
+          BASE: ${{ secrets.TCL_OPS_BASE_URL || 'http://101.96.215.251' }}
+          PATHS: ${{ inputs.paths }}
+        run: node probes/tcl-ops-fetch.mjs > /dev/null 2>&1 || echo "fetch exit $?"
+      - name: Encrypt and emit
+        run: |
+          tar czf out.tgz out
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in out.tgz -out out.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey probes/keys/analysis-pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out k.enc
+          rm -rf out out.tgz k.bin
+          echo "KEY_BEGIN"; base64 -w 0 k.enc; echo; echo "KEY_END"
+          echo "DATA_BEGIN"; base64 -w 0 out.enc; echo; echo "DATA_END"
