@@ -50,6 +50,7 @@ async function snapshot(page, url, captureStatus) {
         .filter(x => /^https:\/\/live\.douyin\.com\/\d{5,24}/.test(x.href)).slice(0, 15),
     })));
     await Promise.allSettled(pending);
+    try { const u = new URL(page.url()); out.finalUrl = u.origin + u.pathname; } catch {}
   } catch (e) { out.navigationError = String(e?.message || e).slice(0, 160); }
   return out;
 }
@@ -83,6 +84,7 @@ async function probeDouyin(context, t) {
     const room = await snapshot(rp, `https://live.douyin.com/${roomId}`, true);
     const d = decideDouyin(profile, room, t, { offlineRuleValidated: OFFLINE_RULE_VALIDATED });
     return { platform: 'douyin', accountId: t.key, at: Date.now(), checkedRoomId: roomId, profileHttp: profile.httpStatus, roomHttp: room.httpStatus,
+      profileTitle: profile.title, profileFinalUrl: profile.finalUrl, profileHasIdText: String(profile.bodyExcerpt || '').includes(t.displayDouyinId),
       roomTitle: room.title, ...d };
   } finally { await pp.close().catch(() => {}); await rp.close().catch(() => {}); }
 }
@@ -97,9 +99,13 @@ try {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN',
       userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36' });
     for (const t of cfg.tmall) { try { report.observations.push({ round: r, ...await probeTmall(context, t) }); } catch (e) { report.observations.push({ round: r, platform: 'tmall', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); } }
-    for (const t of cfg.douyin) { try { report.observations.push({ round: r, ...await probeDouyin(context, t) }); } catch (e) { report.observations.push({ round: r, platform: 'douyin', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); } }
-    await context.close();
+    // Douyin: same context as the historical passing script (no UA override).
+    const dyContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN' });
+    for (const t of cfg.douyin) { try { report.observations.push({ round: r, ...await probeDouyin(dyContext, t) }); } catch (e) { report.observations.push({ round: r, platform: 'douyin', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); } }
+    await context.close(); await dyContext.close();
     console.log(`round ${r}/${ROUNDS}: ` + report.observations.filter(o => o.round === r).map(o => `${o.accountId}=${o.state}${o.offlineCandidate ? '(offline?)' : ''}`).join(' '));
+    for (const o of report.observations.filter(o => o.round === r && o.platform === 'douyin' && o.state !== 'LIVE'))
+      console.log(`  diag ${o.accountId}: http=${o.profileHttp} title="${o.profileTitle}" final=${o.profileFinalUrl} idText=${o.profileHasIdText} room="${o.roomTitle}" reason=${o.reason}`);
     if (r < ROUNDS) await new Promise(res => setTimeout(res, Math.max(0, roundStart + INTERVAL_MIN * 60000 - Date.now())));
   }
 } finally { await browser.close(); }
