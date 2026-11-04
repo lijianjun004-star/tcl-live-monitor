@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "note": "只读复测范围：天猫仅用户已确认的 1 店；抖音为用户批准的 4 个账号。新增目标须用户明确确认。",
+  "tmall": [
+    {
+      "key": "tcl-group",
+      "displayName": "TCL集团官方旗舰店",
+      "accountId": "2050532947",
+      "roomNumber": "130742",
+      "userConfirmed": true
+    }
+  ],
+  "douyin": [
+    {
+      "key": "tcl-douyin-flagship",
+      "accountName": "TCL官方旗舰店",
+      "displayDouyinId": "79013748820",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAVozXF9jRtNt6k62dH8TZXld0RGpvIK8aZxEh3oWcBfM",
+      "roomId": "31878890513",
+      "scopeApproved": true
+    },
+    {
+      "key": "tcl-douyin-air-direct",
+      "accountName": "TCL空调总部官方直播间",
+      "displayDouyinId": "75800827047",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAhiY52DG42njffnKGyWFpKSXJzn2au4FDC40NUdz56TtOxx56LLxa55v9pzk3F8yx",
+      "roomId": "802817151945",
+      "scopeApproved": true
+    },
+    {
+      "key": "tcl-douyin-tv-official-live",
+      "accountName": "TCL电视官方直播间",
+      "displayDouyinId": "89706879747",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAsXDlbg6rHqDV6y7kMxV2GCba4ey2QgDcmUxTuFhnGf5kYIphYC_ieueMXsLlWXgY",
+      "roomId": "570552456352",
+      "scopeApproved": true
+    },
+    {
+      "key": "tcl-douyin-tv-corporate",
+      "accountName": "TCL电视官方",
+      "displayDouyinId": "83749174633",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAIOvCAk_PEYrfvxNT547O5JaYPQvuKY8XgtYpRPtrh74zat0zFLH4vXXK1rF36Got",
+      "roomId": "478709678965",
+      "scopeApproved": true
+    }
+  ]
+}
