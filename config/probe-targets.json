@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "note": "只读复测范围：天猫仅用户已确认的 1 店；抖音为用户批准的 4 个账号。新增目标须用户明确确认。",
+  "note": "监控范围：天猫已确认 1 店；抖音为用户批准账号 + 名称带TCL的账号（2026-11-05 用户规则）。scoringEligible=false 的只监控不考核。",
   "tmall": [
     {
       "key": "tcl-group",
@@ -17,7 +17,9 @@
       "displayDouyinId": "79013748820",
       "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAVozXF9jRtNt6k62dH8TZXld0RGpvIK8aZxEh3oWcBfM",
       "roomId": "31878890513",
-      "scopeApproved": true
+      "scopeApproved": true,
+      "scoringEligible": true,
+      "scopeSource": "user-approved 2026-11-03"
     },
     {
       "key": "tcl-douyin-air-direct",
@@ -25,7 +27,9 @@
       "displayDouyinId": "75800827047",
       "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAhiY52DG42njffnKGyWFpKSXJzn2au4FDC40NUdz56TtOxx56LLxa55v9pzk3F8yx",
       "roomId": "802817151945",
-      "scopeApproved": true
+      "scopeApproved": true,
+      "scoringEligible": true,
+      "scopeSource": "user-approved 2026-11-03"
     },
     {
       "key": "tcl-douyin-tv-official-live",
@@ -33,7 +37,9 @@
       "displayDouyinId": "89706879747",
       "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAsXDlbg6rHqDV6y7kMxV2GCba4ey2QgDcmUxTuFhnGf5kYIphYC_ieueMXsLlWXgY",
       "roomId": "570552456352",
-      "scopeApproved": true
+      "scopeApproved": true,
+      "scoringEligible": true,
+      "scopeSource": "user-approved 2026-11-03"
     },
     {
       "key": "tcl-douyin-tv-corporate",
@@ -41,7 +47,66 @@
       "displayDouyinId": "83749174633",
       "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAIOvCAk_PEYrfvxNT547O5JaYPQvuKY8XgtYpRPtrh74zat0zFLH4vXXK1rF36Got",
       "roomId": "478709678965",
-      "scopeApproved": true
+      "scopeApproved": true,
+      "scoringEligible": true,
+      "scopeSource": "user-approved 2026-11-03"
+    },
+    {
+      "key": "tcl-douyin-ac-zhongshan",
+      "accountName": "TCL空调",
+      "displayDouyinId": "TCLkongtiao",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAk8PCRiqiKMYYO7CUUgeotMKKxkg9-HOWe8Lrn2Dv-xQ",
+      "scopeApproved": true,
+      "scopeSource": "user rule 2026-11-05: 名称带TCL的抖音直播间纳入监控",
+      "scoringEligible": false
+    },
+    {
+      "key": "tcl-douyin-tv-brand",
+      "accountName": "TCL电视品牌官方",
+      "displayDouyinId": "93342457359",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAP8tKoNhZj6nqftKiW-jDXLF8UFf5r6E9rJRfO_e5UWAphNlJMqefVMcqG6wYXN-E",
+      "scopeApproved": true,
+      "scopeSource": "user rule 2026-11-05: 名称带TCL的抖音直播间纳入监控",
+      "scoringEligible": false
+    },
+    {
+      "key": "tcl-douyin-ac-flagship",
+      "accountName": "TCL空调旗舰店",
+      "displayDouyinId": "38396581665",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAHrYdQDu8_LBNttclBsq8-X7ye5-8oVFB2FzCeUJJVEM",
+      "scopeApproved": true,
+      "scopeSource": "user rule 2026-11-05: 名称带TCL的抖音直播间纳入监控",
+      "scoringEligible": false,
+      "roomId": "7774305058"
+    },
+    {
+      "key": "tcl-douyin-flagship-tv-live",
+      "accountName": "TCL旗舰店电视直播间",
+      "displayDouyinId": "55176072706",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAArESAdekhgm3-DvKIXCzheIIg1WHbedqjDvl6MAP0XfY",
+      "scopeApproved": true,
+      "scopeSource": "user rule 2026-11-05: 名称带TCL的抖音直播间纳入监控",
+      "scoringEligible": false
+    },
+    {
+      "key": "tcl-douyin-groupbuy",
+      "accountName": "TCL团购官方号",
+      "displayDouyinId": "14145381",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAmgy7O_sAD6iWyifBhFNb6ha82RkQUAFvpJDr06fxHlw",
+      "scopeApproved": true,
+      "scopeSource": "user rule 2026-11-05: 名称带TCL的抖音直播间纳入监控",
+      "scoringEligible": false,
+      "roomId": "53987804768"
+    },
+    {
+      "key": "tcl-douyin-dealer-fushixin",
+      "accountName": "TCL富世新家电智选店",
+      "displayDouyinId": "FoxsineZN",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAtTiJVyarvAsis4Af4PwnVxg00B-CRvFZci4E6Xl7-94",
+      "scopeApproved": true,
+      "scopeSource": "user rule 2026-11-05: 名称带TCL的抖音直播间纳入监控",
+      "scoringEligible": false,
+      "note": "第三方经销商，仅监控，不计入考核"
     }
   ]
 }
