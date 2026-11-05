@@ -15,10 +15,15 @@ export function auditThreePlatformCoverage({registry,publicConfig,jdReport=null,
  const existing=registry.entries.filter(x=>x.source==='public-probe-existing');
  const unknown=registry.entries.filter(x=>x.source==='ops-history-unmapped');
  const counts={jd:{opsRecords:0,publicAccounts:0,unmappedOpsHistory:0},tmall:{opsRecords:0,publicAccounts:0,unmappedOpsHistory:0},douyin:{opsRecords:0,publicAccounts:0,unmappedOpsHistory:0}};
- const seen=new Set();
+ const seen=new Set(),seenOpsRoomIds=new Set();
  for(const r of registry.entries){
   if(!PLATFORMS.includes(r.platform)||typeof r.key!=='string'||seen.has(r.key))throw Error('REGISTRY_IDENTITY_CONFLICT');
   seen.add(r.key);
+  if(r.opsRoomId!==undefined&&r.opsRoomId!==null&&r.opsRoomId!==''){
+   const rk=`${r.platform}:${r.opsRoomId}`;
+   if(seenOpsRoomIds.has(rk))throw Error('REGISTRY_IDENTITY_CONFLICT');
+   seenOpsRoomIds.add(rk);
+  }
   if(r.source==='ops-platform')counts[r.platform].opsRecords++;
   else if(r.source==='public-probe-existing')counts[r.platform].publicAccounts++;
   else if(r.source==='ops-history-unmapped')counts[r.platform].unmappedOpsHistory++;
@@ -32,9 +37,12 @@ export function auditThreePlatformCoverage({registry,publicConfig,jdReport=null,
  })).sort((a,b)=>Number(a.opsRoomId)-Number(b.opsRoomId));
  const allShops=sourceCatalog?.shops??registry.shops??[];
  const shopCounts={jd:0,tmall:0,douyin:0};
- const sourceShops=[];
+ const sourceShops=[],seenShopIds=new Set();
  for(const shop of allShops){
   if(!PLATFORMS.includes(shop.platform))continue;
+  const sk=`${shop.platform}:${shop.shopId}`;
+  if(seenShopIds.has(sk))throw Error('SHOP_IDENTITY_CONFLICT');
+  seenShopIds.add(sk);
   shopCounts[shop.platform]++;
   sourceShops.push({platform:shop.platform,opsInternalShopId:shop.shopId,shopName:shop.shopName||'',
     linkedOpsRoomIds:sourceRows.filter(x=>x.platform===shop.platform&&x.opsShopId===shop.shopId).map(x=>x.opsRoomId),

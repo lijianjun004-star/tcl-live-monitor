@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-11-05T15:30:00.000Z",
+  "scope": "four-platform-tcl-ffalcon-store-and-live-room-matrix",
+  "platforms": {
+    "douyin": {
+      "configuredInProbeTargets": 12,
+      "internalUnmappedOpsRooms": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "additionalOfficialOrBrandCandidates": [
+        {
+          "key": "ffalcon-douyin-brand-direct",
+          "accountName": "雷鸟电视品牌官方直营",
+          "displayDouyinId": "wlhnumber1",
+          "verifiedEntity": "深圳TCL新技术有限公司",
+          "evidenceUrl": "https://www.douyin.com/video/7481122026606955834",
+          "tier": "official_direct_operated_candidate",
+          "scoringEligible": false
+        },
+        {
+          "key": "ffalcon-douyin-wallpaper-tv",
+          "accountName": "雷鸟官方旗舰店壁纸电视",
+          "displayDouyinId": "87826221679",
+          "evidenceUrl": "https://www.douyin.com/video/7617755992205212186",
+          "tier": "official_submatrix_candidate",
+          "scoringEligible": false
+        },
+        {
+          "key": "ffalcon-douyin-monitor-flagship",
+          "accountName": "FFALCON雷鸟显示器旗舰店",
+          "displayDouyinId": "FFALCON_MONITOR",
+          "evidenceUrl": "https://www.douyin.com/search/%E9%9B%B7%E9%B8%9F%E6%98%BE%E7%A4%BA%E5%99%A8%E6%97%97%E8%88%B0%E5%BA%97",
+          "tier": "official_3c_candidate",
+          "scoringEligible": false
+        }
+      ],
+      "excludedDealerOrSeparateBuAccounts": [
+        { "accountName": "TCL网络旗舰店", "displayDouyinId": "35650402851", "reason": "ELECTRONIC_DEALER_STORE" },
+        { "accountName": "TCL汇翌专卖店", "displayDouyinId": "73733661369", "reason": "AUTHORIZED_SPECIALTY_DEALER" },
+        { "accountName": "TCL泓亿专卖店", "displayDouyinId": "TCL_HONGYI", "reason": "AUTHORIZED_SPECIALTY_DEALER" },
+        { "accountName": "兴城市TCL空调", "displayDouyinId": "li15143770999", "reason": "REGIONAL_OFFLINE_DEALER" },
+        { "accountName": "TCL照明官方旗舰店", "displayDouyinId": "TCL_LIGHTING_OFFICIAL", "reason": "SEPARATE_LIGHTING_BU", "evidenceUrl": "https://www.tcl-lighting.com/news/376.html" },
+        { "accountName": "TCL照明灯具旗舰店", "displayDouyinId": "TCL_LIGHTING_FIXTURE", "reason": "SEPARATE_LIGHTING_BU", "evidenceUrl": "https://www.tcl-lighting.com/news/376.html" },
+        { "accountName": "TCL吊扇灯旗舰店", "displayDouyinId": "TCL_CEILING_FAN_LIGHT", "reason": "SEPARATE_LIGHTING_BU", "evidenceUrl": "https://www.tcl-lighting.com/news/376.html" }
+      ]
+    },
+    "tmall": {
+      "configuredInProbeTargets": 1,
+      "internalOrphanOpsShops": [16],
+      "verifiedBrandFlagshipStores": [
+        { "key": "tmall-tcl-group-official-flagship", "storeName": "TCL集团官方旗舰店", "accountId": "2050532947", "roomNumber": "130742", "brand": "TCL", "category": "全品类", "candidateOpsShopId": 16, "scoringEligible": false },
+        { "key": "tmall-tcl-official-flagship", "storeName": "TCL官方旗舰店", "sellerId": "1796933267", "brand": "TCL", "category": "全品类", "candidateOpsShopId": 16, "scoringEligible": false },
+        { "key": "tmall-tcl-tv-official-flagship", "storeName": "TCL电视官方旗舰店", "sellerId": "2616970884", "brand": "TCL", "category": "彩电", "scoringEligible": false },
+        { "key": "tmall-tcl-icewash-flagship", "storeName": "TCL冰洗官方旗舰店", "sellerId": "2208987173657", "brand": "TCL", "category": "冰洗", "scoringEligible": false },
+        { "key": "tmall-tcl-ac-official-flagship", "storeName": "TCL空调官方旗舰店", "sellerId": "PENDING_EXTRACT", "brand": "TCL", "category": "空调", "scoringEligible": false },
+        { "key": "tmall-tcl-smarthome-flagship", "storeName": "TCL智能家居旗舰店", "sellerId": "2210516382103", "brand": "TCL", "category": "智能家居", "scoringEligible": false },
+        { "key": "tmall-ffalcon-official-flagship", "storeName": "FFALCON雷鸟旗舰店", "sellerId": "2213856588863", "brand": "FFALCON", "category": "雷鸟电视与显示器", "scoringEligible": false },
+        { "key": "tmall-ffalcon-tv-official-flagship", "storeName": "雷鸟电视机官方旗舰店", "sellerId": "2208008712016", "brand": "FFALCON", "category": "雷鸟彩电", "scoringEligible": false },
+        { "key": "tmall-rayneo-smart-glasses-flagship", "storeName": "雷鸟智能眼镜旗舰店", "sellerId": "2214188502879", "brand": "RayNeo", "category": "智能眼镜", "scoringEligible": false },
+        { "key": "tmall-tcl-lighting-official-flagship", "storeName": "TCL照明官方旗舰店", "sellerId": "2200805864660", "storeUrl": "https://tclzm.tmall.com", "brand": "TCL照明", "category": "照明", "excludedFromHomeApplianceKpi": true, "scoringEligible": false }
+      ]
+    },
+    "taobao": {
+      "observedEnterpriseOrSpecialtyStores": [
+        { "key": "taobao-tcl-enterprise-162849868", "storeUrl": "https://shop162849868.taobao.com", "shopId": "162849868", "tier": "taobao_enterprise_or_dealer_candidate", "scoringEligible": false },
+        { "key": "taobao-tcl-enterprise-448870934", "storeUrl": "https://shop448870934.taobao.com", "shopId": "448870934", "tier": "taobao_enterprise_or_dealer_candidate", "scoringEligible": false }
+      ]
+    },
+    "jd": {
+      "internalOpsRooms": [1, 14, 15, 16, 17, 18],
+      "internalOpsShops": [1, 14, 15, 17, 18, 19],
+      "verifiedBrandFlagshipStores": [
+        { "key": "jd-tcl-self-operated-official-flagship", "storeName": "TCL京东自营官方旗舰店", "jdShopId": "407681", "storeUrl": "https://mall.jd.com/index-407681.html", "brand": "TCL", "category": "全品类", "candidateOpsRoomId": 16, "candidateOpsShopId": 17, "scoringEligible": false },
+        { "key": "jd-ffalcon-self-operated-official-flagship", "storeName": "FFALCON雷鸟京东自营官方旗舰店", "jdShopId": "1000467565", "storeUrl": "https://mall.jd.com/index-1000467565.html", "brand": "FFALCON", "category": "雷鸟", "candidateOpsRoomId": 18, "candidateOpsShopId": 14, "scoringEligible": false },
+        { "key": "jd-tcl-tv-official-flagship", "storeName": "TCL电视官方旗舰店", "jdShopId": "POP_TV_FLAGSHIP", "brand": "TCL", "category": "彩电", "candidateOpsRoomId": 14, "candidateOpsShopId": 14, "scoringEligible": false },
+        { "key": "jd-tcl-ac-self-operated-flagship", "storeName": "TCL空调京东自营旗舰店", "jdShopId": "SELF_AC_1", "brand": "TCL", "category": "空调", "candidateOpsRoomId": 15, "candidateOpsShopId": 15, "scoringEligible": false },
+        { "key": "jd-tcl-air-conditioning-self-operated-flagship", "storeName": "TCL空气调节京东自营旗舰店", "jdShopId": "SELF_AC_2", "brand": "TCL", "category": "空调", "candidateOpsRoomId": 1, "candidateOpsShopId": 1, "scoringEligible": false },
+        { "key": "jd-tcl-icewash-self-operated-flagship", "storeName": "TCL冰箱洗衣机京东自营旗舰店", "jdShopId": "SELF_ICEWASH", "brand": "TCL", "category": "洗衣机/冰洗", "candidateOpsRoomId": 17, "candidateOpsShopId": 18, "scoringEligible": false },
+        { "key": "jd-tcl-home-appliance-official-flagship", "storeName": "TCL家电官方旗舰店", "jdShopId": "POP_HA_FLAGSHIP", "brand": "TCL", "category": "全品类POP", "scoringEligible": false },
+        { "key": "jd-tcl-water-heater-self-operated-flagship", "storeName": "TCL自营热水器京东自营旗舰店", "jdShopId": "SELF_WH", "brand": "TCL", "category": "厨卫热水器", "scoringEligible": false },
+        { "key": "jd-rayneo-smart-glasses-self-operated", "storeName": "雷鸟智能眼镜京东自营官方旗舰店", "jdShopId": "SELF_RAYNEO", "brand": "RayNeo", "category": "智能眼镜", "scoringEligible": false },
+        { "key": "jd-tcl-lighting-self-operated-flagship", "storeName": "TCL灯饰照明官方京东自营旗舰店", "jdShopId": "1000194977", "storeUrl": "https://mall.jd.com/index-1000194977.html", "brand": "TCL照明", "category": "照明", "excludedFromHomeApplianceKpi": true, "scoringEligible": false }
+      ]
+    }
+  }
+}

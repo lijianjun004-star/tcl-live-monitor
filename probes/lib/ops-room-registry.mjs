@@ -59,7 +59,7 @@ export function normalizeOpsCatalog(roomsBody,shopsBody=null) {
     const unresolved=shopId!==null&&shopItems!==null&&!matched;
     if(unresolved)warnings.push(ambiguous?'SHOP_LINK_AMBIGUOUS:'+key:'SHOP_LINK_UNRESOLVED:'+key);
     const captureBound=!!raw?.bound_session_key;
-    const categoryMappingConflict=platform==='jd'&&!!EXPECTED_SOURCE_CATEGORY[opsRoomId]&&!!raw?.category&&raw.category!==EXPECTED_SOURCE_CATEGORY[opsRoomId];
+    const categoryMappingConflict=platform==='jd'&&Object.hasOwn(EXPECTED_SOURCE_CATEGORY,opsRoomId)&&safeName(raw?.category)!==EXPECTED_SOURCE_CATEGORY[opsRoomId];
     if(categoryMappingConflict)warnings.push('CATEGORY_MAPPING_CONFLICT:'+opsRoomId);
     rooms.set(key,{
       key,source:'ops-platform',platform,opsRoomId,opsShopId:shopId,
