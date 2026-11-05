@@ -12,9 +12,19 @@ export const LOGIN_GATE_RE = /(请先登录后观看|登录后观看|扫码登�
 export const ENDED_RE = /(直播已结束|直播已经结束|主播已下播|暂未开播|主播暂未开播)/;
 
 export function profileIdentity(p, t) {
-  return p?.httpStatus === 200 && !CHALLENGE_RE.test(`${p.title} ${p.bodyExcerpt}`)
-    && p.title === `${t.accountName}的抖音 - 抖音`
-    && ((p.douyinIdsInPage || []).includes(t.displayDouyinId) || String(p.bodyExcerpt || '').includes(`抖音号：${t.displayDouyinId}`));
+  if (p?.httpStatus !== 200 || CHALLENGE_RE.test(`${p.title} ${p.bodyExcerpt}`)) return false;
+  const title = String(p.title || '').trim();
+  const allowedTitles = new Set([
+    `${t.accountName}的抖音 - 抖音`,
+    `${t.accountName}的主页 - 抖音`,
+    ...(Array.isArray(t?.alternateTitles) ? t.alternateTitles : []),
+  ]);
+  if (!allowedTitles.has(title)) return false;
+  // Exact token match only: "抖音号：14145381" must not match "抖音号：141453819".
+  const id = String(t.displayDouyinId || '');
+  const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const exact = new RegExp(`抖音号[:：]\\s*${esc}(?![A-Za-z0-9._-])`);
+  return (p.douyinIdsInPage || []).includes(id) || exact.test(String(p.bodyExcerpt || ''));
 }
 
 /** Room ids the verified profile marks as live right now. */

@@ -1,54 +1,157 @@
 {
- "schemaVersion": 1,
- "note": "Gemini R0.2 候选，仅用于身份核对；不进入监控或考核。",
- "candidates": [
-  {
-   "candidateId": "dy-c001",
-   "geminiName": "FFALCON雷鸟官方旗舰店",
-   "secUid": "MS4wLjABAAAAHLgxNf9c59NqJuH9tm5U2L3E1B6bNBehePdI5rKsZ2s",
-   "geminiDouyinId": "988541363148"
-  },
-  {
-   "candidateId": "dy-c008",
-   "geminiName": "TCL旗舰店电视直播间",
-   "secUid": "MS4wLjABAAAArESAdekhgm3-DvKIXCzheIIg1WHbedqjDvl6MAP0XfY",
-   "geminiDouyinId": "UNKNOWN"
-  },
-  {
-   "candidateId": "dy-c009",
-   "geminiName": "TCL电视品牌官方",
-   "secUid": "MS4wLjABAAAAP8tKoNhZj6nqftKiW-jDXLF8UFf5r6E9rJRfO_e5UWAphNlJMqefVMcqG6wYXN-E",
-   "geminiDouyinId": "93342457359"
-  },
-  {
-   "candidateId": "dy-c010",
-   "geminiName": "TCL空调旗舰店",
-   "secUid": "MS4wLjABAAAAHrYdQDu8_LBNttclBsq8-X7ye5-8oVFB2FzCeUJJVEM",
-   "geminiDouyinId": "UNKNOWN"
-  },
-  {
-   "candidateId": "dy-c011",
-   "geminiName": "TCL空调（认证主体：TCL空调器（中山）有限公司）",
-   "secUid": "MS4wLjABAAAAk8PCRiqiKMYYO7CUUgeotMKKxkg9-HOWe8Lrn2Dv-xQ",
-   "geminiDouyinId": "TCLkongtiao"
-  },
-  {
-   "candidateId": "dy-c012",
-   "geminiName": "TCL团购官方号",
-   "secUid": "MS4wLjABAAAAmgy7O_sAD6iWyifBhFNb6ha82RkQUAFvpJDr06fxHlw",
-   "geminiDouyinId": "UNKNOWN"
-  },
-  {
-   "candidateId": "dy-c018",
-   "geminiName": "RayNeo雷鸟创新",
-   "secUid": "MS4wLjABAAAAwcBNfIs0QX9hhBWHM8MTs8xArSi5_6ZEdk97-NKsIT8",
-   "geminiDouyinId": "84566591005"
-  },
-  {
-   "candidateId": "dy-c020",
-   "geminiName": "TCL富世新家电智选店",
-   "secUid": "MS4wLjABAAAAtTiJVyarvAsis4Af4PwnVxg00B-CRvFZci4E6Xl7-94",
-   "geminiDouyinId": "UNKNOWN"
-  }
- ]
+  "schemaVersion": 2,
+  "updatedAtBeijing": "2026-11-05T19:25:00+08:00",
+  "note": "R0.6 抖音矩阵核实与去重台账：已核实并迁入 probe-targets.json 的 8 个扩展账号均标明 promotedToKey（默认 scoringEligible=false 只监控不考核）；未取得 secUid 或属于第三方专卖店/独立生态子公司的候选单独列出排除原因，绝不为凑足 60+ 而混入未证实直播间。",
+  "candidates": [
+    {
+      "candidateId": "dy-c001",
+      "geminiName": "FFALCON雷鸟官方旗舰店 / FFALCON雷鸟电视旗舰店",
+      "secUid": "MS4wLjABAAAAHLgxNf9c59NqJuH9tm5U2L3E1B6bNBehePdI5rKsZ2s",
+      "geminiDouyinId": "83165143028",
+      "liveRoomId": "988541363148",
+      "verificationStatus": "VERIFIED_AND_PROMOTED_MONITOR_ONLY",
+      "promotedToKey": "ffalcon-douyin-tv-flagship",
+      "dedupNote": "与 dy-c013 (FFALCON雷鸟电视旗舰店) 及 dy-c016 (FFALCON雷鸟智能电视旗舰店) 共享同一 secUid，已按 secUid 唯一归并，禁止重复计数"
+    },
+    {
+      "candidateId": "dy-c008",
+      "geminiName": "TCL旗舰店电视直播间",
+      "secUid": "MS4wLjABAAAArESAdekhgm3-DvKIXCzheIIg1WHbedqjDvl6MAP0XfY",
+      "geminiDouyinId": "55176072706",
+      "verificationStatus": "VERIFIED_AND_PROMOTED_MONITOR_ONLY",
+      "promotedToKey": "tcl-douyin-flagship-tv-live",
+      "dedupNote": "已补齐抖音号 55176072706；高度疑似 dy-c002 (TCL电视官方旗舰店) 在抖音的实际落地子号"
+    },
+    {
+      "candidateId": "dy-c009",
+      "geminiName": "TCL电视品牌官方",
+      "secUid": "MS4wLjABAAAAP8tKoNhZj6nqftKiW-jDXLF8UFf5r6E9rJRfO_e5UWAphNlJMqefVMcqG6wYXN-E",
+      "geminiDouyinId": "93342457359",
+      "verificationStatus": "VERIFIED_AND_PROMOTED_MONITOR_ONLY",
+      "promotedToKey": "tcl-douyin-tv-brand",
+      "dedupNote": "与已批准考核号 tcl-douyin-tv-corporate (TCL电视官方, 83749174633) 为不同 secUid 的独立账号"
+    },
+    {
+      "candidateId": "dy-c010",
+      "geminiName": "TCL空调旗舰店",
+      "secUid": "MS4wLjABAAAAHrYdQDu8_LBNttclBsq8-X7ye5-8oVFB2FzCeUJJVEM",
+      "geminiDouyinId": "38396581665",
+      "liveRoomId": "7774305058",
+      "verificationStatus": "VERIFIED_AND_PROMOTED_MONITOR_ONLY",
+      "promotedToKey": "tcl-douyin-ac-flagship",
+      "dedupNote": "已补齐抖音号 38396581665 与 roomId 7774305058；与已批准考核号 tcl-douyin-air-direct (75800827047) 独立"
+    },
+    {
+      "candidateId": "dy-c011",
+      "geminiName": "TCL空调（认证主体：TCL空调器（中山）有限公司）",
+      "secUid": "MS4wLjABAAAAk8PCRiqiKMYYO7CUUgeotMKKxkg9-HOWe8Lrn2Dv-xQ",
+      "geminiDouyinId": "TCLkongtiao",
+      "verificationStatus": "VERIFIED_AND_PROMOTED_MONITOR_ONLY",
+      "promotedToKey": "tcl-douyin-ac-zhongshan",
+      "dedupNote": "蓝V认证主体为 TCL空调器（中山）有限公司，自定义字母抖音号 TCLkongtiao"
+    },
+    {
+      "candidateId": "dy-c012",
+      "geminiName": "TCL团购官方号",
+      "secUid": "MS4wLjABAAAAmgy7O_sAD6iWyifBhFNb6ha82RkQUAFvpJDr06fxHlw",
+      "geminiDouyinId": "14145381",
+      "liveRoomId": "53987804768",
+      "verificationStatus": "VERIFIED_AND_PROMOTED_MONITOR_ONLY",
+      "promotedToKey": "tcl-douyin-groupbuy",
+      "dedupNote": "已补齐 8 位数字抖音号 14145381 与 roomId 53987804768；属全品类本地生活团购商家认证号"
+    },
+    {
+      "candidateId": "dy-c018",
+      "geminiName": "RayNeo雷鸟创新",
+      "secUid": "MS4wLjABAAAAwcBNfIs0QX9hhBWHM8MTs8xArSi5_6ZEdk97-NKsIT8",
+      "geminiDouyinId": "84566591005",
+      "verificationStatus": "VERIFIED_AND_PROMOTED_MONITOR_ONLY",
+      "promotedToKey": "rayneo-douyin-official",
+      "dedupNote": "AR眼镜业务（雷鸟创新技术（深圳）有限公司），只监控不计入大家电考核"
+    },
+    {
+      "candidateId": "dy-c020",
+      "geminiName": "TCL富世新家电智选店",
+      "secUid": "MS4wLjABAAAAtTiJVyarvAsis4Af4PwnVxg00B-CRvFZci4E6Xl7-94",
+      "geminiDouyinId": "FoxsineZN",
+      "verificationStatus": "VERIFIED_DEALER_MONITOR_ONLY_NEVER_SCORE",
+      "promotedToKey": "tcl-douyin-dealer-fushixin",
+      "dedupNote": "已补齐抖音号 FoxsineZN；第三方经销商智选店，scoringEligible=false 严禁纳入总部考核分母"
+    },
+    {
+      "candidateId": "dy-extra-dealer-02",
+      "geminiName": "兴城市TCL空调",
+      "secUid": "MS4wLjABAAAAGcQrY0mEGNjatLnFu_TPW3Qr5yhmZwm7aK1_NAuXBXo",
+      "geminiDouyinId": "li15143770999",
+      "verificationStatus": "EXCLUDED_LOCAL_OFFLINE_DEALER",
+      "promotedToKey": null,
+      "dedupNote": "辽宁葫芦岛兴城市红军楼TCL空调专卖店（粉丝200+），属地方线下个体门店，排除出总部监控与考核"
+    }
+  ],
+  "unverifiedOrExcludedWithoutSecUid": [
+    {
+      "candidateId": "dy-c014",
+      "name": "雷鸟电视品牌官方直营",
+      "displayDouyinId": "wlhnumber1",
+      "secUid": "UNKNOWN",
+      "verifiedEntity": "深圳TCL新技术有限公司",
+      "sourceUrl": "https://kuku.baidu.com/landing/tscp_doc/b8c630b79e170b4d0b7820d3f00d20cb",
+      "status": "PENDING_SECUID_LOOKUP",
+      "reason": "公开攻略证实认证徽章为深圳TCL新技术有限公司、抖音号 wlhnumber1，但未登录公开索引未暴露 secUid，待人工查验主页补齐 secUid 后再纳入"
+    },
+    {
+      "candidateId": "dy-c015",
+      "name": "雷鸟官方旗舰店壁纸电视",
+      "displayDouyinId": "87826221679",
+      "secUid": "UNKNOWN",
+      "sourceUrl": "https://kuku.baidu.com/landing/tscp_doc/b8c630b79e170b4d0b7820d3f00d20cb",
+      "status": "PENDING_SECUID_LOOKUP",
+      "reason": "公开攻略记录抖音号 87826221679，待提取 secUid 并核对是否与 ffalcon-douyin-tv-flagship (83165143028) 独立"
+    },
+    {
+      "candidateId": "dy-extra-3c-01",
+      "name": "TCL网络旗舰店",
+      "displayDouyinId": "35650402851",
+      "secUid": "UNKNOWN",
+      "sourceUrl": "https://cy.chanmama.com/open/authorRank/9/month/202610.html",
+      "status": "EXCLUDED_3C_WIFI_CATEGORY",
+      "reason": "蝉妈妈 2026-10 3C数码月榜第19名（粉丝18.3w），主营随身WiFi与便携路由器，非电视/空冰洗大家电总部直营，且缺公开 secUid"
+    },
+    {
+      "candidateId": "dy-c002",
+      "name": "TCL电视官方旗舰店",
+      "displayDouyinId": "UNKNOWN",
+      "secUid": "UNKNOWN",
+      "sourceUrl": "https://www.10100.com/article/40202616",
+      "status": "ALIAS_OF_EXISTING_TV_ACCOUNTS",
+      "reason": "京东/天猫店名；在抖音端已由 TCL官方旗舰店(79013748820)、TCL电视官方直播间(89706879747) 及 TCL旗舰店电视直播间(55176072706) 覆盖，不单独虚增"
+    },
+    {
+      "candidateId": "dy-c003",
+      "name": "TCL冰洗官方旗舰店",
+      "displayDouyinId": "UNKNOWN",
+      "secUid": "UNKNOWN",
+      "sourceUrl": "https://www.10100.com/article/40202616",
+      "status": "PENDING_INTERNAL_WHITEGOODS_SECUID",
+      "reason": "冰洗业务隶属 TCL智家(002668.SZ)/合肥TCL家电，公开免登录索引未检出独立 secUid，需内部电商台账确认"
+    },
+    {
+      "candidateId": "dy-c004_c005_c006",
+      "name": "TCL灯饰旗舰店 / TCL家装旗舰店 / TCL照明旗舰店",
+      "displayDouyinId": "UNKNOWN",
+      "secUid": "UNKNOWN",
+      "sourceUrl": "https://www.tcl-lighting.com/xwxq/b7wqkaEb",
+      "status": "EXCLUDED_LIGHTING_AUTHORIZED_STORES",
+      "reason": "TCL华瑞照明科技（惠州）有限公司 2023-06-16 公示的电商授权网店，无公开 secUid 且属独立照明生态子公司授权店体系"
+    },
+    {
+      "candidateId": "dy-c007_and_hongyi",
+      "name": "TCL汇翌专卖店 (73733661369) / TCL泓亿专卖店",
+      "displayDouyinId": "73733661369",
+      "secUid": "UNKNOWN",
+      "sourceUrl": "https://cy.chanmama.com/open/authorRank/YgmGdVGTf-nYovlhZemAJgsiIm7FdeLB.html",
+      "status": "EXCLUDED_DEALER_FRANCHISE",
+      "reason": "第三方商标授权电子秤/个护专卖店，严禁纳入集团大家电直播监控分母"
+    }
+  ]
 }

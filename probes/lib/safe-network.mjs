@@ -48,12 +48,25 @@ export function decidePublicState(profile,room) {
   // Absence of a live badge is not trustworthy negative evidence.
   return {state:'UNKNOWN',reason:'NO_TWO_PAGE_LIVE_PROOF; OFFLINE_NOT_VALIDATED'};
 }
-export function validateTargets(targets) {
-  if (!Array.isArray(targets) || targets.length!==4) throw Error('Require exactly four known approved targets');
-  for(const t of targets) {
-    if (t.scopeApproved!==true || !/^\d{8,16}$/.test(t.displayDouyinId) || !/^\d{5,24}$/.test(t.roomId)) throw Error('Invalid target');
-    const p=new URL(t.profileUrl),r=new URL(t.roomUrl);
-    if(p.protocol!=='https:'||p.hostname!=='www.douyin.com'||!p.pathname.startsWith('/user/')||r.protocol!=='https:'||r.hostname!=='live.douyin.com'||r.pathname!=='/'+t.roomId) throw Error('Target url or room mismatch');
+export function validateTargets(targets, { exactCount = null } = {}) {
+  if (!Array.isArray(targets) || targets.length === 0) throw Error('Require non-empty approved targets array');
+  if (exactCount !== null && targets.length !== exactCount) throw Error(`Require exactly ${exactCount} approved targets`);
+  for (const t of targets) {
+    if (!t || t.scopeApproved !== true || !/^[A-Za-z0-9._-]{3,32}$/.test(String(t.displayDouyinId ?? ''))) throw Error('Invalid target');
+    const p = new URL(t.profileUrl);
+    if (p.protocol !== 'https:' || p.hostname !== 'www.douyin.com' || !/^\/user\/MS4wLjABAAAA[\w-]{20,}$/.test(p.pathname)) throw Error('Target url or room mismatch');
+    if (t.roomId != null) {
+      if (!/^\d{5,24}$/.test(String(t.roomId))) throw Error('Invalid target roomId');
+      if (t.roomUrl != null) {
+        const r = new URL(t.roomUrl);
+        if (r.protocol !== 'https:' || r.hostname !== 'live.douyin.com' || r.pathname !== '/' + t.roomId) throw Error('Target url or room mismatch');
+      }
+    }
   }
-  for(const key of ['key','displayDouyinId','roomId','profileUrl']) if(new Set(targets.map(t=>t[key])).size!==targets.length)throw Error('Duplicate '+key);
+  for (const key of ['key', 'displayDouyinId', 'profileUrl']) {
+    if (new Set(targets.map(t => t[key])).size !== targets.length) throw Error('Duplicate ' + key);
+  }
+  const nonNullRoomIds = targets.map(t => t.roomId).filter(x => x != null);
+  if (new Set(nonNullRoomIds).size !== nonNullRoomIds.length) throw Error('Duplicate roomId');
+  return true;
 }

@@ -1,0 +1,42 @@
+name: tcl-jd-all-readonly
+# Manual ONLY. No schedule / deployment / source writes / credential extraction.
+on:
+  workflow_dispatch:
+    inputs:
+      shard_total:
+        description: 'Number of stable partitions (1-16), default 1'
+        required: false
+        default: '1'
+      shard_index:
+        description: 'Zero-based partition to scan'
+        required: false
+        default: '0'
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      # Fallback matches the other ops workflows; remove once the TCL_OPS_BASE_URL secret is configured.
+      TCL_OPS_BASE_URL: ${{ secrets.TCL_OPS_BASE_URL || 'http://101.96.215.251' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline regression tests
+        run: node --test tests/*.test.mjs
+      - name: Read-only JD scan (safe state output)
+        if: env.TCL_OPS_BASE_URL != ''
+        env:
+          SHARD_TOTAL: ${{ inputs.shard_total || '1' }}
+          SHARD_INDEX: ${{ inputs.shard_index || '0' }}
+        run: node probes/tcl-jd-all.mjs --shard-total "$SHARD_TOTAL" --shard-index "$SHARD_INDEX" --output jd-all-safe-report.json
+      - name: Upload sanitized states only
+        if: env.TCL_OPS_BASE_URL != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: jd-all-safe-report
+          path: jd-all-safe-report.json
+          retention-days: 7
