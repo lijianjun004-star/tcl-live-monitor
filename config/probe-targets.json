@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "note": "监控范围：天猫已确认 1 店；抖音为用户批准账号 + 名称带TCL的账号（2026-11-05 用户规则）。scoringEligible=false 的只监控不考核。",
+  "note": "监控范围：天猫已确认 1 店；抖音为用户批准账号 + 名称带TCL的账号 + 雷鸟子品牌账号（2026-11-05 用户规则）。scoringEligible=false 的只监控不考核。",
   "tmall": [
     {
       "key": "tcl-group",
@@ -107,6 +107,26 @@
       "scopeSource": "user rule 2026-11-05: 名称带TCL的抖音直播间纳入监控",
       "scoringEligible": false,
       "note": "第三方经销商，仅监控，不计入考核"
+    },
+    {
+      "key": "ffalcon-douyin-tv-flagship",
+      "accountName": "FFALCON雷鸟电视旗舰店",
+      "displayDouyinId": "83165143028",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAHLgxNf9c59NqJuH9tm5U2L3E1B6bNBehePdI5rKsZ2s",
+      "scopeApproved": true,
+      "scopeSource": "user rule 2026-11-05: 雷鸟为TCL子品牌，纳入监控",
+      "scoringEligible": false,
+      "roomId": "988541363148"
+    },
+    {
+      "key": "rayneo-douyin-official",
+      "accountName": "RayNeo雷鸟创新",
+      "displayDouyinId": "84566591005",
+      "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAwcBNfIs0QX9hhBWHM8MTs8xArSi5_6ZEdk97-NKsIT8",
+      "scopeApproved": true,
+      "scopeSource": "user rule 2026-11-05: 雷鸟为TCL子品牌，纳入监控",
+      "scoringEligible": false,
+      "note": "AR眼镜业务，主体雷鸟创新技术（深圳）有限公司"
     }
   ]
 }
