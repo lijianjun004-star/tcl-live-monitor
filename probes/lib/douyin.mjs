@@ -12,9 +12,15 @@ export const LOGIN_GATE_RE = /(请先登录后观看|登录后观看|扫码登�
 export const ENDED_RE = /(直播已结束|直播已经结束|主播已下播|暂未开播|主播暂未开播)/;
 
 export function profileIdentity(p, t) {
-  return p?.httpStatus === 200 && !CHALLENGE_RE.test(`${p.title} ${p.bodyExcerpt}`)
-    && p.title === `${t.accountName}的抖音 - 抖音`
-    && ((p.douyinIdsInPage || []).includes(t.displayDouyinId) || String(p.bodyExcerpt || '').includes(`抖音号：${t.displayDouyinId}`));
+  if (p?.httpStatus !== 200 || CHALLENGE_RE.test(`${p.title} ${p.bodyExcerpt}`)) return false;
+  const title = String(p.title || '').trim();
+  const allowedTitles = new Set([
+    `${t.accountName}的抖音 - 抖音`,
+    `${t.accountName}的主页 - 抖音`,
+    ...(Array.isArray(t?.alternateTitles) ? t.alternateTitles : []),
+  ]);
+  if (!allowedTitles.has(title)) return false;
+  return (p.douyinIdsInPage || []).includes(t.displayDouyinId) || String(p.bodyExcerpt || '').includes(`抖音号：${t.displayDouyinId}`) || String(p.bodyExcerpt || '').includes(`抖音号:${t.displayDouyinId}`);
 }
 
 /** Room ids the verified profile marks as live right now. */

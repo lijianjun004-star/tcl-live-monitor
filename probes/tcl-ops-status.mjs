@@ -1,12 +1,13 @@
 // Multi-round status poll of TCL ops platform rooms. Prints ONLY states (no business metrics).
 import fs from 'node:fs/promises';
 import { classifyTclOps, liveMinutesDelta } from './lib/tcl-ops.mjs';
+import { beijingDate } from './lib/tcl-jd-all.mjs';
 const BASE = process.env.BASE;
 const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? Number(process.argv[i + 1]) : d; };
 const ROUNDS = Math.min(Math.max(arg('--rounds', 1), 1), 12), INTERVAL = Math.min(Math.max(arg('--interval-min', 5), 1), 15);
 const get = async p => { const r = await fetch(new URL(p, BASE), { method: 'GET', signal: AbortSignal.timeout(20000) }); if (!r.ok) throw Error('HTTP ' + r.status); return r.json(); };
-const bjDate = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(d);
-const bjTime = t => t ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(t)) : '-';
+const bjDate = d => beijingDate(d);
+const bjTime = t => t ? new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(t)) : '-';
 const rows = []; const last = {};
 for (let r = 1; r <= ROUNDS; r++) {
   const t0 = Date.now();

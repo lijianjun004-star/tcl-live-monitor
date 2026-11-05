@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "updatedAtBeijing": "2026-11-05T19:25:00+08:00",
+  "policy": "严格区分四层 ID：(1) 运营平台内部 roomId (live_room_id) (2) 运营平台内部 shop_id (3) 京东商城公开店铺标识 (mall.jd.com / venderId / 活动页 ID) (4) 京东直播场次 liveId。严禁因数值巧合跨层强绑；未取得源站 /api/shops 与 /api/capture/rooms 实测响应前，shop_id 与 jdLiveSessionId 保持 UNKNOWN。",
+  "jdKnownOpsRooms": [
+    {
+      "opsInternalRoomId": "1",
+      "expectedCategoryInOps": "冰箱",
+      "historical20261104CategoryObserved": "冰箱 (单测模拟含冲突检测样本)",
+      "opsInternalShopId": "UNKNOWN_PENDING_API_SHOPS",
+      "publicJdStoreCandidate": {
+        "storeName": "TCL京东自营旗舰店 / TCL冰箱洗衣机京东自营旗舰店",
+        "publicUrl": "https://mall.jd.hk/view_search-407681-0-5-1-24-1.html",
+        "publicBrandPageUrl": "https://www.jd.com/jiage/737819e576116d37bf1.html",
+        "jdMallShopId": "407681 (综合自营入口，待与独立冰洗自营店区分)"
+      },
+      "jdPlatformLiveSessionId": "UNKNOWN_DYNAMIC_PER_STREAM",
+      "identityCrosswalkVerified": false
+    },
+    {
+      "opsInternalRoomId": "14",
+      "expectedCategoryInOps": "洗衣机",
+      "historical20261104State": "LIVE (2026-11-04 20:12 CST 历史记录，已过期)",
+      "opsInternalShopId": "UNKNOWN_PENDING_API_SHOPS",
+      "publicJdStoreCandidate": {
+        "storeName": "TCL冰箱洗衣机旗舰店 / 京东自营",
+        "publicUrl": "https://www.jd.com/xinghao/737819e576116d37bf1.html"
+      },
+      "jdPlatformLiveSessionId": "UNKNOWN_DYNAMIC_PER_STREAM",
+      "identityCrosswalkVerified": false
+    },
+    {
+      "opsInternalRoomId": "15",
+      "expectedCategoryInOps": "空调",
+      "historical20261104State": "UNKNOWN",
+      "opsInternalShopId": "UNKNOWN_PENDING_API_SHOPS",
+      "publicJdStoreCandidate": {
+        "storeName": "TCL空调京东自营官方旗舰店 / TCL空调活动会场",
+        "publicUrl": "https://pro.jd.com/mall/active/419bszmcbRPZP7Dq3i1Eu21UJ2Nt/index.html",
+        "centralAcUrl": "https://pro.jd.com/mall/active/3F2iJMucy6PY4P5krLrqgWGZqifH/index.html"
+      },
+      "jdPlatformLiveSessionId": "UNKNOWN_DYNAMIC_PER_STREAM",
+      "identityCrosswalkVerified": false
+    },
+    {
+      "opsInternalRoomId": "16",
+      "expectedCategoryInOps": "全品类",
+      "historical20261104State": "UNKNOWN",
+      "opsInternalShopId": "UNKNOWN_PENDING_API_SHOPS",
+      "publicJdStoreCandidate": {
+        "storeName": "TCL家电官方旗舰店 / TCL京东自营旗舰店",
+        "publicUrl": "https://pro.m.jd.com/mall/active/4KFDAXbS67cbDcwXqGKXiPKp5k5p/index.html",
+        "selfOperatedSearchUrl": "https://mall.jd.hk/view_search-407681-30208863-1-1-24-1.html"
+      },
+      "jdPlatformLiveSessionId": "UNKNOWN_DYNAMIC_PER_STREAM",
+      "identityCrosswalkVerified": false
+    },
+    {
+      "opsInternalRoomId": "17",
+      "expectedCategoryInOps": "电视",
+      "historical20261104State": "UNKNOWN",
+      "opsInternalShopId": "UNKNOWN_PENDING_API_SHOPS",
+      "publicJdStoreCandidate": {
+        "storeName": "TCL电视官方旗舰店",
+        "publicUrl": "https://pro.jd.com/mall/active/4RTcRBogvvYZ468Q2okJxqj9o8AT/index.html"
+      },
+      "jdPlatformLiveSessionId": "UNKNOWN_DYNAMIC_PER_STREAM",
+      "identityCrosswalkVerified": false
+    },
+    {
+      "opsInternalRoomId": "18",
+      "expectedCategoryInOps": "显示器",
+      "historical20261104State": "LIVE (2026-11-04 20:12 CST 历史记录，已过期)",
+      "opsInternalShopId": "UNKNOWN_PENDING_API_SHOPS",
+      "publicJdStoreCandidate": {
+        "storeName": "TCL显示器 / FFALCON雷鸟京东自营官方旗舰店",
+        "publicUrl": "https://pro.jd.com/mall/active/3QZZEHW5Sgr6Mw5dPbyWhgQsJojc/index.html"
+      },
+      "jdPlatformLiveSessionId": "UNKNOWN_DYNAMIC_PER_STREAM",
+      "identityCrosswalkVerified": false
+    }
+  ],
+  "douyinUnmappedOpsRows": {
+    "opsRoomRowIds": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    "categories": {
+      "tvRows": [3, 4, 5, 6, 7, 9, 10, 11],
+      "applianceRows": [8, 12]
+    },
+    "verifiedBindings": [],
+    "note": "运营平台 10 条抖音行记录（8 条电视、2 条家电）尚未取得后台 secUid 映射证据，不得与 probe-targets.json 中的 12 个抖音账号直接相加"
+  }
+}

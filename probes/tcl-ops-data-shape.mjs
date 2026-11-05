@@ -1,8 +1,8 @@
 // Read-only GET of TCL ops platform APIs (management-approved). Output encrypted by the workflow.
 import fs from 'node:fs/promises';
+import { beijingDate } from './lib/tcl-jd-all.mjs';
 const BASE = process.env.BASE; const out = {};
-const bj = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(d);
-const today = bj(new Date()), d3 = bj(new Date(Date.now() - 3 * 864e5));
+const today = beijingDate(new Date()), d3 = beijingDate(new Date(Date.now() - 3 * 864e5));
 async function get(path) {
   const u = new URL(path, BASE); if (!u.pathname.startsWith('/api/')) throw Error('path');
   const t0 = Date.now();
