@@ -50,3 +50,9 @@ test('douyin: challenge / identity mismatch -> UNKNOWN', () => {
   assert.equal(decideDouyin({ ...profile(), title: '验证码中间页' }, room(), dy).reason, 'PUBLIC_GUEST_ACCESS_CHALLENGED');
   assert.equal(decideDouyin({ ...profile(), bodyExcerpt: '抖音号：1' }, room(), dy).reason, 'PROFILE_IDENTITY_NOT_VERIFIED');
 });
+
+test('douyin: 抖音号 beyond excerpt is still found via full-page scan', () => {
+  const p = { ...profile([{ href: 'https://live.douyin.com/31878890513', text: '直播中' }]), bodyExcerpt: '直播横幅……', douyinIdsInPage: ['79013748820'] };
+  assert.equal(decideDouyin(p, room(), dy).state, 'LIVE');
+  assert.equal(decideDouyin({ ...p, douyinIdsInPage: ['11111111111'] }, room(), dy).reason, 'PROFILE_IDENTITY_NOT_VERIFIED');
+});
