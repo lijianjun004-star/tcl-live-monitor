@@ -1,3 +1,10 @@
 node_modules/
 probe-report.json
 probe-summary.md
+# Authorized source catalogs / generated private account and shop inventories
+private-*.json
+*.private.json
+*.private.html
+room-registry.preview.json
+three-platform-view.preview.json
+coverage-audit.preview.json
