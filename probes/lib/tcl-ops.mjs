@@ -20,8 +20,16 @@ export function classifyTclOps({ day, heartbeatAt, now, offlineRuleValidated = f
   const status = day?.latest?.status ?? null;
   const base = { agentAlive, minuteAgeMin: minuteAge === null ? null : Math.round(minuteAge / 6000) / 10,
     minuteCount: Number.isFinite(day?.minute_count) ? day.minute_count : null, platformStatus: status };
-  if (minuteAge !== null && minuteAge >= -60_000 && minuteAge <= FRESH_MINUTE_MS && Number(status) === 1)
+  const fresh = minuteAge !== null && minuteAge >= -60_000 && minuteAge <= FRESH_MINUTE_MS;
+  if (fresh && Number(status) === 1)
     return { ...base, state: 'LIVE', reason: 'FRESH_MINUTE_DATA_STATUS_1' };
+  // R0.7.1 (run 42021726185): `latest` is the newest metrics record, and some record types
+  // (e.g. last5m_* aggregates) carry no `status`. Minutes kept advancing +5 per 5 min while
+  // status was absent, so an ABSENT status must not veto LIVE when the capture agent is alive.
+  // A PRESENT status other than 1 is still treated as ambiguous.
+  if (fresh && status === null && agentAlive)
+    return { ...base, state: 'LIVE', reason: 'FRESH_MINUTE_DATA_STATUS_ABSENT' };
+  if (fresh) return { ...base, state: 'UNKNOWN', reason: 'FRESH_MINUTE_DATA_STATUS_' + String(status).slice(0, 12) };
   if (agentAlive && (minuteAge === null || minuteAge > OFFLINE_GAP_MS)) {
     if (offlineRuleValidated) return { ...base, state: 'OFFLINE', offlineEvidence: true, reason: 'AGENT_ALIVE_NO_NEW_MINUTES' };
     return { ...base, state: 'UNKNOWN', offlineCandidate: true, reason: 'OFFLINE_CANDIDATE_AGENT_ALIVE_NO_NEW_MINUTES' };
