@@ -47,6 +47,8 @@ async function snapshot(page, url, captureStatus) {
     Object.assign(out, await page.evaluate(() => ({
       title: String(document.title || '').slice(0, 150),
       bodyExcerpt: String(document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 1000),
+      // 抖音号 can sit beyond the excerpt when banners/live cards push it down: scan the full text.
+      douyinIdsInPage: [...String(document.body?.innerText || '').matchAll(/抖音号[:：]\s*([A-Za-z0-9._-]{3,32})/g)].map(m => m[1]).slice(0, 5),
       metaDescription: String(document.querySelector('meta[name="description"]')?.content || '').slice(0, 200),
       liveRoomAnchors: [...document.querySelectorAll('a[href]')].map(a => ({ href: a.href, text: String(a.innerText || a.textContent || '').replace(/\s+/g, ' ').slice(0, 70) }))
         .filter(x => /^https:\/\/live\.douyin\.com\/\d{5,24}/.test(x.href)).slice(0, 15),

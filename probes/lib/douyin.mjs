@@ -13,7 +13,8 @@ export const ENDED_RE = /(直播已结束|直播已经结束|主播已下播|暂
 
 export function profileIdentity(p, t) {
   return p?.httpStatus === 200 && !CHALLENGE_RE.test(`${p.title} ${p.bodyExcerpt}`)
-    && p.title === `${t.accountName}的抖音 - 抖音` && String(p.bodyExcerpt || '').includes(`抖音号：${t.displayDouyinId}`);
+    && p.title === `${t.accountName}的抖音 - 抖音`
+    && ((p.douyinIdsInPage || []).includes(t.displayDouyinId) || String(p.bodyExcerpt || '').includes(`抖音号：${t.displayDouyinId}`));
 }
 
 /** Room ids the verified profile marks as live right now. */
