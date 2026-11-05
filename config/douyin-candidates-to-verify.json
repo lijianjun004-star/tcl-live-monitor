@@ -1,0 +1,54 @@
+{
+ "schemaVersion": 1,
+ "note": "Gemini R0.2 候选，仅用于身份核对；不进入监控或考核。",
+ "candidates": [
+  {
+   "candidateId": "dy-c001",
+   "geminiName": "FFALCON雷鸟官方旗舰店",
+   "secUid": "MS4wLjABAAAAHLgxNf9c59NqJuH9tm5U2L3E1B6bNBehePdI5rKsZ2s",
+   "geminiDouyinId": "988541363148"
+  },
+  {
+   "candidateId": "dy-c008",
+   "geminiName": "TCL旗舰店电视直播间",
+   "secUid": "MS4wLjABAAAArESAdekhgm3-DvKIXCzheIIg1WHbedqjDvl6MAP0XfY",
+   "geminiDouyinId": "UNKNOWN"
+  },
+  {
+   "candidateId": "dy-c009",
+   "geminiName": "TCL电视品牌官方",
+   "secUid": "MS4wLjABAAAAP8tKoNhZj6nqftKiW-jDXLF8UFf5r6E9rJRfO_e5UWAphNlJMqefVMcqG6wYXN-E",
+   "geminiDouyinId": "93342457359"
+  },
+  {
+   "candidateId": "dy-c010",
+   "geminiName": "TCL空调旗舰店",
+   "secUid": "MS4wLjABAAAAHrYdQDu8_LBNttclBsq8-X7ye5-8oVFB2FzCeUJJVEM",
+   "geminiDouyinId": "UNKNOWN"
+  },
+  {
+   "candidateId": "dy-c011",
+   "geminiName": "TCL空调（认证主体：TCL空调器（中山）有限公司）",
+   "secUid": "MS4wLjABAAAAk8PCRiqiKMYYO7CUUgeotMKKxkg9-HOWe8Lrn2Dv-xQ",
+   "geminiDouyinId": "TCLkongtiao"
+  },
+  {
+   "candidateId": "dy-c012",
+   "geminiName": "TCL团购官方号",
+   "secUid": "MS4wLjABAAAAmgy7O_sAD6iWyifBhFNb6ha82RkQUAFvpJDr06fxHlw",
+   "geminiDouyinId": "UNKNOWN"
+  },
+  {
+   "candidateId": "dy-c018",
+   "geminiName": "RayNeo雷鸟创新",
+   "secUid": "MS4wLjABAAAAwcBNfIs0QX9hhBWHM8MTs8xArSi5_6ZEdk97-NKsIT8",
+   "geminiDouyinId": "84566591005"
+  },
+  {
+   "candidateId": "dy-c020",
+   "geminiName": "TCL富世新家电智选店",
+   "secUid": "MS4wLjABAAAAtTiJVyarvAsis4Af4PwnVxg00B-CRvFZci4E6Xl7-94",
+   "geminiDouyinId": "UNKNOWN"
+  }
+ ]
+}
