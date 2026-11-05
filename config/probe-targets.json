@@ -1,13 +1,91 @@
 {
   "schemaVersion": 1,
-  "note": "监控范围：天猫已确认 1 店；抖音为用户批准账号 + 名称带TCL的账号 + 雷鸟子品牌账号（2026-11-05 用户规则）。scoringEligible=false 的只监控不考核。",
+  "note": "监控范围：天猫 = 用户确认 1 店 + 名称带 TCL/雷鸟且经直播详情反查核实的账号（2026-11-05）；抖音 = 用户批准账号 + 名称带TCL + 雷鸟子品牌。scoringEligible=false 只监控不考核。",
   "tmall": [
     {
       "key": "tcl-group",
       "displayName": "TCL集团官方旗舰店",
       "accountId": "2050532947",
       "roomNumber": "130742",
-      "userConfirmed": true
+      "userConfirmed": true,
+      "scoringEligible": true
+    },
+    {
+      "key": "tmall-tcl-tv-official",
+      "displayName": "TCL电视官方旗舰店",
+      "accountId": "395601843",
+      "roomNumber": "74370",
+      "scopeApproved": true,
+      "scopeSource": "user 2026-11-05 23:08: 找出TCL和雷鸟在四平台的直播间；身份由直播详情反查核实（run 42052553183）",
+      "scoringEligible": false
+    },
+    {
+      "key": "tmall-tcl-ac-official",
+      "displayName": "TCL空调官方旗舰店",
+      "accountId": "2098070993",
+      "roomNumber": "131101",
+      "scopeApproved": true,
+      "scopeSource": "user 2026-11-05 23:08: 找出TCL和雷鸟在四平台的直播间；身份由直播详情反查核实（run 42052553183）",
+      "scoringEligible": false
+    },
+    {
+      "key": "tmall-tcl-smarthome",
+      "displayName": "TCL智能家居旗舰",
+      "accountId": "2210516382103",
+      "roomNumber": "14387040",
+      "scopeApproved": true,
+      "scopeSource": "user 2026-11-05 23:08: 找出TCL和雷鸟在四平台的直播间；身份由直播详情反查核实（run 42052553183）",
+      "scoringEligible": false
+    },
+    {
+      "key": "tmall-ffalcon-tv",
+      "displayName": "雷鸟电视",
+      "accountId": "2208008712016",
+      "roomNumber": "2913877",
+      "scopeApproved": true,
+      "scopeSource": "user 2026-11-05 23:08: 找出TCL和雷鸟在四平台的直播间；身份由直播详情反查核实（run 42052553183）",
+      "scoringEligible": false,
+      "note": "雷鸟子品牌；主播名为“雷鸟电视”，店铺全称待核实"
+    },
+    {
+      "key": "tmall-rayneo-ar",
+      "displayName": "雷鸟AR眼镜",
+      "accountId": "2214188502879",
+      "roomNumber": "25159001",
+      "scopeApproved": true,
+      "scopeSource": "user 2026-11-05 23:08: 找出TCL和雷鸟在四平台的直播间；身份由直播详情反查核实（run 42052553183）",
+      "scoringEligible": false,
+      "note": "雷鸟创新 AR 眼镜业务"
+    },
+    {
+      "key": "tmall-tcl-lighting",
+      "displayName": "TCL照明官方旗舰",
+      "accountId": "1015493951",
+      "roomNumber": "128789",
+      "scopeApproved": true,
+      "scopeSource": "user 2026-11-05 23:08: 找出TCL和雷鸟在四平台的直播间；身份由直播详情反查核实（run 42052553183）",
+      "scoringEligible": false,
+      "note": "TCL华瑞照明业务"
+    },
+    {
+      "key": "tmall-tcl-outdoor",
+      "displayName": "TCL户外旗舰店",
+      "accountId": "2208987173657",
+      "roomNumber": "6181816",
+      "scopeApproved": true,
+      "scopeSource": "user 2026-11-05 23:08: 找出TCL和雷鸟在四平台的直播间；身份由直播详情反查核实（run 42052553183）",
+      "scoringEligible": false,
+      "note": "Gemini 误标为冰洗；平台显示为户外旗舰店"
+    },
+    {
+      "key": "tmall-tcl-zhengpin-dealer",
+      "displayName": "TCL正品专卖店",
+      "accountId": "2206689737964",
+      "roomNumber": "2278157",
+      "scopeApproved": true,
+      "scopeSource": "user 2026-11-05 23:08: 找出TCL和雷鸟在四平台的直播间；身份由直播详情反查核实（run 42052553183）",
+      "scoringEligible": false,
+      "note": "专卖店（经销渠道）"
     }
   ],
   "douyin": [
