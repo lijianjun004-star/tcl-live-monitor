@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "note": "只读反查：给 ID 查公开页面上的真实名称。来源 = 旧仓库 11-03 实测 / Gemini R0.9.1 矩阵。结果只作候选核实，不进入监控或考核。",
+  "tmallAccountIds": [
+    {"id": "2050532947", "claimedName": "TCL集团官方旗舰店", "source": "已监控，11-03 实测"},
+    {"id": "395601843", "claimedName": "TCL电视官方旗舰店", "source": "旧仓库 11-03 实测"},
+    {"id": "2098070993", "claimedName": "TCL空调官方旗舰店", "source": "旧仓库 11-03 实测"},
+    {"id": "1015493951", "claimedName": "TCL照明官方旗舰店", "source": "旧仓库 11-03 实测"},
+    {"id": "2208987173657", "claimedName": "TCL户外旗舰店（旧仓库）/ TCL冰洗官方旗舰店（Gemini）", "source": "两方冲突"},
+    {"id": "2206689737964", "claimedName": "TCL正品专卖店", "source": "旧仓库 11-03 实测"},
+    {"id": "1796933267", "claimedName": "TCL官方旗舰店", "source": "Gemini R0.9.1"},
+    {"id": "2616970884", "claimedName": "TCL电视官方旗舰店", "source": "Gemini R0.9.1"},
+    {"id": "2210516382103", "claimedName": "TCL智能家居旗舰店", "source": "Gemini R0.9.1"},
+    {"id": "2213856588863", "claimedName": "FFALCON雷鸟旗舰店", "source": "Gemini R0.9.1"},
+    {"id": "2208008712016", "claimedName": "雷鸟电视机官方旗舰店", "source": "Gemini R0.9.1"},
+    {"id": "2214188502879", "claimedName": "雷鸟智能眼镜旗舰店", "source": "Gemini R0.9.1"},
+    {"id": "2200805864660", "claimedName": "TCL照明官方旗舰店", "source": "Gemini R0.9.1"}
+  ],
+  "taobaoShopIds": [
+    {"id": "162849868", "claimedName": "TCL 淘宝企业店样本 #1", "source": "Gemini R0.9.1"},
+    {"id": "448870934", "claimedName": "TCL 淘宝企业店样本 #2", "source": "Gemini R0.9.1"}
+  ],
+  "jdShopIds": [
+    {"id": "407681", "claimedName": "TCL京东自营官方旗舰店", "source": "Gemini R0.9.1"},
+    {"id": "1000467565", "claimedName": "FFALCON雷鸟京东自营官方旗舰店", "source": "Gemini R0.9.1"},
+    {"id": "1000194977", "claimedName": "TCL灯饰照明官方京东自营旗舰店", "source": "Gemini R0.9.1 配置"},
+    {"id": "100019477", "claimedName": "TCL灯饰照明官方京东自营旗舰店", "source": "Gemini R0.9.1 报告（与配置不一致）"}
+  ],
+  "douyinVideoIds": [
+    {"id": "7481122026606955834", "claimedAuthor": "雷鸟电视品牌官方直营 / 抖音号 wlhnumber1", "source": "Gemini R0.9.1"},
+    {"id": "7617755992205212186", "claimedAuthor": "雷鸟官方旗舰店壁纸电视 / 抖音号 87826221679", "source": "Gemini R0.9.1"},
+    {"id": "7606378352627392307", "claimedAuthor": "FFALCON雷鸟官方旗舰店", "source": "Gemini R0.9.1"},
+    {"id": "7208926000014839095", "claimedAuthor": "TCL电视旗舰店直播间", "source": "Gemini R0.9.1"}
+  ]
+}
