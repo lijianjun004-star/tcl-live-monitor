@@ -1,0 +1,20 @@
+name: douyin-candidate-verify
+# Manual read-only identity check of candidate Douyin profiles. Candidates only; no cron; stops on challenge.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: Discover
+        run: node probes/douyin-candidate-verify.mjs
