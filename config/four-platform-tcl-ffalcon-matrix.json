@@ -1,85 +1,331 @@
 {
-  "schemaVersion": 1,
-  "updatedAt": "2026-11-05T15:30:00.000Z",
-  "scope": "four-platform-tcl-ffalcon-store-and-live-room-matrix",
-  "platforms": {
-    "douyin": {
-      "configuredInProbeTargets": 12,
-      "internalUnmappedOpsRooms": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-      "additionalOfficialOrBrandCandidates": [
-        {
-          "key": "ffalcon-douyin-brand-direct",
-          "accountName": "雷鸟电视品牌官方直营",
-          "displayDouyinId": "wlhnumber1",
-          "verifiedEntity": "深圳TCL新技术有限公司",
-          "evidenceUrl": "https://www.douyin.com/video/7481122026606955834",
-          "tier": "official_direct_operated_candidate",
-          "scoringEligible": false
-        },
-        {
-          "key": "ffalcon-douyin-wallpaper-tv",
-          "accountName": "雷鸟官方旗舰店壁纸电视",
-          "displayDouyinId": "87826221679",
-          "evidenceUrl": "https://www.douyin.com/video/7617755992205212186",
-          "tier": "official_submatrix_candidate",
-          "scoringEligible": false
-        },
-        {
-          "key": "ffalcon-douyin-monitor-flagship",
-          "accountName": "FFALCON雷鸟显示器旗舰店",
-          "displayDouyinId": "FFALCON_MONITOR",
-          "evidenceUrl": "https://www.douyin.com/search/%E9%9B%B7%E9%B8%9F%E6%98%BE%E7%A4%BA%E5%99%A8%E6%97%97%E8%88%B0%E5%BA%97",
-          "tier": "official_3c_candidate",
-          "scoringEligible": false
-        }
-      ],
-      "excludedDealerOrSeparateBuAccounts": [
-        { "accountName": "TCL网络旗舰店", "displayDouyinId": "35650402851", "reason": "ELECTRONIC_DEALER_STORE" },
-        { "accountName": "TCL汇翌专卖店", "displayDouyinId": "73733661369", "reason": "AUTHORIZED_SPECIALTY_DEALER" },
-        { "accountName": "TCL泓亿专卖店", "displayDouyinId": "TCL_HONGYI", "reason": "AUTHORIZED_SPECIALTY_DEALER" },
-        { "accountName": "兴城市TCL空调", "displayDouyinId": "li15143770999", "reason": "REGIONAL_OFFLINE_DEALER" },
-        { "accountName": "TCL照明官方旗舰店", "displayDouyinId": "TCL_LIGHTING_OFFICIAL", "reason": "SEPARATE_LIGHTING_BU", "evidenceUrl": "https://www.tcl-lighting.com/news/376.html" },
-        { "accountName": "TCL照明灯具旗舰店", "displayDouyinId": "TCL_LIGHTING_FIXTURE", "reason": "SEPARATE_LIGHTING_BU", "evidenceUrl": "https://www.tcl-lighting.com/news/376.html" },
-        { "accountName": "TCL吊扇灯旗舰店", "displayDouyinId": "TCL_CEILING_FAN_LIGHT", "reason": "SEPARATE_LIGHTING_BU", "evidenceUrl": "https://www.tcl-lighting.com/news/376.html" }
-      ]
+ "schemaVersion": 2,
+ "updatedAt": "2026-11-05",
+ "scope": "four-platform-tcl-ffalcon-store-and-live-room-matrix",
+ "replaces": "Gemini R0.9.1 matrix (schemaVersion 1) — 4 Tmall IDs and 2 JD IDs in it belong to non-TCL sellers; placeholder IDs were listed as verified",
+ "grading": {
+  "A_VERIFIED_ID": "公开页面按 ID 返回的名称为 TCL/雷鸟（注明运行号）",
+  "B_NAME_ONLY": "只有名称、没有可核实的平台 ID（或 ID 未能读取）",
+  "R_REFUTED": "该 ID 在平台上属于其他主体或页面不存在",
+  "kpiNote": "A 级默认只监控不考核（scoringEligible=false），除非用户确认；经销/专卖、照明、户外、AR 眼镜等另行决定"
+ },
+ "platforms": {
+  "tmall": {
+   "method": "h5.m.taobao.com/taolive/video.html?userId=<accountId> 页面自身请求的 mtop.mediaplatform.live.livedetail 响应中的 broadCaster.accountName / roomNum",
+   "verified": [
+    {
+     "accountId": "2050532947",
+     "platformShownName": "TCL集团官方旗舰店",
+     "roomNumber": "130742",
+     "brand": "TCL",
+     "line": "全品类",
+     "liveAtCheck": true,
+     "inMonitoring": true,
+     "scoringEligible": true,
+     "note": "用户 11-03 确认"
     },
-    "tmall": {
-      "configuredInProbeTargets": 1,
-      "internalOrphanOpsShops": [16],
-      "verifiedBrandFlagshipStores": [
-        { "key": "tmall-tcl-group-official-flagship", "storeName": "TCL集团官方旗舰店", "accountId": "2050532947", "roomNumber": "130742", "brand": "TCL", "category": "全品类", "candidateOpsShopId": 16, "scoringEligible": false },
-        { "key": "tmall-tcl-official-flagship", "storeName": "TCL官方旗舰店", "sellerId": "1796933267", "brand": "TCL", "category": "全品类", "candidateOpsShopId": 16, "scoringEligible": false },
-        { "key": "tmall-tcl-tv-official-flagship", "storeName": "TCL电视官方旗舰店", "sellerId": "2616970884", "brand": "TCL", "category": "彩电", "scoringEligible": false },
-        { "key": "tmall-tcl-icewash-flagship", "storeName": "TCL冰洗官方旗舰店", "sellerId": "2208987173657", "brand": "TCL", "category": "冰洗", "scoringEligible": false },
-        { "key": "tmall-tcl-ac-official-flagship", "storeName": "TCL空调官方旗舰店", "sellerId": "PENDING_EXTRACT", "brand": "TCL", "category": "空调", "scoringEligible": false },
-        { "key": "tmall-tcl-smarthome-flagship", "storeName": "TCL智能家居旗舰店", "sellerId": "2210516382103", "brand": "TCL", "category": "智能家居", "scoringEligible": false },
-        { "key": "tmall-ffalcon-official-flagship", "storeName": "FFALCON雷鸟旗舰店", "sellerId": "2213856588863", "brand": "FFALCON", "category": "雷鸟电视与显示器", "scoringEligible": false },
-        { "key": "tmall-ffalcon-tv-official-flagship", "storeName": "雷鸟电视机官方旗舰店", "sellerId": "2208008712016", "brand": "FFALCON", "category": "雷鸟彩电", "scoringEligible": false },
-        { "key": "tmall-rayneo-smart-glasses-flagship", "storeName": "雷鸟智能眼镜旗舰店", "sellerId": "2214188502879", "brand": "RayNeo", "category": "智能眼镜", "scoringEligible": false },
-        { "key": "tmall-tcl-lighting-official-flagship", "storeName": "TCL照明官方旗舰店", "sellerId": "2200805864660", "storeUrl": "https://tclzm.tmall.com", "brand": "TCL照明", "category": "照明", "excludedFromHomeApplianceKpi": true, "scoringEligible": false }
-      ]
+    {
+     "accountId": "395601843",
+     "platformShownName": "TCL电视官方旗舰店",
+     "roomNumber": "74370",
+     "brand": "TCL",
+     "line": "电视",
+     "liveAtCheck": true,
+     "inMonitoring": true,
+     "scoringEligible": false
     },
-    "taobao": {
-      "observedEnterpriseOrSpecialtyStores": [
-        { "key": "taobao-tcl-enterprise-162849868", "storeUrl": "https://shop162849868.taobao.com", "shopId": "162849868", "tier": "taobao_enterprise_or_dealer_candidate", "scoringEligible": false },
-        { "key": "taobao-tcl-enterprise-448870934", "storeUrl": "https://shop448870934.taobao.com", "shopId": "448870934", "tier": "taobao_enterprise_or_dealer_candidate", "scoringEligible": false }
-      ]
+    {
+     "accountId": "2098070993",
+     "platformShownName": "TCL空调官方旗舰店",
+     "roomNumber": "131101",
+     "brand": "TCL",
+     "line": "空调",
+     "liveAtCheck": true,
+     "inMonitoring": true,
+     "scoringEligible": false
     },
-    "jd": {
-      "internalOpsRooms": [1, 14, 15, 16, 17, 18],
-      "internalOpsShops": [1, 14, 15, 17, 18, 19],
-      "verifiedBrandFlagshipStores": [
-        { "key": "jd-tcl-self-operated-official-flagship", "storeName": "TCL京东自营官方旗舰店", "jdShopId": "407681", "storeUrl": "https://mall.jd.com/index-407681.html", "brand": "TCL", "category": "全品类", "candidateOpsRoomId": 16, "candidateOpsShopId": 17, "scoringEligible": false },
-        { "key": "jd-ffalcon-self-operated-official-flagship", "storeName": "FFALCON雷鸟京东自营官方旗舰店", "jdShopId": "1000467565", "storeUrl": "https://mall.jd.com/index-1000467565.html", "brand": "FFALCON", "category": "雷鸟", "candidateOpsRoomId": 18, "candidateOpsShopId": 14, "scoringEligible": false },
-        { "key": "jd-tcl-tv-official-flagship", "storeName": "TCL电视官方旗舰店", "jdShopId": "POP_TV_FLAGSHIP", "brand": "TCL", "category": "彩电", "candidateOpsRoomId": 14, "candidateOpsShopId": 14, "scoringEligible": false },
-        { "key": "jd-tcl-ac-self-operated-flagship", "storeName": "TCL空调京东自营旗舰店", "jdShopId": "SELF_AC_1", "brand": "TCL", "category": "空调", "candidateOpsRoomId": 15, "candidateOpsShopId": 15, "scoringEligible": false },
-        { "key": "jd-tcl-air-conditioning-self-operated-flagship", "storeName": "TCL空气调节京东自营旗舰店", "jdShopId": "SELF_AC_2", "brand": "TCL", "category": "空调", "candidateOpsRoomId": 1, "candidateOpsShopId": 1, "scoringEligible": false },
-        { "key": "jd-tcl-icewash-self-operated-flagship", "storeName": "TCL冰箱洗衣机京东自营旗舰店", "jdShopId": "SELF_ICEWASH", "brand": "TCL", "category": "洗衣机/冰洗", "candidateOpsRoomId": 17, "candidateOpsShopId": 18, "scoringEligible": false },
-        { "key": "jd-tcl-home-appliance-official-flagship", "storeName": "TCL家电官方旗舰店", "jdShopId": "POP_HA_FLAGSHIP", "brand": "TCL", "category": "全品类POP", "scoringEligible": false },
-        { "key": "jd-tcl-water-heater-self-operated-flagship", "storeName": "TCL自营热水器京东自营旗舰店", "jdShopId": "SELF_WH", "brand": "TCL", "category": "厨卫热水器", "scoringEligible": false },
-        { "key": "jd-rayneo-smart-glasses-self-operated", "storeName": "雷鸟智能眼镜京东自营官方旗舰店", "jdShopId": "SELF_RAYNEO", "brand": "RayNeo", "category": "智能眼镜", "scoringEligible": false },
-        { "key": "jd-tcl-lighting-self-operated-flagship", "storeName": "TCL灯饰照明官方京东自营旗舰店", "jdShopId": "1000194977", "storeUrl": "https://mall.jd.com/index-1000194977.html", "brand": "TCL照明", "category": "照明", "excludedFromHomeApplianceKpi": true, "scoringEligible": false }
-      ]
+    {
+     "accountId": "2210516382103",
+     "platformShownName": "TCL智能家居旗舰",
+     "roomNumber": "14387040",
+     "brand": "TCL",
+     "line": "智能家居",
+     "liveAtCheck": true,
+     "inMonitoring": true,
+     "scoringEligible": false
+    },
+    {
+     "accountId": "2208008712016",
+     "platformShownName": "雷鸟电视",
+     "roomNumber": "2913877",
+     "brand": "FFALCON",
+     "line": "雷鸟电视",
+     "liveAtCheck": true,
+     "inMonitoring": true,
+     "scoringEligible": false,
+     "note": "主播名为“雷鸟电视”，店铺全称待核实"
+    },
+    {
+     "accountId": "2214188502879",
+     "platformShownName": "雷鸟AR眼镜",
+     "roomNumber": "25159001",
+     "brand": "RayNeo",
+     "line": "AR 眼镜",
+     "liveAtCheck": true,
+     "inMonitoring": true,
+     "scoringEligible": false
+    },
+    {
+     "accountId": "1015493951",
+     "platformShownName": "TCL照明官方旗舰",
+     "roomNumber": "128789",
+     "brand": "TCL照明",
+     "line": "照明",
+     "liveAtCheck": false,
+     "offlineEvidence": true,
+     "inMonitoring": true,
+     "scoringEligible": false,
+     "note": "华瑞照明业务"
+    },
+    {
+     "accountId": "2208987173657",
+     "platformShownName": "TCL户外旗舰店",
+     "roomNumber": "6181816",
+     "brand": "TCL",
+     "line": "户外",
+     "liveAtCheck": false,
+     "offlineEvidence": true,
+     "inMonitoring": true,
+     "scoringEligible": false,
+     "note": "Gemini R0.9.1 误标为“TCL冰洗官方旗舰店”"
+    },
+    {
+     "accountId": "2206689737964",
+     "platformShownName": "TCL正品专卖店",
+     "roomNumber": "2278157",
+     "brand": "TCL",
+     "line": "专卖店",
+     "liveAtCheck": false,
+     "offlineEvidence": true,
+     "inMonitoring": true,
+     "scoringEligible": false,
+     "note": "经销渠道"
     }
+   ],
+   "refuted": [
+    {
+     "accountId": "1796933267",
+     "claimedName": "TCL官方旗舰店",
+     "platformShownName": "影音数码配件行家"
+    },
+    {
+     "accountId": "2616970884",
+     "claimedName": "TCL电视官方旗舰店",
+     "platformShownName": "苏宁官旗"
+    },
+    {
+     "accountId": "2213856588863",
+     "claimedName": "FFALCON雷鸟旗舰店",
+     "platformShownName": "天猫数码家电自营天猫官方"
+    },
+    {
+     "accountId": "2200805864660",
+     "claimedName": "TCL照明官方旗舰店",
+     "platformShownName": "星彦旗舰店"
+    }
+   ],
+   "nameOnly": [
+    "TCL冰箱旗舰店",
+    "TCL洗衣机旗舰店",
+    "TCL智能电视旗舰店",
+    "TCL智能空调旗舰店",
+    "TCL官方旗舰店",
+    "FFALCON雷鸟官方旗舰店（天猫）",
+    "TCL胤美专卖店",
+    "TCL荣信专卖店",
+    "TCL罗客专卖店",
+    "TCL客穗专卖店",
+    "TCL维客专卖店",
+    "TCL源昌发专卖店"
+   ],
+   "nameOnlySource": "cnpp.cn 品牌官方店铺目录（部分列表，无 ID）；雷鸟官方旗舰店为常识候选",
+   "internalOrphanOpsShops": [
+    16
+   ],
+   "internalOpsShop16Mapping": "未证实：运营平台店铺 16 = 天猫·全品类，候选是 TCL集团官方旗舰店（2050532947），没有接口字段可证明"
+  },
+  "taobao": {
+   "method": "shop<shopId>.taobao.com 店铺页",
+   "verified": [],
+   "walled": [
+    {
+     "shopId": "162849868",
+     "result": "跳转 login.taobao.com 登录页"
+    },
+    {
+     "shopId": "448870934",
+     "result": "同平台已遇登录墙，按规则跳过"
+    }
+   ],
+   "note": "淘宝店铺页对访客要求登录，无法核实；Gemini 给的两家只能算 B 级（且未给出店名）"
+  },
+  "jd": {
+   "method": "mall.jd.com/index-<shopId>.html 页面标题（shop.m.jd.com 对 runner 返回排队页，不可用）",
+   "verified": [
+    {
+     "jdShopId": "1000194977",
+     "platformShownName": "TCL灯饰照明京东自营旗舰店",
+     "brand": "TCL照明",
+     "line": "照明",
+     "inMonitoring": false,
+     "scoringEligible": false,
+     "note": "只核实了店铺身份；京东店铺页不提供直播状态"
+    }
+   ],
+   "refuted": [
+    {
+     "jdShopId": "407681",
+     "claimedName": "TCL京东自营官方旗舰店",
+     "platformShownName": "页面不存在（跳转 error.aspx）"
+    },
+    {
+     "jdShopId": "1000467565",
+     "claimedName": "FFALCON雷鸟京东自营官方旗舰店",
+     "platformShownName": "Z-TEK电脑办公京东自营旗舰店"
+    },
+    {
+     "jdShopId": "100019477",
+     "claimedName": "TCL灯饰照明官方京东自营旗舰店",
+     "platformShownName": "页面不存在（Gemini 报告笔误，配置里是 1000194977）"
+    }
+   ],
+   "internalOpsRooms": [
+    {
+     "opsRoomId": 1,
+     "opsShopId": 1,
+     "roomCategory": "空调",
+     "shopCategory": "冰箱",
+     "conflict": true
+    },
+    {
+     "opsRoomId": 14,
+     "opsShopId": 14,
+     "roomCategory": "洗衣机",
+     "shopCategory": "洗衣机"
+    },
+    {
+     "opsRoomId": 15,
+     "opsShopId": 15,
+     "roomCategory": "空调",
+     "shopCategory": "空调"
+    },
+    {
+     "opsRoomId": 16,
+     "opsShopId": 17,
+     "roomCategory": "全品类",
+     "shopCategory": "全品类"
+    },
+    {
+     "opsRoomId": 17,
+     "opsShopId": 18,
+     "roomCategory": "电视",
+     "shopCategory": "电视"
+    },
+    {
+     "opsRoomId": 18,
+     "opsShopId": 19,
+     "roomCategory": "显示器",
+     "shopCategory": "显示器"
+    }
+   ],
+   "internalOpsRoomsSource": "fixtures/ops-catalog-safe-20261105.json，与 11-04/11-05 真实只读 GET 一致；Gemini R0.9.1 文字里的“14=彩电 / 17=洗衣机 / 18→店铺14 / 19=冰洗”与此不符，以本表为准",
+   "externalMapping": "6 个运营平台京东直播间都没有可证明的京东店铺号；不要按品类猜绑定",
+   "nameOnly": [
+    "TCL自营旗舰店",
+    "TCL中央空调自营旗舰店",
+    "TCL显示器自营旗舰店",
+    "TCL商用电器自营旗舰店",
+    "TCL安防监控自营旗舰店",
+    "TCL企业业务自营旗舰店",
+    "TCL手机通讯自营旗舰店",
+    "TCL车载电器自营旗舰店",
+    "TCL对讲机自营旗舰店",
+    "TCL冰箱洗衣机旗舰店",
+    "TCL空调旗舰店",
+    "TCL家电旗舰店",
+    "TCL智能电视机旗舰店",
+    "TCL环境电器旗舰店",
+    "TCL电子锁旗舰店",
+    "TCL空调臻选旗舰店",
+    "TCL灯饰旗舰店",
+    "TCL风扇灯旗舰店",
+    "FFALCON雷鸟京东自营旗舰店"
+   ],
+   "nameOnlySource": "cnpp.cn 品牌官方店铺目录（部分列表，无 ID）；雷鸟自营店为常识候选（Gemini 给的 ID 已否定）"
+  },
+  "douyin": {
+   "method": "抖音公开主页（按 secUid）标题 + 抖音号 + 直播徽标；11-05 runs 41993551854 / 41996240409",
+   "verified": "见 config/probe-targets.json 的 12 个抖音账号（4 个计入考核 + 8 个只监控）",
+   "internalUnmappedOpsRooms": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "internalOpsRoomNames": "TCL电视机官方旗舰店 / TCL电视旗舰店总部直播间 / TCL电视98英寸优选店直播间 / TCL电视总部授权直播间 / TCL艺术电视甄选直播间 / TCL家电官方旗舰店 / TCL官方旗舰店电视直播间 / TCL电视优选授权直播间 / TCL电视总部精选授权直播间 / TCL大家电官方旗舰店",
+   "nameOnly": [
+    {
+     "name": "雷鸟电视品牌官方直营",
+     "claimedDouyinId": "wlhnumber1",
+     "note": "Gemini 来源为第三方文章；无 secUid，视频页在 runner 上打不开（run 42052553183）"
+    },
+    {
+     "name": "雷鸟官方旗舰店壁纸电视",
+     "claimedDouyinId": "87826221679",
+     "note": "同上"
+    },
+    {
+     "name": "FFALCON雷鸟显示器旗舰店",
+     "claimedDouyinId": null,
+     "note": "Gemini 写的 FFALCON_MONITOR 是占位符，不是抖音号"
+    },
+    {
+     "name": "TCL网络旗舰店",
+     "claimedDouyinId": "35650402851",
+     "note": "未核实"
+    },
+    {
+     "name": "TCL汇翌专卖店",
+     "claimedDouyinId": "73733661369",
+     "note": "未核实；专卖店"
+    },
+    {
+     "name": "TCL泓亿专卖店",
+     "claimedDouyinId": null,
+     "note": "TCL_HONGYI 为占位符"
+    },
+    {
+     "name": "兴城市TCL空调",
+     "claimedDouyinId": "li15143770999",
+     "note": "地方门店"
+    },
+    {
+     "name": "TCL照明官方旗舰店 / 照明灯具旗舰店 / 吊扇灯旗舰店（抖音）",
+     "claimedDouyinId": null,
+     "note": "TCL_LIGHTING_* 为占位符"
+    }
+   ],
+   "searchWall": "抖音访客搜索 7/7 验证码（run 41993153535），不能靠搜索补全"
   }
+ },
+ "evidenceRuns": {
+  "identityCheck": "42052553183",
+  "identityCheckAt": "2026-11-05T15:20:00Z"
+ }
 }

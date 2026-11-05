@@ -124,21 +124,27 @@ test('R091-BUG-05B: preview/template.html validates sourceShops array before mut
   assert.ok(html.includes('内部待映射房间（全平台）'), 'must clearly indicate all-platform unmapped internal rooms');
 });
 
-test('R091-MATRIX: four-platform TCL & FFALCON matrix config is well-formed and enforces non-scoring candidate isolation', () => {
+test('R092-MATRIX: four-platform matrix is evidence-graded, has no placeholder or refuted IDs, and matches the real ops catalog', () => {
+  // R0.9.2 replaces the R0.9.1 count checks (>=9 Tmall / >=10 JD), which rewarded padding:
+  // reverse identity check run 42052553183 showed 4 of those Tmall IDs and 2 JD IDs belong to other sellers.
   const matrix = readJson('../config/four-platform-tcl-ffalcon-matrix.json');
-  assert.equal(matrix.schemaVersion, 1);
-  assert.equal(matrix.platforms.douyin.internalUnmappedOpsRooms.length, 10);
-  assert.equal(matrix.platforms.jd.internalOpsRooms.length, 6);
-  assert.ok(matrix.platforms.tmall.verifiedBrandFlagshipStores.length >= 9);
-  assert.ok(matrix.platforms.taobao.observedEnterpriseOrSpecialtyStores.length >= 2);
-  assert.ok(matrix.platforms.jd.verifiedBrandFlagshipStores.length >= 10);
-  for (const c of matrix.platforms.douyin.additionalOfficialOrBrandCandidates) {
-    assert.equal(c.scoringEligible, false);
-  }
-  for (const s of matrix.platforms.tmall.verifiedBrandFlagshipStores) {
-    assert.equal(s.scoringEligible, false);
-  }
-  for (const s of matrix.platforms.jd.verifiedBrandFlagshipStores) {
-    assert.equal(s.scoringEligible, false);
-  }
+  const fixture = readJson('../fixtures/ops-catalog-safe-20261105.json');
+  assert.equal(matrix.schemaVersion, 2);
+  const PLACEHOLDER = /^(POP_|SELF_|PENDING|FFALCON_|TCL_|RAYNEO_)/i;
+  const tm = matrix.platforms.tmall, jd = matrix.platforms.jd, dy = matrix.platforms.douyin;
+  // Tmall: only numeric, unique, non-refuted IDs; only the user-confirmed shop may score.
+  const tmIds = tm.verified.map(x => x.accountId);
+  assert.equal(new Set(tmIds).size, tmIds.length);
+  for (const x of tm.verified) { assert.match(x.accountId, /^\d{5,16}$/); assert.ok(x.platformShownName); assert.ok(!PLACEHOLDER.test(x.accountId)); }
+  for (const r of tm.refuted) assert.ok(!tmIds.includes(r.accountId), r.accountId);
+  assert.deepEqual(tm.verified.filter(x => x.scoringEligible).map(x => x.accountId), ['2050532947']);
+  // JD: verified IDs numeric and not refuted; internal room->shop mapping equals the sanitized real catalog.
+  for (const x of jd.verified) { assert.match(x.jdShopId, /^\d{5,16}$/); assert.equal(x.scoringEligible, false); }
+  for (const r of jd.refuted) assert.ok(!jd.verified.some(x => x.jdShopId === r.jdShopId), r.jdShopId);
+  const realJd = fixture.roomsResponse.rooms.filter(r => r.platform === 'jd').map(r => [r.id, r.shop_id, r.category]).sort((a, b) => a[0] - b[0]);
+  assert.deepEqual(jd.internalOpsRooms.map(r => [r.opsRoomId, r.opsShopId, r.roomCategory]), realJd);
+  assert.equal(dy.internalUnmappedOpsRooms.length, 10);
+  // Name-only Douyin leads may not carry placeholder handles as if they were 抖音号.
+  for (const c of dy.nameOnly) if (c.claimedDouyinId != null) assert.ok(!PLACEHOLDER.test(c.claimedDouyinId), c.name);
+  assert.equal(matrix.platforms.taobao.verified.length, 0, 'Taobao shop pages are login-walled; nothing is verified');
 });
