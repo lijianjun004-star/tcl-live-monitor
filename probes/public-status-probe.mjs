@@ -14,7 +14,8 @@ const ROUNDS = Math.min(Math.max(arg('--rounds', 1), 1), 12);
 const INTERVAL_MIN = Math.min(Math.max(arg('--interval-min', 5), 1), 15);
 const cfg = JSON.parse(await fs.readFile('config/probe-targets.json', 'utf8'));
 if (cfg.schemaVersion !== 1) throw Error('bad config');
-if (!cfg.tmall.every(t => t.userConfirmed === true)) throw Error('tmall target not user-confirmed');
+if (!cfg.tmall.every(t => t.userConfirmed === true || t.scopeApproved === true)) throw Error('tmall target not user-confirmed or scope-approved');
+for (const t of cfg.tmall) if (!/^\d{5,16}$/.test(String(t.accountId)) || !t.displayName || (t.roomNumber != null && !/^\d{3,12}$/.test(String(t.roomNumber)))) throw Error('bad tmall target ' + t.key);
 if (!cfg.douyin.every(t => t.scopeApproved === true)) throw Error('douyin target not approved');
 for (const t of cfg.douyin) {
   const u = new URL(t.profileUrl);
