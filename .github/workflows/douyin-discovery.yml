@@ -1,0 +1,26 @@
+name: douyin-discovery
+# Manual read-only guest search for TCL-related Douyin accounts. Candidates only; no cron; stops on challenge.
+on:
+  workflow_dispatch:
+    inputs:
+      keywords:
+        description: '逗号分隔关键词（最多10个）'
+        default: 'TCL官方,TCL电视,TCL空调,TCL冰箱,TCL洗衣机,TCL家电,雷鸟电视'
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: Discover
+        env:
+          KEYWORDS: ${{ inputs.keywords }}
+        run: node probes/douyin-discovery.mjs
