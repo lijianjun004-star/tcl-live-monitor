@@ -14,5 +14,11 @@ test('agent dead -> UNKNOWN, never OFFLINE', () => {
   assert.equal(c.state, 'UNKNOWN'); assert.equal(c.reason, 'CAPTURE_AGENT_STALE');
   assert.equal(classifyTclOps({ day: null, heartbeatAt: null, now, offlineRuleValidated: true }).reason, 'NO_CAPTURE_AGENT');
 });
-test('fresh minute but status not 1 -> not LIVE', () => assert.notEqual(classifyTclOps({ day: day('2026-11-04T11:59:00Z', null), heartbeatAt: '2026-11-04T12:00:01Z', now }).state, 'LIVE'));
+test('fresh minute but status present and not 1 -> not LIVE', () => assert.notEqual(classifyTclOps({ day: day('2026-11-04T11:59:00Z', 0), heartbeatAt: '2026-11-04T12:00:01Z', now }).state, 'LIVE'));
+test('R0.7.1: fresh minute, status ABSENT, agent alive -> LIVE; agent stale -> not LIVE', () => {
+  const noStatus = { minute_count: 100, latest_minute_ts: '2026-11-04T11:59:00Z', latest: { last5m_uv: 3 } };
+  const c = classifyTclOps({ day: noStatus, heartbeatAt: '2026-11-04T12:00:01Z', now });
+  assert.equal(c.state, 'LIVE'); assert.equal(c.reason, 'FRESH_MINUTE_DATA_STATUS_ABSENT');
+  assert.notEqual(classifyTclOps({ day: noStatus, heartbeatAt: '2026-11-04T09:00:00Z', now }).state, 'LIVE');
+});
 test('minute delta', () => { assert.equal(liveMinutesDelta(100, 105), 5); assert.equal(liveMinutesDelta(null, 5), null); assert.equal(liveMinutesDelta(10, 3), null); });
