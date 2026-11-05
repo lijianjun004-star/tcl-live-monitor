@@ -18,7 +18,9 @@ if (!cfg.tmall.every(t => t.userConfirmed === true)) throw Error('tmall target n
 if (!cfg.douyin.every(t => t.scopeApproved === true)) throw Error('douyin target not approved');
 for (const t of cfg.douyin) {
   const u = new URL(t.profileUrl);
-  if (u.protocol !== 'https:' || u.hostname !== 'www.douyin.com' || !u.pathname.startsWith('/user/') || !/^\d{5,24}$/.test(t.roomId)) throw Error('bad douyin target');
+  if (u.protocol !== 'https:' || u.hostname !== 'www.douyin.com' || !/^\/user\/MS4wLjABAAAA[\w-]{20,}$/.test(u.pathname)) throw Error('bad douyin target ' + t.key);
+  if (t.roomId != null && !/^\d{5,24}$/.test(t.roomId)) throw Error('bad douyin roomId ' + t.key);
+  if (!/^[A-Za-z0-9._-]{3,32}$/.test(t.displayDouyinId)) throw Error('bad displayDouyinId ' + t.key);
 }
 const OFFLINE_RULE_VALIDATED = cfg.douyinOfflineRuleValidated === true;
 
@@ -80,12 +82,12 @@ async function probeDouyin(context, t) {
   try {
     const profile = await snapshot(pp, t.profileUrl, false);
     const ids = profileIdentity(profile, t) ? liveAnchorRoomIds(profile) : [];
-    const roomId = ids[0] || t.roomId;
-    const room = await snapshot(rp, `https://live.douyin.com/${roomId}`, true);
+    const roomId = ids[0] || t.roomId || null;
+    const room = roomId ? await snapshot(rp, `https://live.douyin.com/${roomId}`, true) : null;
     const d = decideDouyin(profile, room, t, { offlineRuleValidated: OFFLINE_RULE_VALIDATED });
-    return { platform: 'douyin', accountId: t.key, at: Date.now(), checkedRoomId: roomId, profileHttp: profile.httpStatus, roomHttp: room.httpStatus,
-      profileTitle: profile.title, profileFinalUrl: profile.finalUrl, profileHasIdText: String(profile.bodyExcerpt || '').includes(t.displayDouyinId),
-      roomTitle: room.title, ...d };
+    return { platform: 'douyin', accountId: t.key, at: Date.now(), checkedRoomId: roomId, profileHttp: profile.httpStatus, roomHttp: room?.httpStatus ?? null,
+      profileTitle: profile.title, profileFinalUrl: profile.finalUrl, scoringEligible: t.scoringEligible !== false, profileHasIdText: String(profile.bodyExcerpt || '').includes(t.displayDouyinId),
+      roomTitle: room?.title ?? null, ...d };
   } finally { await pp.close().catch(() => {}); await rp.close().catch(() => {}); }
 }
 
@@ -101,7 +103,13 @@ try {
     for (const t of cfg.tmall) { try { report.observations.push({ round: r, ...await probeTmall(context, t) }); } catch (e) { report.observations.push({ round: r, platform: 'tmall', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); } }
     // Douyin: same context as the historical passing script (no UA override).
     const dyContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN' });
-    for (const t of cfg.douyin) { try { report.observations.push({ round: r, ...await probeDouyin(dyContext, t) }); } catch (e) { report.observations.push({ round: r, platform: 'douyin', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); } }
+    const queue = [...cfg.douyin];
+    await Promise.all(Array.from({ length: Math.min(3, queue.length) }, async () => {
+      for (let t; (t = queue.shift());) {
+        try { report.observations.push({ round: r, ...await probeDouyin(dyContext, t) }); }
+        catch (e) { report.observations.push({ round: r, platform: 'douyin', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); }
+      }
+    }));
     await context.close(); await dyContext.close();
     console.log(`round ${r}/${ROUNDS}: ` + report.observations.filter(o => o.round === r).map(o => `${o.accountId}=${o.state}${o.offlineCandidate ? '(offline?)' : ''}`).join(' '));
     for (const o of report.observations.filter(o => o.round === r && o.platform === 'douyin' && o.state !== 'LIVE'))
