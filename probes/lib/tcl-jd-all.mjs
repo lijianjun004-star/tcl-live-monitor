@@ -73,8 +73,9 @@ export function normalizeRoomList(body, maxRooms = 100) {
     isUnambiguous: warnings.length === 0 };
 }
 
+// Real /api/shops (observed 2026-11-04/05) is a bare JSON array, not {shops:[...]}.
 export function normalizeShopList(body) {
-  const input = extractArray(body, [['shops'], ['data', 'shops'], ['data', 'list'], ['list']], 'SHOPS');
+  const input = extractArray(body, [[], ['shops'], ['data', 'shops'], ['data', 'list'], ['list']], 'SHOPS');
   const result=[], seen=new Set();
   for (const item of input) {
     if (!isJD(item?.platform)) continue;
@@ -224,7 +225,7 @@ export async function scanJdSource({reader, at=Date.now(), date=beijingDate(new 
     try{
       const shopBody=shopsResult[0].value;
       shops=normalizeShopList(shopBody);response.shopCount=shops.length;
-      const allShops=extractArray(shopBody,[['shops'],['data','shops'],['data','list'],['list']],'SHOPS');
+      const allShops=extractArray(shopBody,[[],['shops'],['data','shops'],['data','list'],['list']],'SHOPS');
       const total=declaredTotal(shopBody);
       const hasNext=shopBody?.has_more===true || shopBody?.hasMore===true ||
         shopBody?.pagination?.has_more===true ||

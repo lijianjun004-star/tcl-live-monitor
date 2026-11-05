@@ -35,3 +35,35 @@ export function liveMinutesDelta(prev, cur) {
   if (!Number.isFinite(prev) || !Number.isFinite(cur) || cur < prev) return null;
   return cur - prev;
 }
+
+/**
+ * Self-calibration of the OFFLINE candidate rule from the platform's own session split.
+ * The ops platform counts live sessions per Beijing day (`session_count`). When a room that
+ * showed an OFFLINE candidate gap comes back LIVE:
+ *   - session_count increased  -> the platform itself ended the previous session: gap = real stop
+ *   - session_count unchanged  -> same session: gap was a capture stall / short pause (candidate false positive)
+ * prev/next: { date, state, offlineCandidate, sessionCount, gapOpenedAt }
+ */
+export function trackSessionGap(prev, cur) {
+  const next = { date: cur.date, state: cur.state, offlineCandidate: !!cur.offlineCandidate,
+    sessionCount: Number.isInteger(cur.sessionCount) ? cur.sessionCount : null, gapOpenedAt: null };
+  if (!prev || prev.date !== cur.date) return { event: null, next }; // new day: counts reset
+  const wasLive = prev.state === 'LIVE', isLive = cur.state === 'LIVE';
+  const inGap = !!prev.gapOpenedAt;
+  const s0 = prev.sessionCount, s1 = next.sessionCount;
+  const sessionKnown = Number.isInteger(s0) && Number.isInteger(s1);
+  if ((wasLive || inGap) && cur.offlineCandidate) {
+    next.gapOpenedAt = prev.gapOpenedAt || cur.at;
+    return { event: inGap ? null : 'GAP_OPENED', next };
+  }
+  if (inGap && isLive) {
+    const event = !sessionKnown ? 'GAP_CLOSED_SESSION_UNKNOWN' : s1 > s0 ? 'GAP_CLOSED_NEW_SESSION' : 'GAP_CLOSED_SAME_SESSION';
+    return { event, next, gapOpenedAt: prev.gapOpenedAt };
+  }
+  if (inGap && !isLive && !cur.offlineCandidate) {
+    next.gapOpenedAt = prev.gapOpenedAt; // plain UNKNOWN inside a gap: keep it open, no judgement
+    return { event: null, next };
+  }
+  if (wasLive && isLive && sessionKnown && s1 > s0) return { event: 'SESSION_BREAK_BETWEEN_POLLS', next };
+  return { event: null, next };
+}

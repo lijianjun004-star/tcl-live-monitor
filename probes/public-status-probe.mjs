@@ -115,7 +115,7 @@ try {
     await context.close(); await dyContext.close();
     console.log(`round ${r}/${ROUNDS}: ` + report.observations.filter(o => o.round === r).map(o => `${o.accountId}=${o.state}${o.offlineCandidate ? '(offline?)' : ''}`).join(' '));
     for (const o of report.observations.filter(o => o.round === r && o.platform === 'douyin' && o.state !== 'LIVE'))
-      console.log(`  diag ${o.accountId}: http=${o.profileHttp} title="${o.profileTitle}" final=${o.profileFinalUrl} idText=${o.profileHasIdText} room="${o.roomTitle}" reason=${o.reason}`);
+      console.log(`  diag ${o.accountId}: http=${o.profileHttp} title="${o.profileTitle}" final=${o.profileFinalUrl} idText=${o.profileHasIdText} room="${o.roomTitle}" reason=${o.reason} signals=${JSON.stringify(o.signals && Object.keys(o.signals).length ? { endedText: o.signals.endedText, passiveEnded: o.signals.passiveEnded, roomHttp: o.signals.roomHttp, fields: (o.signals.statusFields || []).slice(0, 6).map(f => `${f.field}=${f.value}`) } : null)}`);
     if (r < ROUNDS) await new Promise(res => setTimeout(res, Math.max(0, roundStart + INTERVAL_MIN * 60000 - Date.now())));
   }
 } finally { await browser.close(); }

@@ -18,7 +18,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
-      TCL_OPS_BASE_URL: ${{ secrets.TCL_OPS_BASE_URL }}
+      # Fallback matches the other ops workflows; remove once the TCL_OPS_BASE_URL secret is configured.
+      TCL_OPS_BASE_URL: ${{ secrets.TCL_OPS_BASE_URL || 'http://101.96.215.251' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

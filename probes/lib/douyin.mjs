@@ -20,7 +20,11 @@ export function profileIdentity(p, t) {
     ...(Array.isArray(t?.alternateTitles) ? t.alternateTitles : []),
   ]);
   if (!allowedTitles.has(title)) return false;
-  return (p.douyinIdsInPage || []).includes(t.displayDouyinId) || String(p.bodyExcerpt || '').includes(`抖音号：${t.displayDouyinId}`) || String(p.bodyExcerpt || '').includes(`抖音号:${t.displayDouyinId}`);
+  // Exact token match only: "抖音号：14145381" must not match "抖音号：141453819".
+  const id = String(t.displayDouyinId || '');
+  const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const exact = new RegExp(`抖音号[:：]\\s*${esc}(?![A-Za-z0-9._-])`);
+  return (p.douyinIdsInPage || []).includes(id) || exact.test(String(p.bodyExcerpt || ''));
 }
 
 /** Room ids the verified profile marks as live right now. */
