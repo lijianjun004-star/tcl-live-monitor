@@ -54,7 +54,7 @@ export function auditThreePlatformCoverage({registry,publicConfig,jdReport=null,
  }))??[];
  const jdObservedCount=Array.isArray(jdReport?.rooms)?jdReport.rooms.filter(x=>/^\d{1,20}$/.test(String(x.roomId))).length:null;
  const sourceComplete=registry.roomCompleteness?.rooms==='DECLARED_COMPLETE'&&registry.roomCompleteness?.shops==='DECLARED_COMPLETE';
- const totalCfg=publicConfig.douyin.filter(x=>x.scopeApproved===true).length+publicConfig.tmall.filter(x=>x.userConfirmed===true).length;
+ const totalCfg=publicConfig.douyin.filter(x=>x.scopeApproved===true).length+publicConfig.tmall.filter(x=>x.userConfirmed===true||x.scopeApproved===true).length;
  if(existing.length!==totalCfg)throw Error('REGISTERED_PUBLIC_TARGET_COUNT_MISMATCH');
  const expected=new Map(publicTargetsFromConfig(publicConfig).map(x=>[x.key,x]));
  for(const item of existing){const e=expected.get(item.key);

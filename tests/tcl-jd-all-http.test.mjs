@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -26,7 +27,7 @@ test('end-to-end local fixture: read-only HTTP scan, safe JSON, zero POST, no ra
   const output=join(dir,'safe.json');
   const result=await new Promise((resolve,reject)=>{
     const proc=spawn(process.execPath,['probes/tcl-jd-all.mjs','--output',output],{
-      cwd:new URL('..',import.meta.url).pathname,
+      cwd:fileURLToPath(new URL('..',import.meta.url)),
       env:{...process.env,TCL_OPS_BASE_URL:`http://127.0.0.1:${server.address().port}/`},
       stdio:['ignore','pipe','pipe']});
     let stdout='',stderr='';proc.stdout.on('data',x=>stdout+=x);proc.stderr.on('data',x=>stderr+=x);

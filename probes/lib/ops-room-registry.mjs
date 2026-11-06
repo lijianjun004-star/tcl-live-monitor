@@ -84,17 +84,20 @@ export function normalizeOpsCatalog(roomsBody,shopsBody=null) {
   };
 }
 
+const REFUTED_TMALL_IDS=new Set(['1796933267','2616970884','2213856588863','2200805864660']);
 export function publicTargetsFromConfig(cfg){
   if(cfg?.schemaVersion!==1||!Array.isArray(cfg?.douyin)||!Array.isArray(cfg?.tmall))throw Error('TARGET_CONFIG_INVALID');
   const targets=[],keys=new Set(),dyIds=new Set(),dySecUids=new Set(),tmallIds=new Set();
   for(const p of cfg.tmall){
-    if(p.userConfirmed!==true)continue;
+    if(p.userConfirmed!==true&&p.scopeApproved!==true)continue;
     const key='public:tmall:'+String(p.key||'');
     if(!p.key||keys.has(key))throw Error('DUPLICATE_PUBLIC_TARGET');keys.add(key);
     const tid=String(p.accountId??'').trim();
-    if(!tid||tmallIds.has(tid))throw Error('DUPLICATE_TMALL_ACCOUNT');tmallIds.add(tid);
-    targets.push({key,source:'public-probe-existing',platform:'tmall',name:safeName(p.displayName),platformAccountId:String(p.accountId??''),
-      platformRoomId:String(p.roomNumber??''),scoringEligible:false,currentStatus:'UNKNOWN',autoAddedToPublicProbe:false,alreadyConfiguredInPublicProbe:true});
+    if(!/^[0-9]{5,16}$/.test(tid)||tmallIds.has(tid))throw Error('DUPLICATE_TMALL_ACCOUNT');
+    if(REFUTED_TMALL_IDS.has(tid))throw Error('REFUTED_TMALL_ACCOUNT:'+tid);
+    tmallIds.add(tid);
+    targets.push({key,source:'public-probe-existing',platform:'tmall',name:safeName(p.displayName),platformAccountId:tid,
+      platformRoomId:String(p.roomNumber??''),scoringEligible:p.userConfirmed===true&&p.scoringEligible===true,currentStatus:'UNKNOWN',autoAddedToPublicProbe:false,alreadyConfiguredInPublicProbe:true});
   }
   for(const p of cfg.douyin){
     if(p.scopeApproved!==true)continue;

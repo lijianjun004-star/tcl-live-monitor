@@ -12,9 +12,9 @@ const registry=assembleRegistry({opsCatalog:normalizeJdReport(jd),configuredTarg
 const jdOne=(rest={})=>({schemaVersion:2,source:'TCL_OPS_READ_ONLY',checkedAt:jd.checkedAt,rooms:[{roomId:'16',captureBound:true,agentAlive:true,status:'LIVE',...rest}]});
 const row=(r,key)=>r.rows.find(x=>x.key===key);
 
-test('main config has 12 separate Douyin secUids and 1 Tmall, scored only 4 as approved',()=>{
+test('main config has 12 separate Douyin secUids and 9 Tmall, scored only 4 Douyin + 1 Tmall as approved',()=>{
  const targets=publicTargetsFromConfig(cfg);
- assert.equal(targets.length,13);
+ assert.equal(targets.length,21);
  assert.equal(targets.filter(x=>x.platform==='douyin').length,12);
  assert.equal(new Set(targets.filter(x=>x.platform==='douyin').map(x=>x.publicProfileSecUid)).size,12);
  assert.equal(targets.filter(x=>x.platform==='douyin'&&x.scoringEligible).length,4);
@@ -114,9 +114,9 @@ test('wrong-schema public report cannot alter status',()=>{
 });
 test('full historical coverage ledger counts sources but never sums to unique physical room total',()=>{
  const audit=auditThreePlatformCoverage({registry,publicConfig:cfg,jdReport:jd,asOf:jd.checkedAt});
- assert.deepEqual(audit.counts,{jd:{opsRecords:6,publicAccounts:0,unmappedOpsHistory:0},tmall:{opsRecords:0,publicAccounts:1,unmappedOpsHistory:0},douyin:{opsRecords:0,publicAccounts:12,unmappedOpsHistory:10}});
- assert.equal(audit.totalEvidenceRows,29);
- assert.equal(audit.totalConfiguredPublicAccounts,13);
+ assert.deepEqual(audit.counts,{jd:{opsRecords:6,publicAccounts:0,unmappedOpsHistory:0},tmall:{opsRecords:0,publicAccounts:9,unmappedOpsHistory:0},douyin:{opsRecords:0,publicAccounts:12,unmappedOpsHistory:10}});
+ assert.equal(audit.totalEvidenceRows,37);
+ assert.equal(audit.totalConfiguredPublicAccounts,21);
  assert.equal(audit.approvedDouyinScoringAccounts,4);
  assert.equal(audit.verifiedPhysicalRoomCount,null);
  assert.equal(audit.globalMonitoringCoverageVerified,false);

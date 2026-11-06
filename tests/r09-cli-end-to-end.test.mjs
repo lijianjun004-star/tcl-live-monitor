@@ -1,10 +1,11 @@
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-const cwd=new URL('..',import.meta.url).pathname;
+const cwd=fileURLToPath(new URL('..',import.meta.url));
 const run=(args)=>spawnSync(process.execPath,args,{cwd,encoding:'utf8',timeout:10000});
 const tmp=()=>fs.mkdtempSync(path.join(os.tmpdir(),'tcl-r09-'));
 
@@ -19,9 +20,9 @@ test('end-to-end main probe targets + historical JD: 29 evidence rows, UNKNOWN n
  r=run(['probes/audit-three-platform-coverage.mjs','--registry',registry,'--jd-report','fixtures/jd-all-safe-report-20261105.json','--out',audit]);
  assert.equal(r.status,0,r.stderr);
  const a=JSON.parse(fs.readFileSync(audit));const v=JSON.parse(fs.readFileSync(view));
- assert.equal(a.totalEvidenceRows,29);assert.equal(a.approvedDouyinScoringAccounts,4);
+ assert.equal(a.totalEvidenceRows,37);assert.equal(a.approvedDouyinScoringAccounts,4);
  assert.equal(a.globalMonitoringCoverageVerified,false);
- assert.deepEqual(v.byPlatform,{jd:{LIVE:0,OFFLINE:0,UNKNOWN:6},tmall:{LIVE:0,OFFLINE:0,UNKNOWN:1},douyin:{LIVE:0,OFFLINE:0,UNKNOWN:12}});
+ assert.deepEqual(v.byPlatform,{jd:{LIVE:0,OFFLINE:0,UNKNOWN:6},tmall:{LIVE:0,OFFLINE:0,UNKNOWN:9},douyin:{LIVE:0,OFFLINE:0,UNKNOWN:12}});
  for(const p of [registry,view,audit])assert.equal(fs.statSync(p).mode&0o777,0o600,p);
  assert.ok(!fs.readFileSync(registry,'utf8').includes('bound_session_key'));
 });

@@ -7,12 +7,6 @@ export const OFFLINE_GAP_MS = 3 * 60_000;     // alive agent + no new minute for
 
 const ts = s => { const t = Date.parse(s || ''); return Number.isFinite(t) ? t : null; };
 
-/**
- * @param day   room-overview/daily days[] entry for today (Beijing date) or null
- * @param heartbeatAt ISO string or null
- * @param now   epoch ms
- * @param offlineRuleValidated  promote OFFLINE candidates to OFFLINE only after user-confirmed calibration
- */
 export function classifyTclOps({ day, heartbeatAt, now, offlineRuleValidated = false }) {
   const hb = ts(heartbeatAt), lm = ts(day?.latest_minute_ts);
   const agentAlive = hb !== null && now - hb <= FRESH_HEARTBEAT_MS && hb <= now + 60_000;
@@ -23,10 +17,6 @@ export function classifyTclOps({ day, heartbeatAt, now, offlineRuleValidated = f
   const fresh = minuteAge !== null && minuteAge >= -60_000 && minuteAge <= FRESH_MINUTE_MS;
   if (fresh && Number(status) === 1)
     return { ...base, state: 'LIVE', reason: 'FRESH_MINUTE_DATA_STATUS_1' };
-  // R0.7.1 (run 42021726185): `latest` is the newest metrics record, and some record types
-  // (e.g. last5m_* aggregates) carry no `status`. Minutes kept advancing +5 per 5 min while
-  // status was absent, so an ABSENT status must not veto LIVE when the capture agent is alive.
-  // A PRESENT status other than 1 is still treated as ambiguous.
   if (fresh && status === null && agentAlive)
     return { ...base, state: 'LIVE', reason: 'FRESH_MINUTE_DATA_STATUS_ABSENT' };
   if (fresh) return { ...base, state: 'UNKNOWN', reason: 'FRESH_MINUTE_DATA_STATUS_' + String(status).slice(0, 12) };
@@ -46,32 +36,51 @@ export function liveMinutesDelta(prev, cur) {
 
 /**
  * Self-calibration of the OFFLINE candidate rule from the platform's own session split.
- * The ops platform counts live sessions per Beijing day (`session_count`). When a room that
- * showed an OFFLINE candidate gap comes back LIVE:
- *   - session_count increased  -> the platform itself ended the previous session: gap = real stop
- *   - session_count unchanged  -> same session: gap was a capture stall / short pause (candidate false positive)
- * prev/next: { date, state, offlineCandidate, sessionCount, gapOpenedAt }
+ * R0.9.6 hardening:
+ *  1) Preserves lastLiveSessionCount and lastLiveState across transient plain UNKNOWN polls (e.g. API_ERROR or CAPTURE_AGENT_STALE)
+ *     within the same Beijing day so a subsequent offlineCandidate still triggers GAP_OPENED and a subsequent LIVE with session+1
+ *     still triggers SESSION_BREAK_DURING_UNKNOWN;
+ *  2) Detects session_count regression (s1 < s0) as GAP_CLOSED_SESSION_REGRESSED instead of falsely claiming GAP_CLOSED_SAME_SESSION.
  */
 export function trackSessionGap(prev, cur) {
-  const next = { date: cur.date, state: cur.state, offlineCandidate: !!cur.offlineCandidate,
-    sessionCount: Number.isInteger(cur.sessionCount) ? cur.sessionCount : null, gapOpenedAt: null };
+  const curSession = Number.isInteger(cur.sessionCount) ? cur.sessionCount : null;
+  const next = {
+    date: cur.date,
+    state: cur.state,
+    offlineCandidate: !!cur.offlineCandidate,
+    sessionCount: curSession,
+    gapOpenedAt: null,
+    lastLiveSessionCount: cur.state === 'LIVE' && curSession !== null ? curSession : null,
+    hadLiveToday: cur.state === 'LIVE',
+  };
   if (!prev || prev.date !== cur.date) return { event: null, next }; // new day: counts reset
-  const wasLive = prev.state === 'LIVE', isLive = cur.state === 'LIVE';
+  const wasLive = prev.state === 'LIVE' || prev.hadLiveToday === true;
   const inGap = !!prev.gapOpenedAt;
-  const s0 = prev.sessionCount, s1 = next.sessionCount;
+  const s0 = Number.isInteger(prev.sessionCount) ? prev.sessionCount : (Number.isInteger(prev.lastLiveSessionCount) ? prev.lastLiveSessionCount : null);
+  const s1 = curSession;
   const sessionKnown = Number.isInteger(s0) && Number.isInteger(s1);
+  next.lastLiveSessionCount = cur.state === 'LIVE' && curSession !== null ? curSession : s0;
+  next.hadLiveToday = wasLive || cur.state === 'LIVE';
+
   if ((wasLive || inGap) && cur.offlineCandidate) {
     next.gapOpenedAt = prev.gapOpenedAt || cur.at;
+    if (s0 !== null && next.sessionCount === null) next.sessionCount = s0;
     return { event: inGap ? null : 'GAP_OPENED', next };
   }
-  if (inGap && isLive) {
-    const event = !sessionKnown ? 'GAP_CLOSED_SESSION_UNKNOWN' : s1 > s0 ? 'GAP_CLOSED_NEW_SESSION' : 'GAP_CLOSED_SAME_SESSION';
+  if (inGap && cur.state === 'LIVE') {
+    const event = !sessionKnown ? 'GAP_CLOSED_SESSION_UNKNOWN' : s1 > s0 ? 'GAP_CLOSED_NEW_SESSION' : s1 < s0 ? 'GAP_CLOSED_SESSION_REGRESSED' : 'GAP_CLOSED_SAME_SESSION';
     return { event, next, gapOpenedAt: prev.gapOpenedAt };
   }
-  if (inGap && !isLive && !cur.offlineCandidate) {
-    next.gapOpenedAt = prev.gapOpenedAt; // plain UNKNOWN inside a gap: keep it open, no judgement
+  if (inGap && cur.state !== 'LIVE' && !cur.offlineCandidate) {
+    next.gapOpenedAt = prev.gapOpenedAt;
+    if (s0 !== null && next.sessionCount === null) next.sessionCount = s0;
     return { event: null, next };
   }
-  if (wasLive && isLive && sessionKnown && s1 > s0) return { event: 'SESSION_BREAK_BETWEEN_POLLS', next };
+  if (prev.state === 'LIVE' && cur.state === 'LIVE' && sessionKnown && s1 > s0) {
+    return { event: 'SESSION_BREAK_BETWEEN_POLLS', next };
+  }
+  if (prev.state !== 'LIVE' && !inGap && wasLive && cur.state === 'LIVE' && sessionKnown && s1 > s0) {
+    return { event: 'SESSION_BREAK_DURING_UNKNOWN', next };
+  }
   return { event: null, next };
 }

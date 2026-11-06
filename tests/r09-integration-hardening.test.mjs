@@ -63,7 +63,7 @@ test('fresh authorized source catalog reconciles 16 rooms / 17 shops; historical
  const history=JSON.parse(fs.readFileSync(new URL('../fixtures/ops-douyin-history-unmapped.json',import.meta.url)));
  const r=assembleRegistry({opsCatalog:normalizeOpsCatalog(f.roomsResponse,f.shopsResponse),configuredTargets:targetsToTagged(cfg),unmappedOpsRoomRows:history});
  const a=auditThreePlatformCoverage({registry:r,publicConfig:cfg});
- assert.equal(r.numbers.opsRooms,16);assert.equal(r.numbers.opsUnmappedHistory,0);assert.equal(a.totalEvidenceRows,29);
+ assert.equal(r.numbers.opsRooms,16);assert.equal(r.numbers.opsUnmappedHistory,0);assert.equal(a.totalEvidenceRows,37);
  assert.deepEqual(a.sourceShopCounts,{jd:6,tmall:1,douyin:10});
  assert.equal(a.unmappedSourceIdentities.length,16);assert.equal(a.sourceShopsWithoutRoomMapping.length,1);
  assert.equal(a.sourceShopsWithoutRoomMapping[0].platform,'tmall');assert.equal(a.globalShopCatalogComplete,false);

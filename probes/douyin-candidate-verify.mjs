@@ -3,13 +3,13 @@
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { CHALLENGE_RE, liveAnchorRoomIds } from './lib/douyin.mjs';
-const cfg = JSON.parse(await fs.readFile('config/douyin-candidates-to-verify.json', 'utf8'));
+const cfg = JSON.parse(await fs.readFile('config/r096-douyin-candidates.json', 'utf8'));
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN' });
 const results = [];
 for (const c of cfg.candidates) {
   if (!/^MS4wLjABAAAA[\w-]{20,}$/.test(c.secUid)) continue;
-  const page = await ctx.newPage(); const r = { candidateId: c.candidateId, geminiName: c.geminiName };
+  const page = await ctx.newPage(); const r = { state: 'UNKNOWN', scoringEligible: false, candidateId: c.candidateId, geminiName: c.geminiName };
   try {
     const resp = await page.goto(`https://www.douyin.com/user/${c.secUid}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     r.http = resp?.status() ?? null; await page.waitForTimeout(6000);
@@ -27,7 +27,7 @@ for (const c of cfg.candidates) {
   results.push(r); await page.close();
   console.log(JSON.stringify(r));
   if (r.challenged) { console.log('STOP: challenge'); break; }
-  await new Promise(res => setTimeout(res, 3000));
+  await new Promise(res => setTimeout(res, 5000));
 }
 await browser.close();
 await fs.writeFile('candidate-verify.json', JSON.stringify({ at: new Date().toISOString(), results }, null, 1));
