@@ -1,7 +1,7 @@
 // Schedule import (standard CSV template) + preview diff + freeze-after-start.
 // The user's original Excel layout has not been received yet; once it is, add a mapper that
 // converts it into the same row shape and reuse planImport().
-import { bjTs, isDate, isTime, MINUTE } from './time.mjs';
+import { bjTs, bjDate, isDate, isTime, MINUTE } from './time.mjs';
 
 const HEADER_ALIASES = {
   date: ['date', '日期', '排班日期'],
@@ -79,6 +79,6 @@ export function planImport(existing, incoming, now) {
 export function splitByStatDay(slot) {
   if (!slot.crossesMidnight) return [{ ...slot, statDate: slot.scheduleDate }];
   const mid = bjTs(slot.scheduleDate, '24:00');
-  const next = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date(mid));
+  const next = bjDate(mid);
   return [{ ...slot, end: mid, statDate: slot.scheduleDate }, { ...slot, start: mid, statDate: next }];
 }
