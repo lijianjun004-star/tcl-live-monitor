@@ -12,17 +12,20 @@ const rows = []; const last = {}; const gapState = {}; const events = [];
 for (let r = 1; r <= ROUNDS; r++) {
   const t0 = Date.now();
   let rooms = [], hb = {};
-  try { rooms = (await get('/api/capture/rooms')).rooms || []; hb = Object.fromEntries(((await get('/api/assistant/active-rooms')).rooms || []).map(x => [x.id, x.last_heartbeat_at])); } catch (e) { console.log('round', r, 'list error', String(e).slice(0, 80)); }
+  try { rooms = (await get('/api/capture/rooms')).rooms || []; hb = Object.fromEntries(((await get('/api/assistant/active-rooms')).rooms || []).map(x => [`${String(x.platform||'').toLowerCase()}:${x.id}`, x.last_heartbeat_at])); } catch (e) { console.log('round', r, 'list error', String(e).slice(0, 80)); }
   const today = bjDate(new Date());
   for (const room of rooms) {
     let day = null, err = null;
     try { const j = await get(`/api/capture/room-overview/daily?start_date=${today}&end_date=${today}&platform=${room.platform}&live_room_id=${room.id}`); day = (j.days || []).find(d => d.date === today) || null; } catch (e) { err = 'API_ERROR'; }
     const now = Date.now();
-    const c = err ? { state: 'UNKNOWN', reason: err } : classifyTclOps({ day, heartbeatAt: hb[room.id] || null, now });
-    const delta = liveMinutesDelta(last[room.id], c.minuteCount); last[room.id] = c.minuteCount;
+    const rk = `${String(room.platform||'').toLowerCase()}:${room.id}`;
+    const c = err ? { state: 'UNKNOWN', reason: err } : classifyTclOps({ day, heartbeatAt: hb[rk] ?? null, now });
+    const prevMin = last[rk]?.date === today ? last[rk].minuteCount : null;
+    const delta = liveMinutesDelta(prevMin, c.minuteCount);
+    if (Number.isFinite(c.minuteCount)) last[rk] = { date: today, minuteCount: c.minuteCount };
     const sessionCount = Number.isInteger(day?.session_count) ? day.session_count : null;
-    const g = trackSessionGap(gapState[room.id], { date: today, state: c.state, offlineCandidate: !!c.offlineCandidate, sessionCount, at: now });
-    gapState[room.id] = g.next;
+    const g = trackSessionGap(gapState[rk], { date: today, state: c.state, offlineCandidate: !!c.offlineCandidate, sessionCount, at: now });
+    gapState[rk] = g.next;
     if (g.event) events.push({ round: r, at: new Date(now).toISOString(), roomId: room.id, platform: room.platform, category: room.category, event: g.event,
       gapOpenedBJ: g.gapOpenedAt ? bjTime(g.gapOpenedAt) : (g.next.gapOpenedAt ? bjTime(g.next.gapOpenedAt) : null), sessionCount });
     rows.push({ round: r, at: new Date(now).toISOString(), roomId: room.id, platform: room.platform, category: room.category, state: c.state, reason: c.reason,

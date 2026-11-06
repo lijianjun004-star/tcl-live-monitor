@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-11-05T13:52:08.322785+00:00",
+  "source": "AUTHORIZED_OPS_GET_SANITIZED_IDENTITY_ONLY",
+  "roomsResponse": {
+    "ok": true,
+    "rooms": [
+      {
+        "id": 18,
+        "platform": "jd",
+        "shop_id": 19,
+        "category": "显示器"
+      },
+      {
+        "id": 17,
+        "platform": "jd",
+        "shop_id": 18,
+        "category": "电视"
+      },
+      {
+        "id": 16,
+        "platform": "jd",
+        "shop_id": 17,
+        "category": "全品类"
+      },
+      {
+        "id": 15,
+        "platform": "jd",
+        "shop_id": 15,
+        "category": "空调"
+      },
+      {
+        "id": 14,
+        "platform": "jd",
+        "shop_id": 14,
+        "category": "洗衣机"
+      },
+      {
+        "id": 12,
+        "platform": "douyin",
+        "shop_id": 12,
+        "category": "家电"
+      },
+      {
+        "id": 11,
+        "platform": "douyin",
+        "shop_id": 11,
+        "category": "电视"
+      },
+      {
+        "id": 10,
+        "platform": "douyin",
+        "shop_id": 10,
+        "category": "电视"
+      },
+      {
+        "id": 9,
+        "platform": "douyin",
+        "shop_id": 9,
+        "category": "电视"
+      },
+      {
+        "id": 8,
+        "platform": "douyin",
+        "shop_id": 8,
+        "category": "家电"
+      },
+      {
+        "id": 7,
+        "platform": "douyin",
+        "shop_id": 7,
+        "category": "电视"
+      },
+      {
+        "id": 6,
+        "platform": "douyin",
+        "shop_id": 6,
+        "category": "电视"
+      },
+      {
+        "id": 5,
+        "platform": "douyin",
+        "shop_id": 5,
+        "category": "电视"
+      },
+      {
+        "id": 4,
+        "platform": "douyin",
+        "shop_id": 4,
+        "category": "电视"
+      },
+      {
+        "id": 3,
+        "platform": "douyin",
+        "shop_id": 3,
+        "category": "电视"
+      },
+      {
+        "id": 1,
+        "platform": "jd",
+        "shop_id": 1,
+        "category": "空调"
+      }
+    ]
+  },
+  "shopsResponse": [
+    {
+      "id": 1,
+      "platform": "京东",
+      "category": "冰箱"
+    },
+    {
+      "id": 14,
+      "platform": "京东",
+      "category": "洗衣机"
+    },
+    {
+      "id": 15,
+      "platform": "京东",
+      "category": "空调"
+    },
+    {
+      "id": 18,
+      "platform": "京东",
+      "category": "电视"
+    },
+    {
+      "id": 12,
+      "platform": "抖音",
+      "category": "家电"
+    },
+    {
+      "id": 17,
+      "platform": "京东",
+      "category": "全品类"
+    },
+    {
+      "id": 9,
+      "platform": "抖音",
+      "category": "电视"
+    },
+    {
+      "id": 8,
+      "platform": "抖音",
+      "category": "家电"
+    },
+    {
+      "id": 19,
+      "platform": "京东",
+      "category": "显示器"
+    },
+    {
+      "id": 5,
+      "platform": "抖音",
+      "category": "电视"
+    },
+    {
+      "id": 10,
+      "platform": "抖音",
+      "category": "电视"
+    },
+    {
+      "id": 6,
+      "platform": "抖音",
+      "category": "电视"
+    },
+    {
+      "id": 11,
+      "platform": "抖音",
+      "category": "电视"
+    },
+    {
+      "id": 4,
+      "platform": "抖音",
+      "category": "电视"
+    },
+    {
+      "id": 3,
+      "platform": "抖音",
+      "category": "电视"
+    },
+    {
+      "id": 7,
+      "platform": "抖音",
+      "category": "电视"
+    },
+    {
+      "id": 16,
+      "platform": "天猫",
+      "category": "全品类"
+    }
+  ],
+  "note": "No declared total or pagination metadata; returned records only. No external account mappings proven."
+}

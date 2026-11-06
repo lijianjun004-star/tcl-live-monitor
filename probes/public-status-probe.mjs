@@ -107,7 +107,7 @@ try {
     // Douyin: same context as the historical passing script (no UA override).
     const dyContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN' });
     const queue = [...cfg.douyin];
-    await Promise.all(Array.from({ length: Math.min(3, queue.length) }, async () => {
+    await Promise.all(Array.from({ length: Math.min(1, queue.length) }, async () => {
       for (let t; (t = queue.shift());) {
         try { report.observations.push({ round: r, ...await probeDouyin(dyContext, t) }); }
         catch (e) { report.observations.push({ round: r, platform: 'douyin', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); }

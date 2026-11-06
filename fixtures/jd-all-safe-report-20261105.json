@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "checkedAt": "2026-11-05T11:47:00.420Z",
+  "date": "2026-11-05",
+  "source": "TCL_OPS_READ_ONLY",
+  "catalogStatus": "PARTIAL_WITH_INTEGRITY_WARNINGS",
+  "roomListScope": "API_RESPONSE_NOT_PROVEN_EXHAUSTIVE",
+  "warnings": [
+    "CATEGORY_MAPPING_CONFLICT:1",
+    "SHOP_CATALOG_NOT_PROVEN_COMPLETE"
+  ],
+  "shopCount": 6,
+  "rooms": [
+    {
+      "roomId": "1",
+      "shopId": "1",
+      "category": "空调",
+      "captureBound": true,
+      "categoryMappingConflict": true,
+      "date": "2026-11-05",
+      "status": "LIVE",
+      "reason": "FRESH_MINUTE_DATA_STATUS_1",
+      "offlineCandidate": false,
+      "minutesDelta": null,
+      "agentAlive": true,
+      "latestMinuteAgeMin": 1
+    },
+    {
+      "roomId": "14",
+      "shopId": "14",
+      "category": "洗衣机",
+      "captureBound": true,
+      "categoryMappingConflict": false,
+      "date": "2026-11-05",
+      "status": "LIVE",
+      "reason": "FRESH_MINUTE_DATA_STATUS_1",
+      "offlineCandidate": false,
+      "minutesDelta": null,
+      "agentAlive": true,
+      "latestMinuteAgeMin": 1
+    },
+    {
+      "roomId": "15",
+      "shopId": "15",
+      "category": "空调",
+      "captureBound": true,
+      "categoryMappingConflict": false,
+      "date": "2026-11-05",
+      "status": "LIVE",
+      "reason": "FRESH_MINUTE_DATA_STATUS_1",
+      "offlineCandidate": false,
+      "minutesDelta": null,
+      "agentAlive": true,
+      "latestMinuteAgeMin": 1
+    },
+    {
+      "roomId": "16",
+      "shopId": "17",
+      "category": "全品类",
+      "captureBound": true,
+      "categoryMappingConflict": false,
+      "date": "2026-11-05",
+      "status": "UNKNOWN",
+      "reason": "DAILY_DATA_MISSING_OR_INVALID",
+      "offlineCandidate": false,
+      "minutesDelta": null,
+      "agentAlive": false
+    },
+    {
+      "roomId": "17",
+      "shopId": "18",
+      "category": "电视",
+      "captureBound": true,
+      "categoryMappingConflict": false,
+      "date": "2026-11-05",
+      "status": "LIVE",
+      "reason": "FRESH_MINUTE_DATA_STATUS_1",
+      "offlineCandidate": false,
+      "minutesDelta": null,
+      "agentAlive": true,
+      "latestMinuteAgeMin": 2
+    },
+    {
+      "roomId": "18",
+      "shopId": "19",
+      "category": "显示器",
+      "captureBound": true,
+      "categoryMappingConflict": false,
+      "date": "2026-11-05",
+      "status": "LIVE",
+      "reason": "FRESH_MINUTE_DATA_STATUS_1",
+      "offlineCandidate": false,
+      "minutesDelta": null,
+      "agentAlive": true,
+      "latestMinuteAgeMin": 2
+    }
+  ],
+  "summary": {
+    "LIVE": 5,
+    "OFFLINE": 0,
+    "UNKNOWN": 1
+  },
+  "shard": {
+    "index": 0,
+    "total": 1
+  },
+  "summaryScope": "ALL_SOURCE_ROOMS",
+  "discoveredRoomCount": 6,
+  "shopJoinStatus": "ALL_ROOM_SHOP_IDS_PRESENT",
+  "unmatchedShopIds": [],
+  "monitoringCoverage": {
+    "jdRoomCount": 6,
+    "discoveredRoomCount": 6,
+    "shopsWithUnresolvedRoomMapping": 0,
+    "roomCatalogComplete": false,
+    "shopCatalogComplete": false,
+    "roomShopLinksComplete": true,
+    "exhaustive": false
+  }
+}
