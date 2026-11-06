@@ -24,8 +24,8 @@ for (let r = 1; r <= ROUNDS; r++) {
     const delta = liveMinutesDelta(prevMin, c.minuteCount);
     if (Number.isFinite(c.minuteCount)) last[rk] = { date: today, minuteCount: c.minuteCount };
     const sessionCount = Number.isInteger(day?.session_count) ? day.session_count : null;
-    const g = trackSessionGap(gapState[room.id], { date: today, state: c.state, offlineCandidate: !!c.offlineCandidate, sessionCount, at: now });
-    gapState[room.id] = g.next;
+    const g = trackSessionGap(gapState[rk], { date: today, state: c.state, offlineCandidate: !!c.offlineCandidate, sessionCount, at: now });
+    gapState[rk] = g.next;
     if (g.event) events.push({ round: r, at: new Date(now).toISOString(), roomId: room.id, platform: room.platform, category: room.category, event: g.event,
       gapOpenedBJ: g.gapOpenedAt ? bjTime(g.gapOpenedAt) : (g.next.gapOpenedAt ? bjTime(g.next.gapOpenedAt) : null), sessionCount });
     rows.push({ round: r, at: new Date(now).toISOString(), roomId: room.id, platform: room.platform, category: room.category, state: c.state, reason: c.reason,
