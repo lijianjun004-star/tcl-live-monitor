@@ -1,0 +1,9 @@
+{
+  "name": "tcl-live-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TCL 京东/天猫/抖音直播间三态监控与满播率考核（核心引擎）",
+  "scripts": { "test": "node --test tests/*.test.mjs" },
+  "engines": { "node": ">=22" }
+}
