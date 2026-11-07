@@ -1,0 +1,60 @@
+name: R1.4 Tmall durable single-store dry-run (no external network)
+on:
+  push:
+    branches:
+      - feat/r14-tmall-single-store-durable-runner
+  pull_request:
+    paths:
+      - probes/lib/r14-tmall-durable.mjs
+      - probes/r14-ledger-dry-run.mjs
+      - tests/r14-tmall-durable.test.mjs
+      - docs/R1.4-Tmall-Durable-Dry-Run.md
+      - .github/workflows/r14-tmall-durable-offline.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-first-run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline Node tests including R1.4
+        run: node --test tests/*.test.mjs
+      - name: First isolated run with no Taobao source, record UNKNOWN
+        run: node probes/r14-ledger-dry-run.mjs --now 2026-11-08T00:00:00.000Z --out r14-stage1/state.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r14-state-stage1
+          path: r14-stage1/state.json
+          retention-days: 14
+          if-no-files-found: error
+  restore-in-new-runner:
+    needs: test-and-first-run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: r14-state-stage1
+          path: r14-restored
+      - name: Second isolated runner restores state and adds one safe UNKNOWN 60 minutes later
+        run: node probes/r14-ledger-dry-run.mjs --ledger r14-restored/state.json --now 2026-11-08T01:00:00.000Z --out r14-stage2/state.json
+      - name: Verify recovered two independent attempts
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; const s=JSON.parse(fs.readFileSync('r14-stage2/state.json','utf8'));if(s.attempts.length!==2||s.observations.length!==2||s.observations.some(v=>v.state!=='UNKNOWN'))process.exit(1);console.log('Recovered two UNKNOWN-only attempts; no live source was accessed')"
+      - name: Generate mobile-readable historical-data-free report
+        run: node probes/r13-single-store-report.mjs --input r14-stage2/state.json --output-dir r14-stage2/site --as-of 2026-11-08T01:00:00.000Z
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r14-single-store-offline-mobile-preview
+          path: r14-stage2/
+          retention-days: 14
+          if-no-files-found: error
