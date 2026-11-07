@@ -7,7 +7,8 @@ const ms=60000;
 const time=s=>Date.parse(s);
 const iso=s=>new Date(s).toISOString();
 const validDate=s=>typeof s==='string'&&s.trim()!==''&&Number.isFinite(time(s));
-const dateBJ=s=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(s));
+const dateBJ=s=>new Date(s).toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'});
+const bjTime=s=>s?new Date(s).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):'';
 const sortedByTime=(a,b)=>time(a.at)-time(b.at);
 
 function collectSource(source){
@@ -125,8 +126,8 @@ export function toR15Csv(diary,{kind='timeline'}={}){
  if(kind==='sessions'){
   cols=['场次','状态','首次发现开播（北京时间）','最近发现直播（北京时间）',
      '首次发现下播（北京时间）','第二次确认下播（北京时间）','相邻LIVE估算跨度（分钟）','精确时间'];
-  rows=diary.sessions.map(s=>[s.sequence,s.status,s.firstLiveDetectedAt,
-    s.lastLiveDetectedAt,s.firstOfflineDetectedAt,s.endedConfirmedAt,
+  rows=diary.sessions.map(s=>[s.sequence,s.status,bjTime(s.firstLiveDetectedAt),
+    bjTime(s.lastLiveDetectedAt),bjTime(s.firstOfflineDetectedAt),bjTime(s.endedConfirmedAt),
     s.estimatedObservedLiveMinutes,'否']);
  }else if(kind==='timeline'){
   cols=['采样时间（UTC ISO）','北京时间日期','状态','原因','账号一致','房间一致','有效状态证据'];
