@@ -1,0 +1,25 @@
+name: R1.2 Tmall TCL Group offline identity acceptance
+on:
+  push:
+    branches:
+      - feat/r12-tmall-tcl-group-single-acceptance
+  pull_request:
+    paths:
+      - probes/lib/r12-tmall-first.mjs
+      - tests/r12-tmall-first.test.mjs
+      - docs/R1.2-Tmall-TCL-Group-first-account.md
+      - .github/workflows/r12-tmall-first.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-one-account:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run existing Node tests plus R1.2 one-account regression
+        run: node --test tests/*.test.mjs
