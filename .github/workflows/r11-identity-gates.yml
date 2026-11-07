@@ -1,0 +1,25 @@
+name: R1.1 isolated identity gates
+on:
+  push:
+    branches:
+      - feat/r11-store-account-live-identity-audit
+  pull_request:
+    paths:
+      - probes/lib/r11-identity.mjs
+      - tests/r11-identity.test.mjs
+      - docs/R1.1-identity-audit.md
+      - .github/workflows/r11-identity-gates.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-identity-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run all existing Node regression tests plus R1.1
+        run: node --test tests/*.test.mjs
