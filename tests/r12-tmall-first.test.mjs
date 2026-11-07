@@ -1,31 +1,10 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {FIRST_TARGET,classifyObservation,currentView,summarizeHistoricalRuns} from '../probes/lib/r12-tmall-first.mjs';
-// Eight row-level historical samples extracted from GitHub Actions 42354838292.
-// Later production runs 42356267543 and 42357590016 expose aggregated statuses only.
-const base={key:'tcl-group',accountId:'2050532947',observedName:'TCL集团官方旗舰店',roomNumber:'130742'};
-const live=(arm,round,at,code='SUCCESS')=>({...base,arm,round,at,
- mtop:code==='SUCCESS'?'SUCCESS':'SUCCESS_AFTER_TOKEN_REFRESH',
- codes:code==='SUCCESS'?['SUCCESS']:['FAIL_SYS_TOKEN_EMPTY','SUCCESS'],
- state:'LIVE',roomStatus:1,streamStatus:1});
-const blocked=(round,at)=>({...base,arm:'baseline',round,at,
- mtop:'THROTTLED_OR_VALIDATION',codes:['RGV587_ERROR'],state:'UNKNOWN',
- roomNumber:null,observedName:null,roomStatus:null,streamStatus:null});
-const fix=[
- live('fix',1,'2026-11-07T08:18:10.528Z','TOKEN_REFRESH'),
- live('fix',2,'2026-11-07T08:23:10.871Z'),
- live('fix',3,'2026-11-07T08:28:10.124Z'),
- live('fix',4,'2026-11-07T08:33:10.928Z')];
-const baseline=[
- live('baseline',1,'2026-11-07T08:18:13.206Z','TOKEN_REFRESH'),
- blocked(2,'2026-11-07T08:23:21.811Z'),
- blocked(3,'2026-11-07T08:28:21.765Z'),
- blocked(4,'2026-11-07T08:33:21.941Z')];
-const summaries=(n,state)=>Array.from({length:n},(_,i)=>({kind:'summary-only',round:i+1,state}));
-const fixture={runs:[
- {id:42354838292,arm:'fix',samples:fix},
- {id:42354838292,arm:'baseline',samples:baseline},
- {id:42356267543,arm:'production',samples:summaries(4,'UNKNOWN')},
- {id:42357590016,arm:'production',samples:summaries(3,'LIVE')} ]};
+// Real archived observations are copied from public GitHub Actions job logs; no live requests.
+import {readFileSync} from 'node:fs';
+const fixture=JSON.parse(readFileSync(new URL('../docs/evidence/r12-tmall-tcl-group-archived-samples.json',import.meta.url),'utf8'));
+const fix=fixture.runs.find(x=>x.id===42354838292&&x.arm==='fix').samples;
+const baseline=fixture.runs.find(x=>x.id===42354838292&&x.arm==='baseline').samples;
 test('01 first account is TCL group 2050532947/130742',()=>{assert.equal(FIRST_TARGET.accountId,'2050532947');assert.equal(FIRST_TARGET.historicalRoomNum,'130742');});
 test('02 four independent fix-arm samples',()=>assert.equal(fix.length,4));
 test('03 all fix samples are account/room-matched historical LIVE',()=>{for(const s of fix){const x=classifyObservation(s);assert.equal(x.state,'LIVE');assert.equal(x.accountMatches,true);assert.equal(x.roomMatches,true);assert.equal(x.scoreEligible,false);}});
