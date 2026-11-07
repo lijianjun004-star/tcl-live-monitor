@@ -1,0 +1,35 @@
+name: R1.3 Tmall single-store interval session (offline gates only)
+on:
+  push:
+    branches:
+      - feat/r13-tmall-single-session-interval-tracking
+  pull_request:
+    paths:
+      - probes/lib/r13-tmall-interval-monitor.mjs
+      - probes/r13-single-store-report.mjs
+      - tests/r13-tmall-interval-monitor.test.mjs
+      - docs/R1.3-Tmall-No-Roster-Session-Monitor.md
+      - .github/workflows/r13-tmall-session-gates.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-session:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline Node regressions (includes R1.3)
+        run: node --test tests/*.test.mjs
+      - name: Generate read-only historical mobile report (no platform network)
+        run: node probes/r13-single-store-report.mjs --input docs/evidence/r12-tmall-tcl-group-archived-samples.json --output-dir r13-preview
+      - name: Upload static mobile preview, state and report
+        uses: actions/upload-artifact@v4
+        with:
+          name: r13-offline-tmall-single-store-report
+          path: r13-preview/
+          retention-days: 14
+          if-no-files-found: error
