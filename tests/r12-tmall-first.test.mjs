@@ -9,7 +9,7 @@ const live=(arm,round,at,code='SUCCESS')=>({...base,arm,round,at,
  state:'LIVE',roomStatus:1,streamStatus:1});
 const blocked=(round,at)=>({...base,arm:'baseline',round,at,
  mtop:'THROTTLED_OR_VALIDATION',codes:['RGV587_ERROR'],state:'UNKNOWN',
- roomStatus:null,streamStatus:null});
+ roomNumber:null,observedName:null,roomStatus:null,streamStatus:null});
 const fix=[
  live('fix',1,'2026-11-07T08:18:10.528Z','TOKEN_REFRESH'),
  live('fix',2,'2026-11-07T08:23:10.871Z'),
@@ -30,7 +30,7 @@ test('01 first account is TCL group 2050532947/130742',()=>{assert.equal(FIRST_T
 test('02 four independent fix-arm samples',()=>assert.equal(fix.length,4));
 test('03 all fix samples are account/room-matched historical LIVE',()=>{for(const s of fix){const x=classifyObservation(s);assert.equal(x.state,'LIVE');assert.equal(x.accountMatches,true);assert.equal(x.roomMatches,true);assert.equal(x.scoreEligible,false);}});
 test('04 baseline 1 LIVE 3 UNKNOWN',()=>assert.deepEqual(baseline.map(s=>classifyObservation(s).state),['LIVE','UNKNOWN','UNKNOWN','UNKNOWN']));
-test('05 RGV587 must not mark OFFLINE',()=>assert.equal(classifyObservation(baseline[1]).reason,'PLATFORM_THROTTLED'));
+test('05 real RGV587 with null room fields is UNKNOWN / not room-verified',()=>{const x=classifyObservation(baseline[1]);assert.equal(x.reason,'PLATFORM_THROTTLED');assert.equal(x.state,'UNKNOWN');assert.equal(x.roomMatches,false);assert.equal(x.accountMatches,false);});
 test('06 HTTP 200 without success code cannot prove LIVE',()=>assert.equal(classifyObservation({...fix[0],http:200,codes:['ERROR']}).state,'UNKNOWN'));
 test('07 wrong account ID is a conflict',()=>assert.equal(classifyObservation({...fix[0],accountId:'2050532948'}).reason,'ACCOUNT_ID_CONFLICT'));
 test('08 wrong roomNum is a conflict',()=>assert.equal(classifyObservation({...fix[0],roomNumber:'130743'}).reason,'ROOM_ID_CONFLICT'));
@@ -48,3 +48,10 @@ test('19 no automatic reliable-monitor approval or scoring',()=>{const r=summari
 test('20 duplicate rounds prohibited',()=>assert.throws(()=>summarizeHistoricalRuns({runs:[fixture.runs[0],fixture.runs[0]]}),/Repeated/));
 test('21 invalid current time / age throws',()=>{assert.throws(()=>currentView(classifyObservation(fix[3]),'bad'),/Invalid/);assert.throws(()=>currentView(classifyObservation(fix[3]),'2026-11-07T09:00:00Z',999),/Invalid/);});
 test('22 no cross-account mixed status',()=>assert.equal(classifyObservation({...fix[0],key:'tmall-ffalcon-tv'}).reason,'SOURCE_KEY_MISMATCH'));
+test('23 all-throttled historical file cannot be marked identity-verified',()=>{const r=summarizeHistoricalRuns({runs:[{id:90001,arm:'baseline',samples:baseline.slice(1)}]});assert.equal(r.identityGate,'NOT_VERIFIED');assert.equal(r.historicallyCrossCheckedSamples,0);});
+test('24 aggregate-only LIVE summary does not prove room identity',()=>{const r=summarizeHistoricalRuns({runs:[fixture.runs[3]]});assert.equal(r.identityGate,'NOT_VERIFIED');assert.equal(r.currentState,'UNKNOWN');});
+test('25 one actual successful observed sample can close historical identity only',()=>{const r=summarizeHistoricalRuns({runs:[fixture.runs[0]]});assert.equal(r.identityGate,'HISTORICAL_CROSS_VERIFIED');assert.equal(r.historicallyCrossCheckedSamples,4);assert.equal(r.reliableMonitoringPassed,false);});
+test('26 unverified caller-provided LIVE state does not become current',()=>{const x=currentView({state:'LIVE',at:'2026-11-07T08:33:10.928Z'},'2026-11-07T08:35:00.000Z');assert.equal(x.state,'UNKNOWN');assert.equal(x.reason,'UNVERIFIED_ROOM_EVIDENCE');});
+test('27 throttle wins even if stale room fields are still present',()=>{const x=classifyObservation({...fix[0],mtop:'THROTTLED_OR_VALIDATION',codes:['RGV587_ERROR','SUCCESS']});assert.equal(x.state,'UNKNOWN');assert.equal(x.roomMatches,false);});
+test('28 empty history never invents identity verification',()=>{const r=summarizeHistoricalRuns({runs:[]});assert.equal(r.identityGate,'NOT_VERIFIED');assert.equal(r.scoringEligible,false);});
+
