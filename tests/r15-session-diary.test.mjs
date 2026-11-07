@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {compileR15Diary,toR15Csv} from '../probes/lib/r15-session-diary.mjs';
+import {emptyLedger,recordR14Tick} from '../probes/lib/r14-tmall-durable.mjs';
+const archived=JSON.parse(fs.readFileSync(new URL('../docs/evidence/r12-tmall-tcl-group-archived-samples.json',import.meta.url),'utf8'));
+const asOf='2026-11-08T02:00:00.000Z';
+const T=n=>new Date(Date.parse('2026-11-08T00:00:00Z')+n*60000).toISOString();
+const observed=(n,state)=>({key:'tcl-group',accountId:'2050532947',at:T(n),
+ observedName:'TCL集团官方旗舰店',roomNumber:'130742',
+ mtop:'SUCCESS',codes:['SUCCESS'],roomStatus:state==='LIVE'?1:0,
+ streamStatus:state==='LIVE'?1:0,state});
+const diary=rows=>compileR15Diary(rows,{asOf});
+test('01 first-store immutable identity',()=>{const x=diary([]);assert.equal(x.accountId,'2050532947');assert.equal(x.historicalRoomNum,'130742');});
+test('02 no fake real-time source',()=>{const x=diary([]);assert.equal(x.liveSourceConnected,false);assert.equal(x.sourceRequestsMadeByReport,0);});
+test('03 empty state remains UNKNOWN',()=>{const x=diary([]);assert.equal(x.latestStatus,'UNKNOWN');assert.equal(x.sessions.length,0);});
+test('04 one independent LIVE becomes first detected open timestamp',()=>{const x=diary([observed(0,'LIVE')]);assert.equal(x.sessions[0].firstLiveDetectedAt,T(0));assert.equal(x.sessions[0].status,'OPEN');});
+test('05 one OFFLINE is not a confirmed end',()=>{const x=diary([observed(0,'LIVE'),observed(15,'OFFLINE')]);assert.equal(x.sessions[0].status,'PENDING_END');assert.equal(x.sessions[0].endedConfirmedAt,null);});
+test('06 two OFFLINE close session with evidence window',()=>{const x=diary([observed(0,'LIVE'),observed(15,'OFFLINE'),observed(30,'OFFLINE')]);assert.equal(x.sessions[0].status,'CLOSED');assert.equal(x.sessions[0].endBounds.after,T(0));assert.equal(x.sessions[0].endBounds.noLaterThan,T(15));});
+test('07 known prior OFFLINE gives start interval bounds',()=>{const x=diary([observed(0,'OFFLINE'),observed(15,'LIVE')]);assert.equal(x.sessions[0].startBounds.after,T(0));assert.equal(x.sessions[0].startBounds.noLaterThan,T(15));});
+test('08 no preceding OFFLINE means unknown earliest start',()=>{const x=diary([observed(15,'LIVE')]);assert.equal(x.sessions[0].startBounds,null);});
+test('09 15 minute snapshots produce only estimated times',()=>{const x=diary([observed(0,'LIVE'),observed(15,'LIVE')]);assert.equal(x.sessions[0].estimatedObservedLiveMinutes,15);assert.equal(x.sessions[0].exactStartEndKnown,false);});
+test('10 two sessions separated by confirmed OFFLINE',()=>{const x=diary([observed(0,'LIVE'),observed(15,'OFFLINE'),observed(30,'OFFLINE'),observed(90,'LIVE')]);assert.equal(x.sessions.length,2);assert.equal(x.confirmedSessions,1);});
+test('11 missing observations not fabricated',()=>{const x=diary([observed(0,'LIVE'),observed(90,'LIVE')]);assert.equal(x.timeline.length,2);assert.equal(x.sessions[0].estimatedObservedLiveMinutes,0);});
+test('12 unauthorized arbitrary account rejected',()=>{const x=diary([{...observed(0,'LIVE'),accountId:'bad'}]);assert.equal(x.timeline.length,0);assert.equal(x.droppedSamples[0].reason,'ACCOUNT_OR_KEY_MISMATCH');});
+test('13 raw throttled row must UNKNOWN',()=>{const x=diary([{...observed(0,'LIVE'),mtop:'THROTTLED_OR_VALIDATION',codes:['RGV587_ERROR'],roomStatus:null,streamStatus:null,roomNumber:null}]);assert.equal(x.timeline[0].state,'UNKNOWN');assert.equal(x.validStateObservations,0);});
+test('14 old evidence cannot be current live',()=>{const x=diary(archived);assert.equal(x.latestStatus,'UNKNOWN');assert.equal(x.reportKind,'ARCHIVED_GITHUB_ACTIONS_NOT_REALTIME');});
+test('15 archive omits non-timestamped aggregate-only rows',()=>{const x=diary(archived);assert.equal(x.retainedObservations,8);assert.equal(x.totalOriginalRecords,8);});
+test('16 historical target has five valid LIVE, three UNKNOWN',()=>{const x=diary(archived);assert.equal(x.observationCounts.LIVE,5);assert.equal(x.observationCounts.UNKNOWN,3);});
+test('17 deduplicate repeated identical source row',()=>{const x=diary([observed(0,'LIVE'),observed(0,'LIVE')]);assert.equal(x.timeline.length,1);});
+test('18 conflicting same-timestamp row fails closed',()=>assert.throws(()=>diary([observed(0,'LIVE'),observed(0,'OFFLINE')]),/CONFLICTING/));
+test('19 future row cannot affect report',()=>{const x=compileR15Diary([observed(15,'LIVE')],{asOf:T(0)});assert.equal(x.timeline.length,0);assert.equal(x.droppedSamples[0].reason,'FUTURE_TIMESTAMP');});
+test('20 timepoint timeline sorted ascending',()=>{const x=diary([observed(30,'LIVE'),observed(0,'LIVE')]);assert.equal(x.timeline[0].at,T(0));});
+test('21 date grouping uses Shanghai timezone',()=>{const x=diary([observed(0,'LIVE')]);assert.equal(x.days[0].date,'2026-11-08');});
+test('22 timeline CSV header and row',()=>{const x=diary([observed(0,'LIVE')]);const csv=toR15Csv(x);assert.ok(csv.startsWith('\uFEFF'));assert.match(csv,/有效状态证据/);assert.match(csv,/LIVE/);});
+test('23 session CSV includes observed start/end',()=>{const x=diary([observed(0,'LIVE'),observed(15,'OFFLINE'),observed(30,'OFFLINE')]);const csv=toR15Csv(x,{kind:'sessions'});assert.match(csv,/首次发现开播/);assert.match(csv,/估算/);assert.match(csv,/CLOSED/);});
+test('24 CSV Beijing time conversion',()=>{const x=diary([observed(0,'LIVE')]);const csv=toR15Csv(x,{kind:'sessions'});assert.match(csv,/2026\/11\/8,? ?8:00:00|2026\/11\/08 08:00:00|2026\/11\/8 08:00:00/);});
+test('25 CSV does not allow formula injection',()=>{const x=diary([observed(0,'LIVE')]);x.timeline[0].reason='=HYPERLINK("bad")';const csv=toR15Csv(x);assert.match(csv,/'=HYPERLINK/);});
+test('26 bad CSV export format fails',()=>assert.throws(()=>toR15Csv(diary([]),{kind:'xml'}),/INVALID_EXPORT_KIND/));
+test('27 R14 durable ledger can be loaded',()=>{const l=recordR14Tick(emptyLedger(),{nowIso:T(0)}).ledger;const x=diary(l);assert.equal(x.reportKind,'R14_RECOVERABLE_LEDGER');assert.equal(x.timeline.length,1);assert.equal(x.latestStatus,'UNKNOWN');});
+test('28 missing time samples excluded',()=>{const x=diary([{...observed(0,'LIVE'),at:null}]);assert.equal(x.timeline.length,0);});
+test('29 schema and flags prevent unearned scoring',()=>{const x=diary([]);assert.equal(x.schemaVersion,15);assert.equal(x.scoreEligible,false);assert.equal(x.isPlatformExactTime,false);});
+test('30 day aggregation counts LIVE and UNKNOWN separately',()=>{const x=diary([observed(0,'LIVE'),{...observed(15,'LIVE'),mtop:'THROTTLED_OR_VALIDATION',codes:['RGV587_ERROR']}]);assert.equal(x.days[0].counts.LIVE,1);assert.equal(x.days[0].counts.UNKNOWN,1);});
