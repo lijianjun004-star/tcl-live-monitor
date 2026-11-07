@@ -41,7 +41,7 @@ try {
       if (ARM === 'baseline' && !(res.best && ['LIVE', 'OFFLINE'].includes(res.best.state))) { res = await loadOnce(ctx, t); attempts = 2; }
       const row = { arm: ARM, round: r, key: t.key, accountId: t.accountId, at: new Date().toISOString(), attempts, http: res.http, responses: res.responses,
         mtop: res.seq.kind, codes: res.seq.codes.slice(0, 6), hasTokenCookie: res.hasTokenCookie,
-        state: res.best?.state || 'UNKNOWN', reason: res.best?.reason || 'NO_LIVE_DETAIL_RESPONSE',
+        state: res.best?.state || 'UNKNOWN', reason: res.best ? res.best.reason : 'NO_LIVE_DETAIL_RESPONSE',
         observedName: res.best?.observed?.name || null, roomNumber: res.best?.observed?.roomNumber || null,
         roomStatus: res.best?.roomStatus ?? null, streamStatus: res.best?.streamStatus ?? null };
       rows.push(row); console.log('tmall ' + JSON.stringify(row));

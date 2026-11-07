@@ -41,3 +41,32 @@ test('R0.9.9 configs: 14 unique secUids, never scoring; JD SKUs are product ids,
     assert.ok(!('shopId' in s), 'config must not pre-assign a shop id');
   }
 });
+
+test('JD frequency-control page is a wall (run 42354838292 regression)', async () => {
+  const src = fs.readFileSync(new URL('../probes/r099-jd-sku-shop.mjs', import.meta.url), 'utf8');
+  const title = /export const JD_WALL_TITLE_RE = (\/.*\/);/.exec(src)[1], host = /export const JD_WALL_HOST_RE = (\/.*\/);/.exec(src)[1];
+  const T = eval(title), H = eval(host);
+  assert.ok(T.test('PC频控页 -京东商城'));
+  assert.ok(H.test('pc-frequent-pro.pf.jd.com'));
+  assert.ok(!H.test('item.jd.com') && !T.test('TCL 65英寸 电视【行情 报价 价格 评测】-京东'));
+});
+
+test('R0.9.9 JD room 16 counterexample: live agent + NO minute rows all day is not an OFFLINE candidate', async () => {
+  const { classifyTclOps } = await import('../probes/lib/tcl-ops.mjs');
+  const now = Date.parse('2026-11-07T08:20:00Z');
+  const neverHadMinutes = classifyTclOps({ day: null, heartbeatAt: '2026-11-07T08:19:50Z', now, offlineRuleValidated: true });
+  assert.equal(neverHadMinutes.state, 'UNKNOWN');
+  assert.equal(neverHadMinutes.reason, 'NO_MINUTE_FEED_TODAY');
+  assert.ok(!neverHadMinutes.offlineCandidate);
+  // minutes that existed and then stopped are still a candidate (unchanged behaviour)
+  const stopped = classifyTclOps({ day: { minute_count: 300, latest_minute_ts: '2026-11-07T07:40:00Z', latest: { status: 1 } }, heartbeatAt: '2026-11-07T08:19:50Z', now });
+  assert.equal(stopped.offlineCandidate, true);
+});
+
+test('R0.9.9 Tmall fix stays in the probe: one persistent context, throttle cool-down, no per-round Tmall context', () => {
+  const src = fs.readFileSync(new URL('../probes/public-status-probe.mjs', import.meta.url), 'utf8');
+  assert.match(src, /const context = tmallContext \|\|= await browser\.newContext/);
+  assert.match(src, /TMALL_COOLDOWN_AFTER_THROTTLE/);
+  assert.match(src, /mtop\.kind === 'THROTTLED_OR_VALIDATION'/);
+  assert.ok(!/await context\.close\(\); await dyContext\.close\(\);/.test(src), 'Tmall context must not be closed every round');
+});

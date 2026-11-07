@@ -8,6 +8,10 @@ import { accessCue } from './lib/access-cue.mjs';
 
 const cfg = JSON.parse(await fs.readFile('config/r099-jd-room-skus.json', 'utf8'));
 const RISK_RE = /(验证|安全检测|访问频繁|risk|passport)/i;
+// R0.9.9 run 42354838292: JD answered every item page with "PC频控页" on pc-frequent-pro.pf.jd.com.
+// That is a frequency-control wall and must stop JD immediately (the first version missed it).
+export const JD_WALL_TITLE_RE = /(频控|访问过于频繁|安全验证|验证中心)/;
+export const JD_WALL_HOST_RE = /(^|\.)(pf\.jd\.com|passport\.jd\.com|cfe\.m\.jd\.com|risk\.jd\.com)$/;
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'zh-CN' });
 let stopped = null; const rows = [];
@@ -20,7 +24,8 @@ async function read(url, extract) {
     const final = new URL(page.url());
     const data = await page.evaluate(extract);
     const cue = accessCue({ title: data.title, text: data.text || '', finalHost: final.hostname, finalPath: final.pathname })
-      || (/^(passport|cfe|risk)\./.test(final.hostname) || RISK_RE.test(final.pathname) ? { kind: 'JD_RISK_OR_LOGIN_REDIRECT', matched: final.hostname + final.pathname.slice(0, 40) } : null);
+      || (JD_WALL_HOST_RE.test(final.hostname) || JD_WALL_TITLE_RE.test(data.title || '') ? { kind: 'JD_FREQUENCY_OR_RISK_WALL', matched: `${final.hostname} ${String(data.title || '').slice(0, 20)}` } : null)
+      || (RISK_RE.test(final.pathname) ? { kind: 'JD_RISK_OR_LOGIN_REDIRECT', matched: final.hostname + final.pathname.slice(0, 40) } : null);
     return { http: r?.status() ?? null, finalHost: final.hostname, finalPath: final.pathname.slice(0, 60), cue, ...data };
   } catch (e) { return { error: String(e?.message || e).slice(0, 120) }; }
   finally { await page.close().catch(() => {}); }

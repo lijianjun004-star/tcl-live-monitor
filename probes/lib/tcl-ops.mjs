@@ -20,7 +20,12 @@ export function classifyTclOps({ day, heartbeatAt, now, offlineRuleValidated = f
   if (fresh && status === null && agentAlive)
     return { ...base, state: 'LIVE', reason: 'FRESH_MINUTE_DATA_STATUS_ABSENT' };
   if (fresh) return { ...base, state: 'UNKNOWN', reason: 'FRESH_MINUTE_DATA_STATUS_' + String(status).slice(0, 12) };
-  if (agentAlive && (minuteAge === null || minuteAge > OFFLINE_GAP_MS)) {
+  // R0.9.9 (runs 42354864197 + assistant cards 2026-11-07): room 16 had a live capture agent, 24
+  // assistant cards and a fresh link-map all afternoon, but NO minute rows all day — its minute feed
+  // is simply missing. "Never had minutes today" is therefore not stop evidence; only minutes that
+  // existed and then stopped are an OFFLINE candidate.
+  if (agentAlive && minuteAge === null) return { ...base, state: 'UNKNOWN', reason: 'NO_MINUTE_FEED_TODAY' };
+  if (agentAlive && minuteAge > OFFLINE_GAP_MS) {
     if (offlineRuleValidated) return { ...base, state: 'OFFLINE', offlineEvidence: true, reason: 'AGENT_ALIVE_NO_NEW_MINUTES' };
     return { ...base, state: 'UNKNOWN', offlineCandidate: true, reason: 'OFFLINE_CANDIDATE_AGENT_ALIVE_NO_NEW_MINUTES' };
   }

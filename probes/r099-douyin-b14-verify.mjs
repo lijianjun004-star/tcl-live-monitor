@@ -55,7 +55,8 @@ try {
       let cue = accessCue({ ...profile, text: profile.bodyExcerpt });
       const platformName = platformNameFromTitle(profile.title);
       const pageIds = [...new Set(profile.douyinIdsInPage || [])];
-      const observed = { accountName: platformName, displayDouyinId: pageIds.length === 1 ? pageIds[0] : null };
+      // roomId = claimed id so decideDouyin's roomIdChanged compares against the claim (run 42354838292 mislabelled every LIVE as changed)
+      const observed = { accountName: platformName, displayDouyinId: pageIds.length === 1 ? pageIds[0] : null, roomId: c.claimedRoomId || undefined };
       let room = null, d;
       if (cue) { stopped = { key: c.key, round: r, ...cue }; d = { state: 'UNKNOWN', reason: 'ACCESS_CUE_STOPPED' }; }
       else if (profile.navigationError) d = { state: 'UNKNOWN', reason: 'PROFILE_NAVIGATION_ERROR' };
