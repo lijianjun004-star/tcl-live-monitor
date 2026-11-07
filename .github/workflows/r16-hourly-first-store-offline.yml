@@ -1,0 +1,55 @@
+name: R1.6 first-store hourly and manual ledger (OFFLINE ONLY)
+# NO platform access, NO schedule: tests cannot be mistaken for real monitoring.
+on:
+  push:
+    branches:
+      - feat/r16-tmall-hourly-manual-safe
+  pull_request:
+    paths:
+      - probes/lib/r16-hourly.mjs
+      - probes/r16-hourly-run.mjs
+      - tests/r16-hourly.test.mjs
+      - docs/R1.6-Tmall-Hourly-Manual-Plan.md
+      - .github/workflows/r16-hourly-first-store-offline.yml
+  workflow_dispatch:
+    inputs:
+      trigger:
+        description: '安全日志触发：manual / scheduled-test（没有真实平台访问）'
+        required: true
+        default: manual
+        type: choice
+        options: [manual, scheduled-test]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r16-tmall-hourly-manual-safe
+  cancel-in-progress: false
+jobs:
+  offline-ledger-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Legacy and R1.6 tests
+        run: node --test tests/*.test.mjs
+      - name: Generate no-source mobile report
+        env:
+          RAW_TRIGGER: ${{ inputs.trigger }}
+        run: |
+          TRIGGER=manual
+          if [ "$RAW_TRIGGER" = 'scheduled-test' ]; then TRIGGER=scheduled; fi
+          node probes/r16-hourly-run.mjs --trigger "$TRIGGER" --out-dir r16-preview
+      - name: Assert no fake LIVE/OFFLINE
+        run: |
+          node --input-type=module -e "import fs from 'node:fs';const r=JSON.parse(fs.readFileSync('r16-preview/report.json')); if(r.currentState!=='UNKNOWN'||r.activeSourceConnected!==false||r.attemptCount!==1||r.sessions.length!==0)process.exit(1);console.log('R1.6 no-source safety verified');"
+      - name: Upload auditable mobile preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: r16-tmall-hourly-offline-audit
+          path: r16-preview/
+          retention-days: 14
+          if-no-files-found: error
