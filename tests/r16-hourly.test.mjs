@@ -99,6 +99,6 @@ test('two OFFLINE observations confirm first offline, not exact end',()=>{
  mtop:'SUCCESS',codes:['SUCCESS'],state});
  const out=summarizeHourly(l,{asOf:'2026-11-07T11:00:00Z'});
  assert.equal(out.sessions[0].status,'CLOSED');
- assert.equal(out.sessions[0].firstOfflineSeenAt,'2026-11-07T10:00:00Z');
- assert.equal(out.sessions[0].secondOfflineConfirmedAt,'2026-11-07T11:00:00Z');
+ assert.equal(out.sessions[0].firstOfflineSeenAt,'2026-11-07T10:00:00.000Z');
+ assert.equal(out.sessions[0].secondOfflineConfirmedAt,'2026-11-07T11:00:00.000Z');
 });
