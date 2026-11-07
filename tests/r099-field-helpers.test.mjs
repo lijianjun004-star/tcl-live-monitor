@@ -70,3 +70,43 @@ test('R0.9.9 Tmall fix stays in the probe: one persistent context, throttle cool
   assert.match(src, /mtop\.kind === 'THROTTLED_OR_VALIDATION'/);
   assert.ok(!/await context\.close\(\); await dyContext\.close\(\);/.test(src), 'Tmall context must not be closed every round');
 });
+
+// ---- R0.9.9 handoff reverse tests that had no direct unit test yet ----
+const prof = (name, id, { http = 200, live = null } = {}) => ({ httpStatus: http, title: `${name}的抖音 - 抖音`, bodyExcerpt: `${name} 抖音号：${id} 粉丝 1万`,
+  douyinIdsInPage: [id], liveRoomAnchors: live ? [{ href: `https://live.douyin.com/${live}`, text: '直播中' }] : [] });
+const roomPage = (name, { http = 200 } = {}) => ({ httpStatus: http, title: `${name}的抖音直播间 - 抖音直播`, metaDescription: `欢迎来到${name}的抖音直播间`, bodyExcerpt: '' });
+
+test('same name, different secUid/抖音号: a LIVE page of account B never verifies account A', () => {
+  const A = { accountName: 'TCL电视旗舰店', displayDouyinId: '91583412707', roomId: '91583412707001' };
+  const pageOfB = prof('TCL电视旗舰店', '99999999999', { live: '22200000222' });
+  const d = decideDouyin(pageOfB, roomPage('TCL电视旗舰店'), A);
+  assert.equal(d.state, 'UNKNOWN'); assert.equal(d.reason, 'PROFILE_IDENTITY_NOT_VERIFIED');
+  const B = { accountName: 'TCL电视旗舰店', displayDouyinId: '99999999999', roomId: '22200000222' };
+  assert.equal(decideDouyin(pageOfB, roomPage('TCL电视旗舰店'), B).state, 'LIVE');
+});
+
+test('HTTP 403 / rate limit on Douyin profile or room page is UNKNOWN, never OFFLINE', () => {
+  const t = { accountName: 'TCL电视旗舰店', displayDouyinId: '91583412707', roomId: '11100000111' };
+  const p403 = { ...prof(t.accountName, t.displayDouyinId), httpStatus: 403 };
+  const d1 = decideDouyin(p403, null, t);
+  assert.equal(d1.state, 'UNKNOWN'); assert.equal(d1.reason, 'PROFILE_IDENTITY_NOT_VERIFIED');
+  const d2 = decideDouyin(prof(t.accountName, t.displayDouyinId, { live: '11100000111' }), roomPage(t.accountName, { http: 403 }), t);
+  assert.equal(d2.state, 'UNKNOWN'); assert.equal(d2.reason, 'LIVE_BADGE_BUT_ROOM_PAGE_NOT_CROSS_VERIFIED');
+  const ended = { ...roomPage(t.accountName, { http: 429 }), bodyExcerpt: '直播已结束', statusFields: [{ field: 'x.data.room.status', value: 4 }] };
+  const d3 = decideDouyin(prof(t.accountName, t.displayDouyinId), ended, t, { offlineRuleValidated: true });
+  assert.notEqual(d3.state, 'OFFLINE');
+});
+
+test('room id matching the claim is not labelled LIVE_ROOM_ID_CHANGED; a different live room id is', () => {
+  const t = { accountName: 'TCL超极玩家', displayDouyinId: 'tclstory', roomId: '546347282056' };
+  assert.equal(decideDouyin(prof(t.accountName, t.displayDouyinId, { live: '546347282056' }), roomPage(t.accountName), t).reason, 'PROFILE_LIVE_BADGE_AND_ROOM_PAGE_IDENTITY');
+  const d = decideDouyin(prof(t.accountName, t.displayDouyinId, { live: '546300000000' }), roomPage(t.accountName), t);
+  assert.equal(d.state, 'LIVE'); assert.equal(d.reason, 'LIVE_ROOM_ID_CHANGED'); assert.equal(d.observedRoomId, '546300000000');
+});
+
+test('Tmall HTTP-level throttle (RGV587 / FAIL_SYS_USER_VALIDATE) cools down; it is never a stop', () => {
+  for (const codes of [['RGV587_ERROR'], ['FAIL_SYS_TOKEN_EMPTY', 'FAIL_SYS_USER_VALIDATE'], ['FAIL_SYS_TRAFFIC_LIMIT']])
+    assert.equal(classifyMtopSequence(codes).kind, 'THROTTLED_OR_VALIDATION');
+  const src = fs.readFileSync(new URL('../probes/public-status-probe.mjs', import.meta.url), 'utf8');
+  assert.match(src, /state: 'UNKNOWN', reason: 'TMALL_THROTTLED_' \+/);
+});
