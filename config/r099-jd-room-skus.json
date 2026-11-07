@@ -1,0 +1,68 @@
+{
+ "schemaVersion": 1,
+ "note": "R0.9.9 京东身份闭环：运营平台 link-map（直播间商品链接清单，只读 GET）中的 SKU → 京东公开商品页 → 店铺名/店铺ID/自营/分类 → 店铺页直播入口。SKU 是商品 ID，不当作店铺 ID。",
+ "roomSkus": {
+  "1": [
+   {
+    "sku": "100148087793",
+    "linkMapCategory": "878",
+    "brandInTitle": "TCL"
+   },
+   {
+    "sku": "100142877550",
+    "linkMapCategory": "1300",
+    "brandInTitle": "老板"
+   }
+  ],
+  "14": [
+   {
+    "sku": "100165447311",
+    "linkMapCategory": "14420",
+    "brandInTitle": "TCL"
+   },
+   {
+    "sku": "100334018406",
+    "linkMapCategory": "880",
+    "brandInTitle": "TCL"
+   }
+  ],
+  "15": [
+   {
+    "sku": "100284917534",
+    "linkMapCategory": "870",
+    "brandInTitle": "TCL"
+   }
+  ],
+  "16": [
+   {
+    "sku": "10101452451548",
+    "linkMapCategory": "17413",
+    "brandInTitle": "TCL"
+   },
+   {
+    "sku": "10182012894702",
+    "linkMapCategory": "798",
+    "brandInTitle": "TCL"
+   }
+  ],
+  "17": [
+   {
+    "sku": "100066622885",
+    "linkMapCategory": "798",
+    "brandInTitle": "TCL"
+   },
+   {
+    "sku": "100157522035",
+    "linkMapCategory": "17413",
+    "brandInTitle": "TCL"
+   }
+  ],
+  "18": [
+   {
+    "sku": "100395457590",
+    "linkMapCategory": "688",
+    "brandInTitle": "TCL"
+   }
+  ]
+ }
+}
