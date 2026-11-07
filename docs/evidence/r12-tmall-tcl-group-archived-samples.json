@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "scope": "tcl-group",
+  "accountId": "2050532947",
+  "roomNum": "130742",
+  "evidenceType": "ARCHIVED_GITHUB_ACTIONS_NOT_REALTIME",
+  "logDate": "2026-11-07",
+  "primarySiteAccessThisTurn": "NOT_ATTEMPTED_SAFETY_POLICY",
+  "runs": [
+    {
+      "id": 42354838292,
+      "arm": "fix",
+      "jobId": 128350570517,
+      "logUrl": "https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42354838292/job/128350570517",
+      "samples": [
+        {
+          "round": 1,
+          "arm": "fix",
+          "key": "tcl-group",
+          "accountId": "2050532947",
+          "observedName": "TCL集团官方旗舰店",
+          "roomNumber": "130742",
+          "roomStatus": 1,
+          "streamStatus": 1,
+          "mtop": "SUCCESS_AFTER_TOKEN_REFRESH",
+          "codes": [
+            "FAIL_SYS_TOKEN_EMPTY",
+            "SUCCESS"
+          ],
+          "state": "LIVE",
+          "reason": "NO_LIVE_DETAIL_RESPONSE",
+          "at": "2026-11-07T08:18:10.528Z",
+          "http": 200,
+          "responses": 2,
+          "attempts": 1
+        },
+        {
+          "round": 2,
+          "arm": "fix",
+          "key": "tcl-group",
+          "accountId": "2050532947",
+          "observedName": "TCL集团官方旗舰店",
+          "roomNumber": "130742",
+          "roomStatus": 1,
+          "streamStatus": 1,
+          "mtop": "SUCCESS",
+          "codes": [
+            "SUCCESS"
+          ],
+          "state": "LIVE",
+          "reason": "NO_LIVE_DETAIL_RESPONSE",
+          "at": "2026-11-07T08:23:10.871Z",
+          "http": 200,
+          "responses": 1,
+          "attempts": 1
+        },
+        {
+          "round": 3,
+          "arm": "fix",
+          "key": "tcl-group",
+          "accountId": "2050532947",
+          "observedName": "TCL集团官方旗舰店",
+          "roomNumber": "130742",
+          "roomStatus": 1,
+          "streamStatus": 1,
+          "mtop": "SUCCESS",
+          "codes": [
+            "SUCCESS"
+          ],
+          "state": "LIVE",
+          "reason": "NO_LIVE_DETAIL_RESPONSE",
+          "at": "2026-11-07T08:28:10.124Z",
+          "http": 200,
+          "responses": 1,
+          "attempts": 1
+        },
+        {
+          "round": 4,
+          "arm": "fix",
+          "key": "tcl-group",
+          "accountId": "2050532947",
+          "observedName": "TCL集团官方旗舰店",
+          "roomNumber": "130742",
+          "roomStatus": 1,
+          "streamStatus": 1,
+          "mtop": "SUCCESS",
+          "codes": [
+            "SUCCESS"
+          ],
+          "state": "LIVE",
+          "reason": "NO_LIVE_DETAIL_RESPONSE",
+          "at": "2026-11-07T08:33:10.928Z",
+          "http": 200,
+          "responses": 1,
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": 42354838292,
+      "arm": "baseline",
+      "jobId": 128350570532,
+      "logUrl": "https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42354838292/job/128350570532",
+      "samples": [
+        {
+          "round": 1,
+          "arm": "baseline",
+          "key": "tcl-group",
+          "accountId": "2050532947",
+          "observedName": "TCL集团官方旗舰店",
+          "roomNumber": "130742",
+          "roomStatus": 1,
+          "streamStatus": 1,
+          "mtop": "SUCCESS_AFTER_TOKEN_REFRESH",
+          "codes": [
+            "FAIL_SYS_TOKEN_EMPTY",
+            "SUCCESS"
+          ],
+          "state": "LIVE",
+          "reason": "NO_LIVE_DETAIL_RESPONSE",
+          "at": "2026-11-07T08:18:13.206Z",
+          "http": 200,
+          "responses": 2,
+          "attempts": 1
+        },
+        {
+          "round": 2,
+          "arm": "baseline",
+          "key": "tcl-group",
+          "accountId": "2050532947",
+          "observedName": null,
+          "roomNumber": null,
+          "roomStatus": null,
+          "streamStatus": null,
+          "mtop": "THROTTLED_OR_VALIDATION",
+          "codes": [
+            "RGV587_ERROR"
+          ],
+          "state": "UNKNOWN",
+          "reason": "API_ERROR",
+          "at": "2026-11-07T08:23:21.811Z",
+          "http": 200,
+          "responses": 1,
+          "attempts": 2
+        },
+        {
+          "round": 3,
+          "arm": "baseline",
+          "key": "tcl-group",
+          "accountId": "2050532947",
+          "observedName": null,
+          "roomNumber": null,
+          "roomStatus": null,
+          "streamStatus": null,
+          "mtop": "THROTTLED_OR_VALIDATION",
+          "codes": [
+            "RGV587_ERROR"
+          ],
+          "state": "UNKNOWN",
+          "reason": "API_ERROR",
+          "at": "2026-11-07T08:28:21.765Z",
+          "http": 200,
+          "responses": 1,
+          "attempts": 2
+        },
+        {
+          "round": 4,
+          "arm": "baseline",
+          "key": "tcl-group",
+          "accountId": "2050532947",
+          "observedName": null,
+          "roomNumber": null,
+          "roomStatus": null,
+          "streamStatus": null,
+          "mtop": "THROTTLED_OR_VALIDATION",
+          "codes": [
+            "RGV587_ERROR"
+          ],
+          "state": "UNKNOWN",
+          "reason": "API_ERROR",
+          "at": "2026-11-07T08:33:21.941Z",
+          "http": 200,
+          "responses": 1,
+          "attempts": 2
+        }
+      ]
+    },
+    {
+      "id": 42356267543,
+      "arm": "production",
+      "jobId": 128354920021,
+      "logUrl": "https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42356267543/job/128354920021",
+      "samples": [
+        {
+          "kind": "summary-only",
+          "round": 1,
+          "state": "UNKNOWN"
+        },
+        {
+          "kind": "summary-only",
+          "round": 2,
+          "state": "UNKNOWN"
+        },
+        {
+          "kind": "summary-only",
+          "round": 3,
+          "state": "UNKNOWN"
+        },
+        {
+          "kind": "summary-only",
+          "round": 4,
+          "state": "UNKNOWN"
+        }
+      ]
+    },
+    {
+      "id": 42357590016,
+      "arm": "production",
+      "jobId": 128358977819,
+      "logUrl": "https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42357590016/job/128358977819",
+      "samples": [
+        {
+          "kind": "summary-only",
+          "round": 1,
+          "state": "LIVE"
+        },
+        {
+          "kind": "summary-only",
+          "round": 2,
+          "state": "LIVE"
+        },
+        {
+          "kind": "summary-only",
+          "round": 3,
+          "state": "LIVE"
+        }
+      ]
+    }
+  ]
+}
