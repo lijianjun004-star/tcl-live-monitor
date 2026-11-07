@@ -8,6 +8,7 @@ import { chromium } from 'playwright';
 import { LIVE_PAGE, LIVE_DETAIL_HOST, LIVE_DETAIL_PATH, parseJSONOrJSONP, classifyTmall, pickBest } from './lib/tmall.mjs';
 import { decideDouyin, liveAnchorRoomIds, profileIdentity } from './lib/douyin.mjs';
 import { sanitizeEndpoint, extractStatusFields } from './lib/safe-network.mjs';
+import { classifyMtopSequence } from './lib/r099-identity.mjs';
 
 const arg = (name, def) => { const i = process.argv.indexOf(name); return i > 0 ? Number(process.argv[i + 1]) : def; };
 const ROUNDS = Math.min(Math.max(arg('--rounds', 1), 1), 12);
@@ -60,23 +61,31 @@ async function snapshot(page, url, captureStatus) {
   return out;
 }
 
+// R0.9.9 (run 42354838292 A/B): a NEW anonymous browser context every round plus an immediate
+// second attempt triggered Alibaba risk control (RGV587_ERROR) from round 2 on (27/27), while one
+// persistent context, one load per account and spacing stayed 36/36 SUCCESS. So: one Tmall context for
+// the whole run, retry only when the page never got a usable answer for non-throttle reasons, and
+// cool down on throttle codes. Tokens/cookies are the browser's own; nothing is forged or replayed.
 async function probeTmall(context, t) {
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const page = await context.newPage(); const samples = []; const pending = [];
+    const page = await context.newPage(); const samples = []; const pending = []; const codes = [];
     page.on('response', res => {
       try {
         const u = new URL(res.url());
         if (u.hostname !== LIVE_DETAIL_HOST || u.pathname !== LIVE_DETAIL_PATH) return;
-        pending.push(res.text().then(x => samples.push(classifyTmall(parseJSONOrJSONP(x), t))).catch(() => samples.push({ state: 'UNKNOWN', reason: 'API_RESPONSE_PARSE_ERROR' })));
+        pending.push(res.text().then(x => { const j = parseJSONOrJSONP(x); for (const c of (j.ret || []).slice(0, 2)) codes.push(String(c).split('::')[0]); samples.push(classifyTmall(j, t)); })
+          .catch(() => samples.push({ state: 'UNKNOWN', reason: 'API_RESPONSE_PARSE_ERROR' })));
       } catch {}
     });
     let nav = null;
-    try { const r = await page.goto(LIVE_PAGE + encodeURIComponent(t.accountId), { waitUntil: 'domcontentloaded', timeout: 25000 }); nav = r?.status() ?? null; await page.waitForTimeout(7000); await Promise.allSettled(pending); }
+    try { const r = await page.goto(LIVE_PAGE + encodeURIComponent(t.accountId), { waitUntil: 'domcontentloaded', timeout: 25000 }); nav = r?.status() ?? null; await page.waitForTimeout(8000); await Promise.allSettled(pending); }
     catch { nav = 'NAV_ERROR'; } finally { await page.close().catch(() => {}); }
-    const best = pickBest(samples);
-    const row = { platform: 'tmall', accountId: t.key, at: Date.now(), attempt, http: nav, responses: samples.length,
+    const best = pickBest(samples); const mtop = classifyMtopSequence(codes);
+    const row = { platform: 'tmall', accountId: t.key, at: Date.now(), attempt, http: nav, responses: samples.length, mtop: mtop.kind, mtopCodes: mtop.codes.slice(0, 4),
       ...(best || { state: 'UNKNOWN', reason: 'NO_LIVE_DETAIL_RESPONSE' }) };
-    if (row.state === 'LIVE' || row.state === 'OFFLINE' || attempt === 2) return row;
+    if (mtop.kind === 'THROTTLED_OR_VALIDATION') return { ...row, state: 'UNKNOWN', reason: 'TMALL_THROTTLED_' + (mtop.codes.find(c => !c.startsWith('SUCCESS')) || 'UNKNOWN'), throttled: true };
+    if (row.state === 'LIVE' || row.state === 'OFFLINE' || attempt === 2 || !['TOKEN_ONLY_NO_RETRY', 'NO_RESPONSE'].includes(mtop.kind)) return row;
+    await new Promise(x => setTimeout(x, 8000));
   }
 }
 
@@ -99,11 +108,18 @@ const report = { schemaVersion: 1, startedAt: new Date().toISOString(), rounds: 
   douyinOfflineRuleValidated: OFFLINE_RULE_VALIDATED, observations: [] };
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 try {
+  let tmallContext = null;
   for (let r = 1; r <= ROUNDS; r++) {
     const roundStart = Date.now();
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN',
+    const context = tmallContext ||= await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN',
       userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36' });
-    for (const t of cfg.tmall) { try { report.observations.push({ round: r, ...await probeTmall(context, t) }); } catch (e) { report.observations.push({ round: r, platform: 'tmall', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); } }
+    let tmallCooling = null;
+    for (const t of cfg.tmall) {
+      if (tmallCooling) { report.observations.push({ round: r, platform: 'tmall', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'TMALL_COOLDOWN_AFTER_THROTTLE', cooledBy: tmallCooling }); continue; }
+      try { const o = await probeTmall(context, t); report.observations.push({ round: r, ...o }); if (o.throttled) tmallCooling = t.key; }
+      catch (e) { report.observations.push({ round: r, platform: 'tmall', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); }
+      await new Promise(x => setTimeout(x, 8000));
+    }
     // Douyin: same context as the historical passing script (no UA override).
     const dyContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN' });
     const queue = [...cfg.douyin];
@@ -113,7 +129,7 @@ try {
         catch (e) { report.observations.push({ round: r, platform: 'douyin', accountId: t.key, at: Date.now(), state: 'UNKNOWN', reason: 'PROBE_ERROR' }); }
       }
     }));
-    await context.close(); await dyContext.close();
+    await dyContext.close(); // Tmall context is kept for the whole run (closed with the browser)
     console.log(`round ${r}/${ROUNDS}: ` + report.observations.filter(o => o.round === r).map(o => `${o.accountId}=${o.state}${o.offlineCandidate ? '(offline?)' : ''}`).join(' '));
     for (const o of report.observations.filter(o => o.round === r && o.platform === 'douyin' && o.state !== 'LIVE'))
       console.log(`  diag ${o.accountId}: http=${o.profileHttp} title="${o.profileTitle}" final=${o.profileFinalUrl} idText=${o.profileHasIdText} room="${o.roomTitle}" reason=${o.reason} signals=${JSON.stringify(o.signals && Object.keys(o.signals).length ? { endedText: o.signals.endedText, passiveEnded: o.signals.passiveEnded, roomHttp: o.signals.roomHttp, fields: (o.signals.statusFields || []).slice(0, 6).map(f => `${f.field}=${f.value}`) } : null)}`);

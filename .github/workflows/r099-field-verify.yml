@@ -1,0 +1,47 @@
+name: r099-field-verify
+# R0.9.9 one-off field verification on the verify/r099-field-evidence branch ONLY.
+# Runs when this file is pushed to that branch (no cron, no main change). Read-only public pages;
+# stops per platform on captcha/login walls; candidates never score; UNKNOWN is never OFFLINE.
+on:
+  push:
+    branches: [verify/r099-field-evidence]
+    paths: [.github/workflows/r099-field-verify.yml]
+permissions:
+  contents: read
+concurrency:
+  group: r099-field-verify
+  cancel-in-progress: false
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node --test tests/*.test.mjs
+  probe:
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [douyin-b14, tmall-baseline, tmall-fix, jd-sku-shop]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: Run ${{ matrix.task }}
+        env:
+          TASK: ${{ matrix.task }}
+        run: |
+          case "$TASK" in
+            douyin-b14)     node probes/r099-douyin-b14-verify.mjs --rounds 2 --interval-min 5 ;;
+            tmall-baseline) ARM=baseline node probes/r099-tmall-diagnose.mjs --rounds 4 --interval-min 5 ;;
+            tmall-fix)      ARM=fix node probes/r099-tmall-diagnose.mjs --rounds 4 --interval-min 5 ;;
+            jd-sku-shop)    node probes/r099-jd-sku-shop.mjs ;;
+          esac

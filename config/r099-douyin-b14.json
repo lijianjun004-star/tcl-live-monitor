@@ -1,0 +1,205 @@
+{
+ "schemaVersion": 1,
+ "note": "R0.9.9 B 级 14 个抖音候选。只读核验身份与直播状态；所有字段都是“声称值”，以平台页面显示为准；永不计分，UNKNOWN 不等于停播。",
+ "candidates": [
+  {
+   "key": "R099-39",
+   "secUid": "MS4wLjABAAAAhVEcOCjuf4A6aA-oBLnJ3kAGpIwkxrgjBosq4R_A-SPBb9cCsopVfgAq1d7oqxcF",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAhVEcOCjuf4A6aA-oBLnJ3kAGpIwkxrgjBosq4R_A-SPBb9cCsopVfgAq1d7oqxcF",
+   "claimedNames": [
+    "TCL大家电旗舰店",
+    "TCL智能电器旗舰店"
+   ],
+   "claimedDouyinId": "50569560060",
+   "claimedRoomId": "415791894002",
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7616918909517776947",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-40",
+   "secUid": "MS4wLjABAAAAWwrViM7Jwm2ioVotl_t8pG7fCzccW1w7diGe-2fa9S8",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAWwrViM7Jwm2ioVotl_t8pG7fCzccW1w7diGe-2fa9S8",
+   "claimedNames": [
+    "TCL电视旗舰店"
+   ],
+   "claimedDouyinId": "91583412707",
+   "claimedRoomId": "377033112952",
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7616918909517776947",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-41",
+   "secUid": "MS4wLjABAAAAm863Un3wpUT6vOOmpXgIGf-yhCSG5ym9LqJPvfG66btKKrREraXEV5zWLYbpD1kf",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAm863Un3wpUT6vOOmpXgIGf-yhCSG5ym9LqJPvfG66btKKrREraXEV5zWLYbpD1kf",
+   "claimedNames": [
+    "TCL总部电视厂家直播间"
+   ],
+   "claimedDouyinId": "61254414256",
+   "claimedRoomId": "585170629476",
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7616918909517776947",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-42",
+   "secUid": "MS4wLjABAAAAFxCUNBDrEJZFWaCcwUQW0dDuBMSWWQux58Nf4akbmC0hDg60Z57hRqbuhjo210yZ",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAFxCUNBDrEJZFWaCcwUQW0dDuBMSWWQux58Nf4akbmC0hDg60Z57hRqbuhjo210yZ",
+   "claimedNames": [
+    "TCL电视旗舰店直播间号"
+   ],
+   "claimedDouyinId": "50730044058",
+   "claimedRoomId": null,
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7616918909517776947",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-43",
+   "secUid": "MS4wLjABAAAAq9A8hfZIagkabyoOQqzXCryFyN4myUYRDFf4Da3hMndHhjJnq1ZO3ciznbdZeNUg",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAq9A8hfZIagkabyoOQqzXCryFyN4myUYRDFf4Da3hMndHhjJnq1ZO3ciznbdZeNUg",
+   "claimedNames": [
+    "TCL电视98英寸官方直播间"
+   ],
+   "claimedDouyinId": "24980111406",
+   "claimedRoomId": "404937662014",
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7616918909517776947",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-44",
+   "secUid": "MS4wLjABAAAAqzV3W2J4Fc0wmSAioXOKA5s0IRsb2kAb9a8ofsxiWGvX11-6iaNcMNxrhRKIufFh",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAqzV3W2J4Fc0wmSAioXOKA5s0IRsb2kAb9a8ofsxiWGvX11-6iaNcMNxrhRKIufFh",
+   "claimedNames": [
+    "TCL官方智能电视直播间",
+    "TCL智能电视官方旗舰店"
+   ],
+   "claimedDouyinId": "52200195008",
+   "claimedRoomId": "600300430336",
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7616918909517776947",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-45",
+   "secUid": "MS4wLjABAAAA-teeOY6ZyDaR5eKfxGGxcPufW0wYjdEV2ONRZkWlYpsxknzyMREA_x-V2Dqx_h8K",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAA-teeOY6ZyDaR5eKfxGGxcPufW0wYjdEV2ONRZkWlYpsxknzyMREA_x-V2Dqx_h8K",
+   "claimedNames": [
+    "TCL电视机官方旗舰店"
+   ],
+   "claimedDouyinId": "57338966297",
+   "claimedRoomId": "46352888803",
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7616918909517776947",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-46",
+   "secUid": "MS4wLjABAAAAkVux44ewkikGIxU1mFOOZEuTM_eXaNYTteJQkBTEc0I",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAkVux44ewkikGIxU1mFOOZEuTM_eXaNYTteJQkBTEc0I",
+   "claimedNames": [
+    "FFALCON雷鸟电视官方直播间",
+    "FFALCON雷鸟电视直播间"
+   ],
+   "claimedDouyinId": "87826221679",
+   "claimedRoomId": null,
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7298643294677043250",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-47",
+   "secUid": "MS4wLjABAAAADxe01Vu1PNLRDn9_VJCaUXEWCDOmYPFSzv7Bgjnrx8GalzwKMXlc3iSwc-ZKZ_Yw",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAADxe01Vu1PNLRDn9_VJCaUXEWCDOmYPFSzv7Bgjnrx8GalzwKMXlc3iSwc-ZKZ_Yw",
+   "claimedNames": [
+    "FFALCON雷鸟官方旗舰店"
+   ],
+   "claimedDouyinId": null,
+   "claimedRoomId": null,
+   "claimSource": "R099 CSV",
+   "sourceURL": "https://www.douyin.com/shipin/7298643294677043250",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-48",
+   "secUid": "MS4wLjABAAAAJESMQhk1icJ5dgIsbT8zjyKst8lR5tLz4dRwG7jGYRI",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAJESMQhk1icJ5dgIsbT8zjyKst8lR5tLz4dRwG7jGYRI",
+   "claimedNames": [
+    "雷鸟电视直播间"
+   ],
+   "claimedDouyinId": "38829121457",
+   "claimedRoomId": null,
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7345897486759987250",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-49",
+   "secUid": "MS4wLjABAAAAHeBNXB5x3K9o4A6lU_1Za6WVEcGJ-KR_4RoqnuYNSg8",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAHeBNXB5x3K9o4A6lU_1Za6WVEcGJ-KR_4RoqnuYNSg8",
+   "claimedNames": [
+    "FFALCON雷鸟显示器旗舰店"
+   ],
+   "claimedDouyinId": "33935558506",
+   "claimedRoomId": "497124718033",
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7345897486759987250",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-50",
+   "secUid": "MS4wLjABAAAAJWiqwcbpQU_8k_JJzWA-MlloxZh4QxbLye29KjMyU0hnN3qfkHxLsUokelQEg7UK",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAJWiqwcbpQU_8k_JJzWA-MlloxZh4QxbLye29KjMyU0hnN3qfkHxLsUokelQEg7UK",
+   "claimedNames": [
+    "FFALCON雷鸟官方旗舰店"
+   ],
+   "claimedDouyinId": "27908031619",
+   "claimedRoomId": "675657638045",
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7345897486759987250",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-51",
+   "secUid": "MS4wLjABAAAAbBRYHbPvhJ4uFwwkKexUW4W2K6wxq5mT6fPMk_UTlp6mrxIzagrNRUQH58iM0m1u",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAbBRYHbPvhJ4uFwwkKexUW4W2K6wxq5mT6fPMk_UTlp6mrxIzagrNRUQH58iM0m1u",
+   "claimedNames": [
+    "TCL超极玩家"
+   ],
+   "claimedDouyinId": "tclstory",
+   "claimedRoomId": null,
+   "claimSource": "R099 CSV + PR#20 config/r097-candidate-probe.json",
+   "sourceURL": "https://www.douyin.com/shipin/7345897486759987250",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  },
+  {
+   "key": "R099-52",
+   "secUid": "MS4wLjABAAAAolhttgG5QR7axSVVaoTHVSYQ4UnysUJx2d-Lj_E-rPB_-R-u5GAd7kJmVRduTcmc",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAolhttgG5QR7axSVVaoTHVSYQ4UnysUJx2d-Lj_E-rPB_-R-u5GAd7kJmVRduTcmc",
+   "claimedNames": [
+    "TCL数码旗舰店"
+   ],
+   "claimedDouyinId": null,
+   "claimedRoomId": null,
+   "claimSource": "R099 CSV",
+   "sourceURL": "https://www.douyin.com/shipin/7345897486759987250",
+   "scoringEligible": false,
+   "ownershipVerified": false
+  }
+ ]
+}
