@@ -1,0 +1,38 @@
+name: R1.5 Tmall single-store 15m session diary (offline only)
+on:
+  push:
+    branches:
+      - feat/r15-tmall-first-session-log-15min
+  pull_request:
+    paths:
+      - probes/lib/r15-session-diary.mjs
+      - probes/r15-build-diary.mjs
+      - tests/r15-session-diary.test.mjs
+      - docs/R1.5-Tmall-First-15min-Session-Diary.md
+      - .github/workflows/r15-tmall-diary-offline.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Existing and R1.5 offline tests
+        run: node --test tests/*.test.mjs
+      - name: Generate evidence-based mobile diary, without contacting Taobao
+        run: node probes/r15-build-diary.mjs --input docs/evidence/r12-tmall-tcl-group-archived-samples.json --output-dir r15-preview
+      - name: Assert archived observation does not become current LIVE
+        run: |
+          node --input-type=module -e "import fs from 'node:fs';const s=JSON.parse(fs.readFileSync('r15-preview/diary.json','utf8'));if(s.latestStatus!=='UNKNOWN'||s.retainedObservations!==8||s.validStateObservations!==5||s.liveSourceConnected!==false)process.exit(1);console.log('Archive-only report: current UNKNOWN, 8 observations, 5 valid, no platform access')"
+      - name: Upload HTML, CSV and JSON diary
+        uses: actions/upload-artifact@v4
+        with:
+          name: r15-tmall-first-15min-observation-diary
+          path: r15-preview/
+          retention-days: 14
+          if-no-files-found: error
