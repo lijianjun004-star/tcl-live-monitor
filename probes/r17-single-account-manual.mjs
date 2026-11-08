@@ -8,7 +8,6 @@
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {chromium} from 'playwright';
 import {FIRST_TARGET} from './lib/r12-tmall-first.mjs';
 import {LIVE_PAGE,LIVE_DETAIL_HOST,LIVE_DETAIL_PATH,parseJSONOrJSONP} from './lib/tmall.mjs';
 import {candidateFromLiveDetail,reduceAccountSessions} from './lib/r17-session-follow.mjs';
@@ -44,6 +43,7 @@ let newest=EMPTY(),access={mode:manual?'MANUAL_PUBLIC_BROWSER':'OFFLINE_NO_PAGE'
  pageHttp:null,passiveResponses:0,eligibleResponses:0,
  visitAttempted:false,sourceConnected:false,challengeDetected:false};
 if(manual){
+ const {chromium}=await import('playwright');
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try {
   const context=await browser.newContext({locale:'zh-CN',viewport:{width:390,height:844}});
