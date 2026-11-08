@@ -1,0 +1,39 @@
+name: R1.7 Tmall account-follow session gates (OFFLINE)
+# Safe CI only: never opens Taobao or schedules checks.
+on:
+  push:
+    branches:
+      - feat/r17-tmall-account-session-follow
+  pull_request:
+    paths:
+      - probes/lib/r17-session-follow.mjs
+      - probes/r17-single-account-manual.mjs
+      - tests/r17-session-follow.test.mjs
+      - docs/R1.7-Account-Follow-Session-Discovery.md
+      - .github/workflows/r17-session-follow-offline.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  account-follow-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full Node regression
+        run: node --test tests/*.test.mjs
+      - name: Run safe no-source CLI (zero public-page requests)
+        run: node probes/r17-single-account-manual.mjs --out-dir r17-offline
+      - name: Require UNKNOWN without real passive evidence
+        run: |
+          node --input-type=module -e "import fs from 'node:fs';const a=JSON.parse(fs.readFileSync('r17-offline/report.json','utf8'));const b=JSON.parse(fs.readFileSync('r17-offline/state.json','utf8'));if(a.currentState!=='UNKNOWN'||a.realDataObtained!==false||a.access.visitAttempted!==false||b.observations.length!==1||b.observations[0].state!=='UNKNOWN'||a.sessions.length)process.exit(1);console.log('No-source fails closed as UNKNOWN; no session invented');"
+      - name: Upload source-free audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: r17-account-follow-no-source
+          path: r17-offline/
+          retention-days: 14
+          if-no-files-found: error
