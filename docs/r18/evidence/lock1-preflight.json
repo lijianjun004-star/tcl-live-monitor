@@ -1,0 +1,32 @@
+{
+  "task_id": "TCL-R18-LOCK1-20261108",
+  "checked_at": "2026-11-08T12:08:51.771075+00:00",
+  "source_commit": "baea05b14858355cba32f17a04ebf323ad935e88",
+  "authorized_scope": "one normal user-owned logged-in browser check of account/liveId, no merge/deploy/cron",
+  "environment_id": "ccarenv_b64_Y2NhcmVudl8yOTk2MWRhYWI2MDg4MTkxODlmZGU4YWQ2YzBhNjQzOQ",
+  "environment_connected": true,
+  "network_policy": "enforced/unrestricted",
+  "remote_desktop": {
+    "enabled": true,
+    "state": "unknown"
+  },
+  "missing_tools": [
+    "Browser js",
+    "cua_repl.js",
+    "open_in_codex"
+  ],
+  "system_chromium_present": true,
+  "display_available": false,
+  "browser_profiles": {
+    "matching_name_present": true,
+    "confirmed_taobao_signed_in": false,
+    "note": "Empty signed_in_sites is not proof that an existing session is valid or invalid; no session was accessed."
+  },
+  "external_metered_browser_started": false,
+  "platform_requests_this_step": 0,
+  "cookie_or_password_read": false,
+  "logged_in_check": "NOT_EXECUTED",
+  "liveId_verification": "NOT_EXECUTED",
+  "gate": "BLOCKED_BROWSER_CONTROL_AND_UNCONFIRMED_LOGIN",
+  "next_action": "User opens this thread Desktop, completes normal sign-in, returns control; refresh tools and inspect the same page before one check."
+}

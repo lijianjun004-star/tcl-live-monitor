@@ -1,3 +1,13 @@
 node_modules/
 probe-report.json
 probe-summary.md
+
+# R1.8 runtime state and browser credentials stay outside version control.
+.r18-runtime/
+r18-output/
+**/.r18-profiles/
+**/browser-profile/
+**/storage-state*.json
+**/cookies*.json
+**/*.sqlite-wal
+**/*.sqlite-shm

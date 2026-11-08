@@ -1,0 +1,170 @@
+{
+  "repository": "floomhq/openbrowser",
+  "checked_at": "2026-11-08T11:46:20.927429+00:00",
+  "sources": {
+    "metadata": {
+      "url": "https://api.github.com/repos/floomhq/openbrowser",
+      "result": {
+        "full_name": "floomhq/openbrowser",
+        "default_branch": "main",
+        "pushed_at": "2026-07-02T18:47:47Z",
+        "license": {
+          "key": "mit",
+          "name": "MIT License",
+          "spdx_id": "MIT",
+          "url": "https://api.github.com/licenses/mit",
+          "node_id": "MDc6TGljZW5zZTEz"
+        },
+        "html_url": "https://github.com/floomhq/openbrowser",
+        "archived": false
+      }
+    },
+    "license": {
+      "url": "https://api.github.com/repos/floomhq/openbrowser/license",
+      "result": {
+        "path": "LICENSE",
+        "sha": "6a35f31b1b7ffef440b620b6573f3710d92b7760",
+        "html_url": "https://github.com/floomhq/openbrowser/blob/main/LICENSE",
+        "text": "MIT License\n\nCopyright (c) 2026 OpenBrowser Broker contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
+      }
+    },
+    "readme": {
+      "url": "https://api.github.com/repos/floomhq/openbrowser/readme",
+      "result": {
+        "path": "README.md",
+        "sha": "5a6058d18e1fddba965bd7402558886bb765de74",
+        "html_url": "https://github.com/floomhq/openbrowser/blob/main/README.md",
+        "text": "# OpenBrowser\n\n[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)\n[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](pyproject.toml)\n[![MCP](https://img.shields.io/badge/MCP-ready-black.svg)](docs/browser-routing.md)\n[![Remote API](https://img.shields.io/badge/API-remote%20browser%20control-purple.svg)](docs/openbrowser-api.md)\n\n[Website](https://browser.floom.dev) · [API docs](docs/openbrowser-api.md) · [Browser routing](docs/browser-routing.md)\n\nOpenBrowser is browser infrastructure for AI agents: isolated Chrome sessions, persistent profiles, proxy-aware identities, human login handoff, a remote API, and MCP tools.\n\nIt lets Claude, Codex, Cursor, browser-use, OpenBrowser-style agents, and custom workers share real Chrome browsers without fighting over one CDP port. Agents lease a browser, use a named profile when account state is needed, route selected identities through proxies, hand login challenges to a human, and leave behind telemetry plus issue reports that can be audited later.\n\n![OpenBrowser architecture](docs/assets/openbrowser-architecture.svg)\n\n```mermaid\nflowchart LR\n  Agent[\"Agent\\nClaude / Codex / Cursor / worker\"] --> Client[\"MCP or API client\"]\n  Client --> Broker[\"OpenBrowser Broker\"]\n  Broker --> Lease[\"Lease manager\"]\n  Broker --> Profiles[\"Profile + identity manager\"]\n  Broker --> Proxy[\"Proxy router\"]\n  Broker --> Observability[\"Telemetry + feedback + audit\"]\n  Lease --> Pool[\"Chrome pool\"]\n  Profiles --> Pool\n  Proxy --> Pool\n  Pool --> Slots[\"pool-a ... pool-N\\nisolated CDP sessions\"]\n```\n\n## Why\n\nMost browser agents break in the same ways:\n\n- several agents connect to the same Chrome instance and block each other\n- logged-in sessions are tied to one fragile browser profile\n- passwords and 2FA prompts become unsafe chat messages\n- rich-text apps such as Slack, Discord, Notion, Linear, and X ignore DOM fill calls\n- failures vanish into logs, so the next agent repeats the same mistake\n\nOpenBrowser gives agents one operating contract: lease, act, release, report.\n\n## Features\n\n- **Browser pool**: multiple isolated Chrome slots with CDP endpoints managed behind one broker.\n- **Persistent profiles**: named identities reuse Chrome profile directories and session cookies.\n- **Profile replicas**: selected identities can run in parallel without Chrome profile-lock conflicts.\n- **Fast QA routing**: pair OpenBrowser with disposable browser tools for public-page checks that do not need account state.\n- **Proxy routing**: identities can pin traffic to an HTTP/SOCKS proxy via `proxy_ref`.\n- **Remote API**: bearer-token protected `/openbrowser/v1` API for agents on any machine.\n- **MCP servers**: local MCP for same-host agents and remote MCP for HTTPS-backed access.\n- **Human auth handoff**: one-time portal links for login, 2FA, passkeys, and manual challenges.\n- **Take Over Tab**: short-lived takeover links for a browser tab already held by an agent.\n- **Rich-text keyboard tools**: real keyboard events for editors that reject simple DOM value changes.\n- **Telemetry and issues**: sanitized events, feedback issue tracking, and usage audits.\n- **browser-use and OpenBrowser adapters**: wrappers lease a slot, run the tool, then release the slot.\n\n## Use Cases\n\n| Use case | OpenBrowser gives you |\n| --- | --- |\n| Remote browser automation | HTTPS API and remote MCP for agents running on other machines. |\n| Logged-in workflows | Named Chrome identities with persisted profile state. |\n| Multi-agent work | Lease isolation so parallel agents do not steal each other's tabs. |\n| Account-specific routing | Per-identity proxy refs, locale, timezone, and profile policy. |\n| Human-in-the-loop auth | One-time portal links for passwords, 2FA, passkeys, and manual checks. |\n| Debuggable automation | Sanitized telemetry, native feedback issues, and session-log audits. |\n\n## Architecture\n\n```mermaid\nsequenceDiagram\n  participant A as Agent\n  participant B as OpenBrowser Broker\n  participant C as Chrome slot\n  participant H as Human auth portal\n  A->>B: lease(owner, identity_id?)\n  B->>C: reserve isolated Chrome session\n  B-->>A: lease_id\n  A->>B: navigate / click / type / screenshot\n  B->>C: browser action over CDP\n  C-->>B: page state\n  B-->>A: snapshot or result\n  alt login or challenge required\n    A->>B: auth_request\n    B-->>H: one-time portal URL\n    H->>C: human completes login\n  end\n  A->>B: release(lease_id)\n  B->>B: telemetry + feedback + audit trail\n```\n\n## Quick Start\n\n### Python\n\n```bash\ngit clone https://github.com/floomhq/openbrowser.git\ncd openbrowser\npython3 -m venv .venv\n. .venv/bin/activate\npip install -e .\nplaywright install chromium\ncp .env.example .env\ncp config/identities.example.json config/identities.local.json\n```\n\nStart the broker:\n\n```bash\nopenbrowser-broker\n```\n\n### Docker\n\n```bash\ngit clone https://github.com/floomhq/openbrowser.git\ncd openbrowser\nOPENBROWSER_API_KEYS=\"$(openssl rand -base64 48)\" docker compose up --build\n```\n\nLease a browser:\n\n```bash\ncurl -fsS http://127.0.0.1:8767/lease \\\n  -H \"content-type: application/json\" \\\n  -d '{\"owner\":\"demo\",\"ttl_seconds\":300}'\n```\n\nUse the returned `lease_id`:\n\n```bash\ncurl -fsS http://127.0.0.1:8767/browser/navigate \\\n  -H \"content-type: application/json\" \\\n  -d '{\"lease_id\":\"<lease_id>\",\"url\":\"https://example.com\"}'\n\ncurl -fsS http://127.0.0.1:8767/browser/snapshot \\\n  -H \"content-type: application/json\" \\\n  -d '{\"lease_id\":\"<lease_id>\"}'\n\ncurl -fsS -X POST http://127.0.0.1:8767/release/<lease_id>\n```\n\n## Remote API\n\nExpose the broker behind your HTTPS proxy or tunnel and configure:\n\n```bash\nOPENBROWSER_API_KEYS=\"your-long-random-api-key\"\nOPENBROWSER_PUBLIC_OPENBROWSER_BASE_URL=\"https://browser.example.com/openbrowser/v1\"\n```\n\nThen call:\n\n```bash\nBASE=https://browser.example.com/openbrowser/v1\nKEY=your-long-random-api-key\n\ncurl -fsS \"$BASE/docs\" \\\n  -H \"authorization: Bearer $KEY\" \\\n  -H \"user-agent: openbrowser-client/1.0\"\n```\n\nThe API covers leases, navigation, snapshots, screenshots, clicks, typing, keyboard events, tabs, auth handoff, Take Over Tab, profiles, feedback issues, telemetry, and audits.\n\n```mermaid\nflowchart TD\n  RemoteAgent[\"Remote agent\"] -->|Bearer token| API[\"/openbrowser/v1\"]\n  API --> Lease[\"POST /leases\"]\n  API --> Browser[\"POST /browser/*\"]\n  API --> Auth[\"POST /auth/request\"]\n  API --> Issues[\"POST /feedback/issues\"]\n  API --> Audit[\"GET /audit\"]\n```\n\n## MCP\n\nLocal MCP, for agents running on the broker host:\n\n```json\n{\n  \"mcpServers\": {\n    \"openbrowser-broker\": {\n      \"command\": \"openbrowser-mcp\"\n    }\n  }\n}\n```\n\nRemote MCP, for agents running anywhere:\n\n```json\n{\n  \"mcpServers\": {\n    \"openbrowser-remote\": {\n      \"command\": \"openbrowser-remote-mcp\",\n      \"env\": {\n        \"OPENBROWSER_API_KEY\": \"<OPENBROWSER_API_KEY>\",\n        \"OPENBROWSER_BASE_URL\": \"https://browser.example.com/openbrowser/v1\"\n      }\n    }\n  }\n}\n```\n\nCore MCP tools:\n\n- `browser_lease`, `browser_release`, `browser_heartbeat`\n- `browser_navigate`, `browser_snapshot`, `browser_screenshot`\n- `browser_click`, `browser_type`, `browser_keyboard_type`, `browser_keyboard_press`\n- `browser_tabs`, `browser_new_tab`, `browser_switch_tab`, `browser_wait`\n- `auth_request`, `auth_status`, `takeover_request` (`lease_control_request` remains as a compatibility alias)\n- `feedback_report_issue`, `feedback_list_issues`, `feedback_update_issue`\n- `telemetry_record_event`, `telemetry_list_events`, `telemetry_summary`\n- `broker_audit`, `broker_docs`, `profile_status`\n\n## Persistent Profiles\n\nIdentities are configured in `config/identities.local.json`:\n\n```json\n{\n  \"identities\": {\n    \"work-main\": {\n      \"label\": \"Work account\",\n      \"site\": \"example.com\",\n      \"slot\": \"auto\",\n      \"profile_dir\": \"/var/lib/openbrowser-broker/profiles/work-main\",\n      \"proxy_ref\": \"residential:work-main\",\n      \"timezone\": \"America/New_York\",\n      \"lang\": \"en-US\",\n      \"policy\": {\n        \"max_parallel_sessions\": 1,\n        \"requires_human_auth\": true\n      }\n    }\n  }\n}\n```\n\nWhen an identity needs login:\n\n```bash\ncurl -fsS \"$BASE/auth/request\" \\\n  -H \"authorization: Bearer $KEY\" \\\n  -H \"content-type: application/json\" \\\n  -d '{\"owner\":\"setup\",\"identity_id\":\"work-main\",\"url\":\"https://example.com/login\",\"reason\":\"initial_login\"}'\n```\n\nOpen the returned `portal_url`, complete login in the browser view, then mark the request complete. Future leases for that identity reuse the saved profile state.\n\nTake Over Tab links under `/auth/lease-control/<token>` are for non-credential current-tab control only. Login, password, passkey, 2FA, SSO, and provider-auth handoffs use `/auth/<token>` from `auth_request`; takeover and legacy lease-control requests refuse auth-sensitive current tabs.\n\nFor parallel work, set `policy.max_parallel_sessions` above `1`. OpenBrowser then seeds per-slot replicas instead of starting multiple Chrome processes against one profile directory. That matters: several windows in a desktop Chrome profile are one Chrome process, but several server-side agents are independent Chrome processes. Directly sharing the same `profile_dir` across those processes risks Chrome singleton-lock failures and profile database corruption.\n\n```mermaid\nflowchart LR\n  Identity[\"identity_id=work-main\"] --> Profile[\"Chrome profile dir\"]\n  Identity --> Policy[\"parallel-session policy\"]\n  Identity --> ProxyRef[\"optional proxy_ref\"]\n  ProxyRef --> Forwarder[\"local proxy forwarder\"]\n  Profile --> Chrome[\"leased Chrome slot\"]\n  Forwarder --> Chrome\n```\n\n## Proxy Routing\n\nAdd proxy credentials in `secrets/proxies.json`:\n\n```json\n{\n  \"proxies\": {\n    \"residential:work-main\": {\n      \"scheme\": \"http\",\n      \"host\": \"proxy.example.net\",\n      \"port\": 12345,\n      \"username\": \"user\",\n      \"password\": \"pass\"\n    }\n  }\n}\n```\n\nThen set `\"proxy_ref\": \"residential:work-main\"` on the identity. The broker starts a local proxy forwarder and launches Chrome with the matching proxy for that profile.\n\n## Safety Model\n\n- Raw cookies, passwords, tokens, proxy credentials, and VNC passwords are never returned by tools.\n- Telemetry redacts sensitive keys and secret-shaped strings.\n- Browser typing telemetry stores text length, not typed text.\n- Login and challenge handling use human handoff portals instead of secrets in chat.\n- CAPTCHA solving and ban-circumvention automation are outside the project boundary.\n\n## What This Is Not\n\n- Not a CAPTCHA solver.\n- Not a token extractor.\n- Not a shared global Chrome tab for every agent.\n- Not a scraping bypass toolkit.\n- Not a replacement for product APIs when a stable API exists.\n\n## Operations\n\n```bash\nopenbrowser-audit --json\nopenbrowser-use --json open https://example.com\nopenbrowser status\nopenbrowser docs quickstart\n```\n\nSystemd examples live in `systemd/`. Detailed runbooks live in `docs/`.\n\n## Development\n\n```bash\npython3 -m compileall ax_browser_broker tests\npytest -q\n```\n\n## Project Status\n\nOpenBrowser is an alpha public release of production-oriented browser infrastructure. The core lease manager, profile identities, remote API, MCP surfaces, human auth handoff, telemetry, feedback issues, audits, and adapter wrappers are covered by tests. New deployments can use the generic commands and environment variables above; legacy `ax-*` command wrappers remain for existing installations.\n\n## License\n\nMIT\n"
+      }
+    }
+  },
+  "revision": {
+    "sha": "5680ac6fbe1334a20d87a02d1087c95fc3e20a9c",
+    "url": "https://github.com/floomhq/openbrowser/commit/5680ac6fbe1334a20d87a02d1087c95fc3e20a9c",
+    "tree_sha": "91ac824496af8c6eaa95a7dd80706f2499601789"
+  },
+  "architecture_paths": [
+    "LICENSE",
+    "ax_browser_broker",
+    "ax_browser_broker/__init__.py",
+    "ax_browser_broker/adapters.py",
+    "ax_browser_broker/api.py",
+    "ax_browser_broker/audit.py",
+    "ax_browser_broker/auth.py",
+    "ax_browser_broker/browser.py",
+    "ax_browser_broker/browser_pool",
+    "ax_browser_broker/browser_pool/bin",
+    "ax_browser_broker/browser_pool/bin/launch_chrome.sh",
+    "ax_browser_broker/browser_pool/bin/supervisor.sh",
+    "ax_browser_broker/cli.py",
+    "ax_browser_broker/config.py",
+    "ax_browser_broker/docs.py",
+    "ax_browser_broker/feedback.py",
+    "ax_browser_broker/identities.py",
+    "ax_browser_broker/iproyal.py",
+    "ax_browser_broker/lease_control.py",
+    "ax_browser_broker/mac_chrome.py",
+    "ax_browser_broker/mac_tunnel.py",
+    "ax_browser_broker/mcp_server.py",
+    "ax_browser_broker/pool.py",
+    "ax_browser_broker/profiles.py",
+    "ax_browser_broker/proxy_forwarder.py",
+    "ax_browser_broker/remote_mcp_server.py",
+    "ax_browser_broker/static",
+    "ax_browser_broker/static/brand",
+    "ax_browser_broker/static/brand/logo",
+    "ax_browser_broker/static/brand/logo/full",
+    "ax_browser_broker/static/brand/logo/full/openbrowser-logo.svg",
+    "ax_browser_broker/static/brand/logo/inverse",
+    "ax_browser_broker/static/brand/logo/inverse/openbrowser-logo-white.svg",
+    "ax_browser_broker/static/brand/logo/mark",
+    "ax_browser_broker/static/brand/logo/mark/openbrowser-favicon.ico",
+    "ax_browser_broker/static/brand/logo/mark/openbrowser-mark.svg",
+    "ax_browser_broker/static/brand/tokens",
+    "ax_browser_broker/static/brand/tokens/openbrowser.tokens.json",
+    "ax_browser_broker/telemetry.py",
+    "bin/ax-browser-audit",
+    "bin/ax-browser-broker",
+    "bin/ax-browser-identity",
+    "bin/ax-browser-lease",
+    "bin/ax-browser-mcp",
+    "bin/ax-browser-use",
+    "bin/ax-mac-profile-autosync",
+    "bin/ax-mac-profile-sync",
+    "bin/ax-openbrowser",
+    "bin/ax-openbrowser-remote-mcp",
+    "bin/openbrowser",
+    "bin/openbrowser-mcp",
+    "bin/openbrowser-remote-mcp",
+    "bin/openbrowser-use",
+    "browser_pool",
+    "browser_pool/bin",
+    "browser_pool/bin/launch_chrome.sh",
+    "browser_pool/bin/supervisor.sh",
+    "docs/assets/brand/openbrowser-hero-reference.png",
+    "docs/assets/brand/openbrowser-logo.png",
+    "docs/assets/brand/openbrowser.tokens.json",
+    "docs/assets/openbrowser-architecture.svg",
+    "docs/brand/OPENBROWSER_AGENT_BRIEF.md",
+    "docs/brand/OPENBROWSER_BRAND_SYSTEM.md",
+    "docs/brand/OPENBROWSER_LANDING_PAGE_SPEC.md",
+    "docs/brand/OPENBROWSER_PRODUCT_SPEC.md",
+    "docs/brand/OPENBROWSER_WEB_APP_SPEC.md",
+    "docs/browser-routing.md",
+    "docs/mac-chrome-profiles.md",
+    "docs/openbrowser-api.md",
+    "site/public/assets/brand/openbrowser-logo-white.svg",
+    "site/public/assets/brand/openbrowser-logo.svg",
+    "site/public/assets/brand/openbrowser-mark.svg",
+    "systemd/ax-browser-broker.service",
+    "systemd/ax-mac-profile-autosync.service",
+    "systemd/ax-mac-profile-autosync.timer",
+    "tests/test_audit.py",
+    "tests/test_browser.py",
+    "tests/test_profiles.py"
+  ],
+  "static_reviews": [
+    {
+      "path": "ax_browser_broker/profiles.py",
+      "url": "https://raw.githubusercontent.com/floomhq/openbrowser/5680ac6fbe1334a20d87a02d1087c95fc3e20a9c/ax_browser_broker/profiles.py",
+      "sha256": "c6c80cedc26873ac6594b710d7d2f8177a1ed314954eceed924caab5dae5f6e2",
+      "bytes_read": 4934,
+      "symbols": [
+        "_rsync_profile",
+        "snapshot_golden",
+        "seed_slot",
+        "seed_identity",
+        "profile_status"
+      ],
+      "inspected_only": true
+    },
+    {
+      "path": "ax_browser_broker/audit.py",
+      "url": "https://raw.githubusercontent.com/floomhq/openbrowser/5680ac6fbe1334a20d87a02d1087c95fc3e20a9c/ax_browser_broker/audit.py",
+      "sha256": "3798a8e96fd64001cfe538bceb7296d86520457797933e2af69fb5897e0bc8b0",
+      "bytes_read": 21057,
+      "symbols": [
+        "_hit_fingerprint",
+        "_read_json",
+        "_read_jsonl",
+        "_baseline_fingerprints",
+        "_write_baseline",
+        "_iter_session_files",
+        "_line_text",
+        "_scan_session_logs",
+        "_telemetry_events",
+        "_issues",
+        "_issue_terms",
+        "_issue_log_context",
+        "_scan_issue_log_contexts",
+        "_issue_log_contexts",
+        "_merge_issue_contexts",
+        "_active_leases",
+        "run_audit",
+        "baseline_current_raw_cdp",
+        "main"
+      ],
+      "inspected_only": true
+    }
+  ]
+}

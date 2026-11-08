@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createCheck, hourlySlot, nextEligibleAt } from '../probes/r18/core/scheduler.mjs';
+import { reduceSessions } from '../probes/r18/core/sessions.mjs';
+import { normalizeObservation } from '../probes/r18/schema.mjs';
+import { classifyAccess, publicUrlSummary, resolveProfilePath, safeBrowserCheck } from '../probes/r18/browser/session.mjs';
+const at=n=>`2026-11-08T${String(8+n).padStart(2,'0')}:04:00.000Z`;
+const obs=(n=0,extra={})=>normalizeObservation({platform:'tmall',account_id:'2050532947',state:'LIVE',live_id:'102030405060',room_id:'130742',source_attested:true,source_type:'test_fixture',planned_check_at:at(n),actual_check_at:at(n),...extra});
+
+test('R18 new liveId replaces old session with observed interval',()=>{const s=reduceSessions(reduceSessions([],obs()),obs(1,{live_id:'102030405061'}));assert.equal(s.length,2);assert.equal(s[0].status,'REPLACED_BY_NEW_LIVE_ID');assert.deepEqual(s[0].end_window,{after:at(0),on_or_before:at(1)});assert.equal(s[1].status,'OPEN');});
+test('R18 same liveId room change stays one session',()=>{const s=reduceSessions(reduceSessions([],obs()),obs(1,{room_id:'777777'}));assert.equal(s.length,1);assert.equal(s[0].room_id,'777777');assert.equal(s[0].last_seen_live_at,at(1));});
+test('R18 two valid OFFLINE observations confirm CLOSED',()=>{let s=reduceSessions([],obs());s=reduceSessions(s,obs(1,{state:'OFFLINE',live_id:null}));assert.equal(s[0].status,'OPEN');s=reduceSessions(s,obs(2,{state:'OFFLINE',live_id:null}));assert.equal(s[0].status,'CLOSED');assert.equal(s[0].end_window.on_or_before,at(1));});
+test('R18 UNKNOWN interrupts OFFLINE confirmation',()=>{let s=reduceSessions([],obs());for(const [n,state] of [[1,'OFFLINE'],[2,'UNKNOWN'],[3,'OFFLINE']])s=reduceSessions(s,obs(n,{state}));assert.equal(s[0].status,'OPEN');assert.equal(s[0].offline_streak,1);});
+test('R18 new liveId after UNKNOWN still creates new session',()=>{let s=reduceSessions([],obs());s=reduceSessions(s,obs(1,{state:'UNKNOWN'}));s=reduceSessions(s,obs(2,{live_id:'102030405061'}));assert.equal(s.length,2);assert.equal(s[0].end_window.after,at(0));assert.equal(s[0].exact_start_end,false);});
+test('R18 auto slot dedupes while preserving actual lag',()=>{const a=createCheck({mode:'hourly',actual_check_at:at(0)}),b=createCheck({mode:'hourly',actual_check_at:'2026-11-08T08:19:00Z'});assert.equal(a.check_id,b.check_id);assert.equal(a.planned_check_at,'2026-11-08T08:00:00.000Z');assert.notEqual(a.planned_check_at,a.actual_check_at);assert.equal(hourlySlot('2026-11-08T16:59:59+08:00'),a.planned_check_at);});
+test('R18 repeated manual checks stay separate; exact request retry dedupes',()=>{const a=createCheck({actual_check_at:at(0)}),b=createCheck({actual_check_at:at(0)});assert.notEqual(a.check_id,b.check_id);assert.equal(createCheck({request_id:'same',actual_check_at:at(0)}).check_id,createCheck({request_id:'same',actual_check_at:at(1)}).check_id);});
+test('R18 cooldown next eligible defaults 60 minutes',()=>assert.equal(nextEligibleAt(at(0)),at(1)));
+test('R18 browser challenges and expired login are distinct blockers',()=>{assert.equal(classifyAccess({status:403,text:'OFFLINE'}),'HUMAN_VERIFICATION_REQUIRED');assert.equal(classifyAccess({text:'session expired'}),'AUTH_REQUIRED');assert.equal(classifyAccess({status:429}),'PLATFORM_THROTTLED');});
+test('R18 audit URL strips credentials paths and query',()=>assert.deepEqual(publicUrlSummary('https://u:p@h5.m.taobao.com/private?token=synthetic'),{protocol:'https:',hostname:'h5.m.taobao.com'}));
+test('R18 profile inside repository is rejected',()=>assert.throws(()=>resolveProfilePath(new URL('../private-profile',import.meta.url).pathname),/PROFILE_INSIDE_REPOSITORY/));
+test('R18 browser refuses unapproved entry without navigation',async()=>{const o=await safeBrowserCheck({url:'https://example.com/'});assert.equal(o.state,'UNKNOWN');assert.equal(o.failure_code,'INVALID_PUBLIC_ENTRY');});

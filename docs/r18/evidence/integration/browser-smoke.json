@@ -1,0 +1,33 @@
+{
+  "experiment": "R1.8",
+  "generated_at": "2026-11-08T11:50:38.975Z",
+  "store": "TCL集团官方旗舰店",
+  "exact_start_end_time": false,
+  "observations": [
+    {
+      "schema_version": 1,
+      "platform": "tmall",
+      "store_key": "tmall:accountId:2050532947",
+      "account_id": "2050532947",
+      "room_id": null,
+      "live_id": null,
+      "state": "UNKNOWN",
+      "planned_check_at": "2026-11-08T11:50:38.967Z",
+      "actual_check_at": "2026-11-08T11:50:38.967Z",
+      "observed_at": "2026-11-08T11:50:38.967Z",
+      "source_type": "normal_persistent_browser",
+      "source_attested": false,
+      "failure_code": "BROWSER_DEPENDENCY_UNAVAILABLE",
+      "evidence_ref": "ea6a4f47ded99836b587be887221610c73a5e669358fe036a290371c0993ac5a",
+      "exact_start_end": false,
+      "exact_start_end_time": false,
+      "observation_id": "ea6a4f47ded99836b587be887221610c73a5e669358fe036a290371c0993ac5a"
+    }
+  ],
+  "sessions": [],
+  "current_sessions": [],
+  "warning": "实验观测；UNKNOWN 不等于停播。上下播时间仅为观测窗口，非平台精确时间。",
+  "check_id": "ea6a4f47ded99836b587be887221610c73a5e669358fe036a290371c0993ac5a",
+  "duplicate": false,
+  "next_eligible_at": "2026-11-08T12:50:38.967Z"
+}

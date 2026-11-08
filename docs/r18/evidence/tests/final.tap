@@ -1,0 +1,1792 @@
+TAP version 13
+# Subtest: tmall targets: numeric IDs, unique, only the user-confirmed shop is scoring-eligible
+ok 1 - tmall targets: numeric IDs, unique, only the user-confirmed shop is scoring-eligible
+  ---
+  duration_ms: 0.866111
+  type: 'test'
+  ...
+# Subtest: tmall targets exclude IDs refuted by reverse identity check (run 42052553183)
+ok 2 - tmall targets exclude IDs refuted by reverse identity check (run 42052553183)
+  ---
+  duration_ms: 0.166911
+  type: 'test'
+  ...
+# Subtest: douyin targets: unique 抖音号 and secUid; added scope never scores by default
+ok 3 - douyin targets: unique 抖音号 and secUid; added scope never scores by default
+  ---
+  duration_ms: 0.927232
+  type: 'test'
+  ...
+# Subtest: R05: pagination has_more=true forbids complete catalog
+ok 4 - R05: pagination has_more=true forbids complete catalog
+  ---
+  duration_ms: 1.360824
+  type: 'test'
+  ...
+# Subtest: R05: pagination next_cursor forbids complete catalog
+ok 5 - R05: pagination next_cursor forbids complete catalog
+  ---
+  duration_ms: 0.14625
+  type: 'test'
+  ...
+# Subtest: R05: inconsistent declared total is not complete
+ok 6 - R05: inconsistent declared total is not complete
+  ---
+  duration_ms: 0.125038
+  type: 'test'
+  ...
+# Subtest: R05: reject nonexistent Beijing calendar dates
+ok 7 - R05: reject nonexistent Beijing calendar dates
+  ---
+  duration_ms: 0.762846
+  type: 'test'
+  ...
+# Subtest: R05: same numeric id from Douyin cannot masquerade as JD heartbeat
+ok 8 - R05: same numeric id from Douyin cannot masquerade as JD heartbeat
+  ---
+  duration_ms: 0.284087
+  type: 'test'
+  ...
+# Subtest: R05: duplicate conflicting JD heartbeats never silently choose a winner
+ok 9 - R05: duplicate conflicting JD heartbeats never silently choose a winner
+  ---
+  duration_ms: 0.208934
+  type: 'test'
+  ...
+# Subtest: R05: stable numeric room shard assignment
+ok 10 - R05: stable numeric room shard assignment
+  ---
+  duration_ms: 0.200901
+  type: 'test'
+  ...
+# Subtest: R05: sharded poll reports subset, never asserts global completion
+ok 11 - R05: sharded poll reports subset, never asserts global completion
+  ---
+  duration_ms: 16.576653
+  type: 'test'
+  ...
+# Subtest: R05: shard inputs must have integer and bounded ranges
+ok 12 - R05: shard inputs must have integer and bounded ranges
+  ---
+  duration_ms: 0.320751
+  type: 'test'
+  ...
+# Subtest: R05: source unavailability can never create a replacement snapshot
+ok 13 - R05: source unavailability can never create a replacement snapshot
+  ---
+  duration_ms: 0.290647
+  type: 'test'
+  ...
+# Subtest: R05: partial failures preserve previously valid minute counts, safely
+ok 14 - R05: partial failures preserve previously valid minute counts, safely
+  ---
+  duration_ms: 0.299109
+  type: 'test'
+  ...
+# Subtest: R05: clock regression cannot roll back previous snapshot
+ok 15 - R05: clock regression cannot roll back previous snapshot
+  ---
+  duration_ms: 0.165699
+  type: 'test'
+  ...
+# Subtest: R05: bounded streaming response rejects unannounced oversized JSON body
+ok 16 - R05: bounded streaming response rejects unannounced oversized JSON body
+  ---
+  duration_ms: 4.891766
+  type: 'test'
+  ...
+# Subtest: R05: previous evidence file must survive a failed catalog request
+ok 17 - R05: previous evidence file must survive a failed catalog request
+  ---
+  duration_ms: 97.531955
+  type: 'test'
+  ...
+# Subtest: R05: 65 synthetic JD rooms partition into seven disjoint bounded scans
+ok 18 - R05: 65 synthetic JD rooms partition into seven disjoint bounded scans
+  ---
+  duration_ms: 7.540444
+  type: 'test'
+  ...
+# Subtest: R05: unrecognized or conflicting heartbeat structure gives explicit UNKNOWN
+ok 19 - R05: unrecognized or conflicting heartbeat structure gives explicit UNKNOWN
+  ---
+  duration_ms: 0.330346
+  type: 'test'
+  ...
+# Subtest: R05: future day cannot inherit yesterday minute counts
+ok 20 - R05: future day cannot inherit yesterday minute counts
+  ---
+  duration_ms: 0.721553
+  type: 'test'
+  ...
+# Subtest: R05: if every room has API error, prior state remains unchanged
+ok 21 - R05: if every room has API error, prior state remains unchanged
+  ---
+  duration_ms: 0.100501
+  type: 'test'
+  ...
+# Subtest: R05: stream reads a normal small response correctly
+ok 22 - R05: stream reads a normal small response correctly
+  ---
+  duration_ms: 1.563067
+  type: 'test'
+  ...
+# Subtest: R05: a complete room list is not complete SHOP coverage when shops are unavailable
+ok 23 - R05: a complete room list is not complete SHOP coverage when shops are unavailable
+  ---
+  duration_ms: 1.322255
+  type: 'test'
+  ...
+# Subtest: R05: no verified shop-room identity join means full coverage remains unconfirmed
+ok 24 - R05: no verified shop-room identity join means full coverage remains unconfirmed
+  ---
+  duration_ms: 0.407792
+  type: 'test'
+  ...
+# Subtest: tmall: LIVE / OFFLINE(with evidence) / errors -> UNKNOWN
+ok 25 - tmall: LIVE / OFFLINE(with evidence) / errors -> UNKNOWN
+  ---
+  duration_ms: 1.372061
+  type: 'test'
+  ...
+# Subtest: douyin: two-page corroborated LIVE
+ok 26 - douyin: two-page corroborated LIVE
+  ---
+  duration_ms: 1.309226
+  type: 'test'
+  ...
+# Subtest: douyin: room id changed across sessions is discovered
+ok 27 - douyin: room id changed across sessions is discovered
+  ---
+  duration_ms: 0.720833
+  type: 'test'
+  ...
+# Subtest: douyin: no badge alone is UNKNOWN, never OFFLINE
+ok 28 - douyin: no badge alone is UNKNOWN, never OFFLINE
+  ---
+  duration_ms: 0.151177
+  type: 'test'
+  ...
+# Subtest: douyin: ended text + status 4 is only a candidate until rule validated
+ok 29 - douyin: ended text + status 4 is only a candidate until rule validated
+  ---
+  duration_ms: 0.328573
+  type: 'test'
+  ...
+# Subtest: douyin: challenge / identity mismatch -> UNKNOWN
+ok 30 - douyin: challenge / identity mismatch -> UNKNOWN
+  ---
+  duration_ms: 0.142694
+  type: 'test'
+  ...
+# Subtest: douyin: 抖音号 beyond excerpt is still found via full-page scan
+ok 31 - douyin: 抖音号 beyond excerpt is still found via full-page scan
+  ---
+  duration_ms: 0.175023
+  type: 'test'
+  ...
+# Subtest: R06: beijingDate is strictly YYYY-MM-DD even on small-icu where en-CA falls back to MM/DD/YYYY
+ok 32 - R06: beijingDate is strictly YYYY-MM-DD even on small-icu where en-CA falls back to MM/DD/YYYY
+  ---
+  duration_ms: 13.19804
+  type: 'test'
+  ...
+# Subtest: R06: all 12 Douyin targets in config/probe-targets.json pass both safe-network and matrix-evaluate validators
+ok 33 - R06: all 12 Douyin targets in config/probe-targets.json pass both safe-network and matrix-evaluate validators
+  ---
+  duration_ms: 4.745346
+  type: 'test'
+  ...
+# Subtest: R06: alphanumeric displayDouyinId (TCLkongtiao, FoxsineZN, wlhnumber1) and 8-digit IDs (14145381) are accepted
+ok 34 - R06: alphanumeric displayDouyinId (TCLkongtiao, FoxsineZN, wlhnumber1) and 8-digit IDs (14145381) are accepted
+  ---
+  duration_ms: 0.317376
+  type: 'test'
+  ...
+# Subtest: R06: evaluateDouyinMatrix strictly isolates scoringEligible=true KPI denominator from monitor-only accounts
+ok 35 - R06: evaluateDouyinMatrix strictly isolates scoringEligible=true KPI denominator from monitor-only accounts
+  ---
+  duration_ms: 1.735796
+  type: 'test'
+  ...
+# Subtest: R06: shared physical roomId across two Douyin accounts fails closed to UNKNOWN
+ok 36 - R06: shared physical roomId across two Douyin accounts fails closed to UNKNOWN
+  ---
+  duration_ms: 1.454404
+  type: 'test'
+  ...
+# Subtest: R06: profileIdentity accepts mobile share page title variant when displayDouyinId is corroborated
+ok 37 - R06: profileIdentity accepts mobile share page title variant when displayDouyinId is corroborated
+  ---
+  duration_ms: 0.475094
+  type: 'test'
+  ...
+# Subtest: R06: reconcileOpsDouyin preserves 10 unmapped ops rows and rejects unverified bindings
+ok 38 - R06: reconcileOpsDouyin preserves 10 unmapped ops rows and rejects unverified bindings
+  ---
+  duration_ms: 1.889172
+  type: 'test'
+  ...
+# Subtest: R0.7: real /api/shops bare array is parsed; output never carries anchor_name
+ok 39 - R0.7: real /api/shops bare array is parsed; output never carries anchor_name
+  ---
+  duration_ms: 7.482527
+  type: 'test'
+  ...
+# Subtest: R0.7: full scan on real shapes has no SHOPS_SCHEMA warning and leaks no business fields
+ok 40 - R0.7: full scan on real shapes has no SHOPS_SCHEMA warning and leaks no business fields
+  ---
+  duration_ms: 8.154986
+  type: 'test'
+  ...
+# Subtest: R0.7: candidate gap that returns as a NEW session = platform-confirmed stop
+ok 41 - R0.7: candidate gap that returns as a NEW session = platform-confirmed stop
+  ---
+  duration_ms: 0.274622
+  type: 'test'
+  ...
+# Subtest: R0.7: candidate gap inside the SAME session = candidate false positive
+ok 42 - R0.7: candidate gap inside the SAME session = candidate false positive
+  ---
+  duration_ms: 0.13327
+  type: 'test'
+  ...
+# Subtest: R0.7: session split between two LIVE polls and day rollover
+ok 43 - R0.7: session split between two LIVE polls and day rollover
+  ---
+  duration_ms: 0.174833
+  type: 'test'
+  ...
+# Subtest: R0.7: 抖音号 must match exactly, not as a prefix
+ok 44 - R0.7: 抖音号 must match exactly, not as a prefix
+  ---
+  duration_ms: 0.43986
+  type: 'test'
+  ...
+# Subtest: strict bool never treats nonempty string false as true
+ok 45 - strict bool never treats nonempty string false as true
+  ---
+  duration_ms: 1.662897
+  type: 'test'
+  ...
+# Subtest: valid Douyin identity key is immutable secUid
+ok 46 - valid Douyin identity key is immutable secUid
+  ---
+  duration_ms: 0.205168
+  type: 'test'
+  ...
+# Subtest: JD store ID is not live account key
+ok 47 - JD store ID is not live account key
+  ---
+  duration_ms: 0.118558
+  type: 'test'
+  ...
+# Subtest: JD internal stream never equals public liveId
+ok 48 - JD internal stream never equals public liveId
+  ---
+  duration_ms: 0.29987
+  type: 'test'
+  ...
+# Subtest: historical verified Douyin live room keeps historical-only time scope
+ok 49 - historical verified Douyin live room keeps historical-only time scope
+  ---
+  duration_ms: 0.231508
+  type: 'test'
+  ...
+# Subtest: LIVE badge without cross-verification does not prove room
+ok 50 - LIVE badge without cross-verification does not prove room
+  ---
+  duration_ms: 0.281673
+  type: 'test'
+  ...
+# Subtest: store name and URL may pass independently without liveId
+ok 51 - store name and URL may pass independently without liveId
+  ---
+  duration_ms: 0.164567
+  type: 'test'
+  ...
+# Subtest: store failure does not prevent another store from passing
+ok 52 - store failure does not prevent another store from passing
+  ---
+  duration_ms: 0.158928
+  type: 'test'
+  ...
+# Subtest: same immutable account, different nickname deduplicates
+ok 53 - same immutable account, different nickname deduplicates
+  ---
+  duration_ms: 0.275965
+  type: 'test'
+  ...
+# Subtest: same name, different account IDs remain separate
+ok 54 - same name, different account IDs remain separate
+  ---
+  duration_ms: 0.258809
+  type: 'test'
+  ...
+# Subtest: refuted candidate never re-enters monitor
+ok 55 - refuted candidate never re-enters monitor
+  ---
+  duration_ms: 0.143967
+  type: 'test'
+  ...
+# Subtest: failed/offline and UNKNOWN do not trigger scoring promotion
+ok 56 - failed/offline and UNKNOWN do not trigger scoring promotion
+  ---
+  duration_ms: 0.13311
+  type: 'test'
+  ...
+# Subtest: invalid room ID or wrong source key fails closed
+ok 57 - invalid room ID or wrong source key fails closed
+  ---
+  duration_ms: 0.113952
+  type: 'test'
+  ...
+# Subtest: 01 first account is TCL group 2050532947/130742
+ok 58 - 01 first account is TCL group 2050532947/130742
+  ---
+  duration_ms: 1.012881
+  type: 'test'
+  ...
+# Subtest: 02 four independent fix-arm samples
+ok 59 - 02 four independent fix-arm samples
+  ---
+  duration_ms: 0.110446
+  type: 'test'
+  ...
+# Subtest: 03 all fix samples are account/room-matched historical LIVE
+ok 60 - 03 all fix samples are account/room-matched historical LIVE
+  ---
+  duration_ms: 0.294131
+  type: 'test'
+  ...
+# Subtest: 04 baseline 1 LIVE 3 UNKNOWN
+ok 61 - 04 baseline 1 LIVE 3 UNKNOWN
+  ---
+  duration_ms: 0.669276
+  type: 'test'
+  ...
+# Subtest: 05 real RGV587 with null room fields is UNKNOWN / not room-verified
+ok 62 - 05 real RGV587 with null room fields is UNKNOWN / not room-verified
+  ---
+  duration_ms: 0.11985
+  type: 'test'
+  ...
+# Subtest: 06 HTTP 200 without success code cannot prove LIVE
+ok 63 - 06 HTTP 200 without success code cannot prove LIVE
+  ---
+  duration_ms: 0.150876
+  type: 'test'
+  ...
+# Subtest: 07 wrong account ID is a conflict
+ok 64 - 07 wrong account ID is a conflict
+  ---
+  duration_ms: 0.163706
+  type: 'test'
+  ...
+# Subtest: 08 wrong roomNum is a conflict
+ok 65 - 08 wrong roomNum is a conflict
+  ---
+  duration_ms: 0.187302
+  type: 'test'
+  ...
+# Subtest: 09 mismatched shop name is review-needed
+ok 66 - 09 mismatched shop name is review-needed
+  ---
+  duration_ms: 0.200281
+  type: 'test'
+  ...
+# Subtest: 10 missing timestamp yields UNKNOWN
+ok 67 - 10 missing timestamp yields UNKNOWN
+  ---
+  duration_ms: 0.275984
+  type: 'test'
+  ...
+# Subtest: 11 inconsistent room/stream status yields UNKNOWN
+ok 68 - 11 inconsistent room/stream status yields UNKNOWN
+  ---
+  duration_ms: 0.192208
+  type: 'test'
+  ...
+# Subtest: 12 offline requires two zero indicators
+ok 69 - 12 offline requires two zero indicators
+  ---
+  duration_ms: 0.122093
+  type: 'test'
+  ...
+# Subtest: 13 contradictory source reported state blocks promotion
+ok 70 - 13 contradictory source reported state blocks promotion
+  ---
+  duration_ms: 0.95832
+  type: 'test'
+  ...
+# Subtest: 14 stale LIVE is current UNKNOWN
+ok 71 - 14 stale LIVE is current UNKNOWN
+  ---
+  duration_ms: 0.211567
+  type: 'test'
+  ...
+# Subtest: 15 only bounded-recent observation may show LIVE
+ok 72 - 15 only bounded-recent observation may show LIVE
+  ---
+  duration_ms: 0.118387
+  type: 'test'
+  ...
+# Subtest: 16 future-dated evidence is UNKNOWN
+ok 73 - 16 future-dated evidence is UNKNOWN
+  ---
+  duration_ms: 0.107862
+  type: 'test'
+  ...
+# Subtest: 17 historical runs keep A/B and production distinct
+ok 74 - 17 historical runs keep A/B and production distinct
+  ---
+  duration_ms: 0.570748
+  type: 'test'
+  ...
+# Subtest: 18 production aggregate-only cannot become current LIVE
+ok 75 - 18 production aggregate-only cannot become current LIVE
+  ---
+  duration_ms: 0.190466
+  type: 'test'
+  ...
+# Subtest: 19 no automatic reliable-monitor approval or scoring
+ok 76 - 19 no automatic reliable-monitor approval or scoring
+  ---
+  duration_ms: 0.091467
+  type: 'test'
+  ...
+# Subtest: 20 duplicate rounds prohibited
+ok 77 - 20 duplicate rounds prohibited
+  ---
+  duration_ms: 0.470587
+  type: 'test'
+  ...
+# Subtest: 21 invalid current time / age throws
+ok 78 - 21 invalid current time / age throws
+  ---
+  duration_ms: 0.117136
+  type: 'test'
+  ...
+# Subtest: 22 no cross-account mixed status
+ok 79 - 22 no cross-account mixed status
+  ---
+  duration_ms: 0.088994
+  type: 'test'
+  ...
+# Subtest: 23 all-throttled historical file cannot be marked identity-verified
+ok 80 - 23 all-throttled historical file cannot be marked identity-verified
+  ---
+  duration_ms: 0.135213
+  type: 'test'
+  ...
+# Subtest: 24 aggregate-only LIVE summary does not prove room identity
+ok 81 - 24 aggregate-only LIVE summary does not prove room identity
+  ---
+  duration_ms: 0.08056
+  type: 'test'
+  ...
+# Subtest: 25 one actual successful observed sample can close historical identity only
+ok 82 - 25 one actual successful observed sample can close historical identity only
+  ---
+  duration_ms: 0.074802
+  type: 'test'
+  ...
+# Subtest: 26 unverified caller-provided LIVE state does not become current
+ok 83 - 26 unverified caller-provided LIVE state does not become current
+  ---
+  duration_ms: 0.059619
+  type: 'test'
+  ...
+# Subtest: 27 throttle wins even if stale room fields are still present
+ok 84 - 27 throttle wins even if stale room fields are still present
+  ---
+  duration_ms: 0.058328
+  type: 'test'
+  ...
+# Subtest: 28 empty history never invents identity verification
+ok 85 - 28 empty history never invents identity verification
+  ---
+  duration_ms: 0.049594
+  type: 'test'
+  ...
+# Subtest: 01 uses 15 minute active interval
+ok 86 - 01 uses 15 minute active interval
+  ---
+  duration_ms: 0.960743
+  type: 'test'
+  ...
+# Subtest: 02 uses 60 minute passive discovery after stop
+ok 87 - 02 uses 60 minute passive discovery after stop
+  ---
+  duration_ms: 0.151607
+  type: 'test'
+  ...
+# Subtest: 03 no roster even with zero samples
+ok 88 - 03 no roster even with zero samples
+  ---
+  duration_ms: 1.196186
+  type: 'test'
+  ...
+# Subtest: 04 first true LIVE starts one session
+ok 89 - 04 first true LIVE starts one session
+  ---
+  duration_ms: 0.397296
+  type: 'test'
+  ...
+# Subtest: 05 adjacent successful LIVE gives only estimated span
+ok 90 - 05 adjacent successful LIVE gives only estimated span
+  ---
+  duration_ms: 0.262835
+  type: 'test'
+  ...
+# Subtest: 06 one OFFLINE cannot close
+ok 91 - 06 one OFFLINE cannot close
+  ---
+  duration_ms: 0.228102
+  type: 'test'
+  ...
+# Subtest: 07 two independent OFFLINE confirmations close
+ok 92 - 07 two independent OFFLINE confirmations close
+  ---
+  duration_ms: 0.38653
+  type: 'test'
+  ...
+# Subtest: 08 unknown RGV587 does NOT close
+ok 93 - 08 unknown RGV587 does NOT close
+  ---
+  duration_ms: 0.334553
+  type: 'test'
+  ...
+# Subtest: 09 unknown between LIVE samples breaks continuity estimate
+ok 94 - 09 unknown between LIVE samples breaks continuity estimate
+  ---
+  duration_ms: 0.223115
+  type: 'test'
+  ...
+# Subtest: 10 LIVE after a one-off OFFLINE cancels end
+ok 95 - 10 LIVE after a one-off OFFLINE cancels end
+  ---
+  duration_ms: 0.284317
+  type: 'test'
+  ...
+# Subtest: 11 UNKNOWN between OFFLINE confirmations cancels end
+ok 96 - 11 UNKNOWN between OFFLINE confirmations cancels end
+  ---
+  duration_ms: 0.277977
+  type: 'test'
+  ...
+# Subtest: 12 two OFFLINE observations separated by a long gap do not close
+ok 97 - 12 two OFFLINE observations separated by a long gap do not close
+  ---
+  duration_ms: 0.183486
+  type: 'test'
+  ...
+# Subtest: 13 can discover next live after a closed session
+ok 98 - 13 can discover next live after a closed session
+  ---
+  duration_ms: 0.166871
+  type: 'test'
+  ...
+# Subtest: 14 offline before any LIVE does not invent a session
+ok 99 - 14 offline before any LIVE does not invent a session
+  ---
+  duration_ms: 0.094381
+  type: 'test'
+  ...
+# Subtest: 15 stale last LIVE must show current UNKNOWN
+ok 100 - 15 stale last LIVE must show current UNKNOWN
+  ---
+  duration_ms: 0.078868
+  type: 'test'
+  ...
+# Subtest: 16 wrong account ID cannot create live
+ok 101 - 16 wrong account ID cannot create live
+  ---
+  duration_ms: 0.143916
+  type: 'test'
+  ...
+# Subtest: 17 wrong room ID cannot create live
+ok 102 - 17 wrong room ID cannot create live
+  ---
+  duration_ms: 0.175333
+  type: 'test'
+  ...
+# Subtest: 18 source reported LIVE without real success code does not count
+ok 103 - 18 source reported LIVE without real success code does not count
+  ---
+  duration_ms: 0.098497
+  type: 'test'
+  ...
+# Subtest: 19 HTTP access error mapped UNKNOWN cannot add live time
+ok 104 - 19 HTTP access error mapped UNKNOWN cannot add live time
+  ---
+  duration_ms: 0.10001
+  type: 'test'
+  ...
+# Subtest: 20 repeated identical sample has no effect
+ok 105 - 20 repeated identical sample has no effect
+  ---
+  duration_ms: 0.080991
+  type: 'test'
+  ...
+# Subtest: 21 conflicting observations at same timestamp fail closed
+ok 106 - 21 conflicting observations at same timestamp fail closed
+  ---
+  duration_ms: 0.334021
+  type: 'test'
+  ...
+# Subtest: 22 future-dated samples are excluded
+ok 107 - 22 future-dated samples are excluded
+  ---
+  duration_ms: 0.160932
+  type: 'test'
+  ...
+# Subtest: 23 missing time samples are excluded
+ok 108 - 23 missing time samples are excluded
+  ---
+  duration_ms: 0.134222
+  type: 'test'
+  ...
+# Subtest: 24 no official start or end time is inferred
+ok 109 - 24 no official start or end time is inferred
+  ---
+  duration_ms: 0.10627
+  type: 'test'
+  ...
+# Subtest: 25 no formal score, cron, or data-source approval
+ok 110 - 25 no formal score, cron, or data-source approval
+  ---
+  duration_ms: 0.076855
+  type: 'test'
+  ...
+# Subtest: 26 invalid policy values rejected
+ok 111 - 26 invalid policy values rejected
+  ---
+  duration_ms: 0.095263
+  type: 'test'
+  ...
+# Subtest: 27 true archived R1.2 evidence produces historical sessions and UNKNOWN today
+ok 112 - 27 true archived R1.2 evidence produces historical sessions and UNKNOWN today
+  ---
+  duration_ms: 0.197516
+  type: 'test'
+  ...
+# Subtest: 28 old archive never asserts current LIVE even if last row was success
+ok 113 - 28 old archive never asserts current LIVE even if last row was success
+  ---
+  duration_ms: 0.187071
+  type: 'test'
+  ...
+# Subtest: 29 markdown labels estimates and does not claim actual timestamps
+ok 114 - 29 markdown labels estimates and does not claim actual timestamps
+  ---
+  duration_ms: 12.361464
+  type: 'test'
+  ...
+# Subtest: 30 disconnected >22 minute success samples are not interpolated
+ok 115 - 30 disconnected >22 minute success samples are not interpolated
+  ---
+  duration_ms: 0.11978
+  type: 'test'
+  ...
+# Subtest: 31 sorted timeline even if input out of order
+ok 116 - 31 sorted timeline even if input out of order
+  ---
+  duration_ms: 0.105598
+  type: 'test'
+  ...
+# Subtest: 32 unknown observations after closure do not reopen old session
+ok 117 - 32 unknown observations after closure do not reopen old session
+  ---
+  duration_ms: 0.11359
+  type: 'test'
+  ...
+# Subtest: 01 single-store identity fixed
+ok 118 - 01 single-store identity fixed
+  ---
+  duration_ms: 0.944128
+  type: 'test'
+  ...
+# Subtest: 02 empty ledger should attempt idle discovery immediately
+ok 119 - 02 empty ledger should attempt idle discovery immediately
+  ---
+  duration_ms: 0.959762
+  type: 'test'
+  ...
+# Subtest: 03 no source records UNKNOWN, not fabricated OFFLINE
+ok 120 - 03 no source records UNKNOWN, not fabricated OFFLINE
+  ---
+  duration_ms: 0.525649
+  type: 'test'
+  ...
+# Subtest: 04 idle scheduled tick before 60m is skipped
+ok 121 - 04 idle scheduled tick before 60m is skipped
+  ---
+  duration_ms: 0.317266
+  type: 'test'
+  ...
+# Subtest: 05 idle scheduled tick at 60m is due
+ok 122 - 05 idle scheduled tick at 60m is due
+  ---
+  duration_ms: 0.608674
+  type: 'test'
+  ...
+# Subtest: 06 a real accepted observation starts a session but never scores
+ok 123 - 06 a real accepted observation starts a session but never scores
+  ---
+  duration_ms: 1.410969
+  type: 'test'
+  ...
+# Subtest: 07 active mode uses 15m
+ok 124 - 07 active mode uses 15m
+  ---
+  duration_ms: 0.616686
+  type: 'test'
+  ...
+# Subtest: 08 active skip at 10m and due at 15m
+ok 125 - 08 active skip at 10m and due at 15m
+  ---
+  duration_ms: 0.278709
+  type: 'test'
+  ...
+# Subtest: 09 two LIVE observations yield estimated 15 minutes
+ok 126 - 09 two LIVE observations yield estimated 15 minutes
+  ---
+  duration_ms: 0.537978
+  type: 'test'
+  ...
+# Subtest: 10 one OFFLINE is only pending end
+ok 127 - 10 one OFFLINE is only pending end
+  ---
+  duration_ms: 0.37989
+  type: 'test'
+  ...
+# Subtest: 11 two effective OFFLINE close the session
+ok 128 - 11 two effective OFFLINE close the session
+  ---
+  duration_ms: 0.700021
+  type: 'test'
+  ...
+# Subtest: 12 after closure skip until idle 60m
+ok 129 - 12 after closure skip until idle 60m
+  ---
+  duration_ms: 0.421272
+  type: 'test'
+  ...
+# Subtest: 13 idle discovery can begin next independent session
+ok 130 - 13 idle discovery can begin next independent session
+  ---
+  duration_ms: 0.779651
+  type: 'test'
+  ...
+# Subtest: 14 source unavailable while LIVE records UNKNOWN and keeps active
+ok 131 - 14 source unavailable while LIVE records UNKNOWN and keeps active
+  ---
+  duration_ms: 0.343556
+  type: 'test'
+  ...
+# Subtest: 15 source unavailable after one OFFLINE cannot finalize end
+ok 132 - 15 source unavailable after one OFFLINE cannot finalize end
+  ---
+  duration_ms: 0.33272
+  type: 'test'
+  ...
+# Subtest: 16 records are portable JSON between invocations
+ok 133 - 16 records are portable JSON between invocations
+  ---
+  duration_ms: 0.295854
+  type: 'test'
+  ...
+# Subtest: 17 wrong ledger platform never accepted
+ok 134 - 17 wrong ledger platform never accepted
+  ---
+  duration_ms: 0.349875
+  type: 'test'
+  ...
+# Subtest: 18 wrong ledger account never accepted
+ok 135 - 18 wrong ledger account never accepted
+  ---
+  duration_ms: 0.094251
+  type: 'test'
+  ...
+# Subtest: 19 rejected raw cookie/token in recovered samples
+ok 136 - 19 rejected raw cookie/token in recovered samples
+  ---
+  duration_ms: 0.542835
+  type: 'test'
+  ...
+# Subtest: 20 do not persist unrelated secret raw field even if upstream sample sends one
+ok 137 - 20 do not persist unrelated secret raw field even if upstream sample sends one
+  ---
+  duration_ms: 0.175384
+  type: 'test'
+  ...
+# Subtest: 21 wrong-store sample blocked at ingest
+ok 138 - 21 wrong-store sample blocked at ingest
+  ---
+  duration_ms: 0.150226
+  type: 'test'
+  ...
+# Subtest: 22 unusable future-dated source sample rejected
+ok 139 - 22 unusable future-dated source sample rejected
+  ---
+  duration_ms: 0.196105
+  type: 'test'
+  ...
+# Subtest: 23 status code includes only bounded safe bytes
+ok 140 - 23 status code includes only bounded safe bytes
+  ---
+  duration_ms: 0.245408
+  type: 'test'
+  ...
+# Subtest: 24 duplicate source sample blocked
+ok 141 - 24 duplicate source sample blocked
+  ---
+  duration_ms: 0.378468
+  type: 'test'
+  ...
+# Subtest: 25 failure codes strict whitelist
+ok 142 - 25 failure codes strict whitelist
+  ---
+  duration_ms: 0.218097
+  type: 'test'
+  ...
+# Subtest: 26 duplicate timestamp is not a second attempt
+ok 143 - 26 duplicate timestamp is not a second attempt
+  ---
+  duration_ms: 0.3196
+  type: 'test'
+  ...
+# Subtest: 27 future clock or stale evidence is UNKNOWN, not cached LIVE
+ok 144 - 27 future clock or stale evidence is UNKNOWN, not cached LIVE
+  ---
+  duration_ms: 0.215344
+  type: 'test'
+  ...
+# Subtest: 28 the module never calls Taobao or GitHub network
+ok 145 - 28 the module never calls Taobao or GitHub network
+  ---
+  duration_ms: 0.069925
+  type: 'test'
+  ...
+# Subtest: 29 no source means no real sample even on repeated scheduled ticks
+ok 146 - 29 no source means no real sample even on repeated scheduled ticks
+  ---
+  duration_ms: 0.39928
+  type: 'test'
+  ...
+# Subtest: 30 bad ledger array shape rejected
+ok 147 - 30 bad ledger array shape rejected
+  ---
+  duration_ms: 0.162073
+  type: 'test'
+  ...
+# Subtest: 31 ledger limits protect bounded storage
+ok 148 - 31 ledger limits protect bounded storage
+  ---
+  duration_ms: 0.154682
+  type: 'test'
+  ...
+# Subtest: 32 records cannot move backward in time when a tick is forced
+ok 149 - 32 records cannot move backward in time when a tick is forced
+  ---
+  duration_ms: 0.164147
+  type: 'test'
+  ...
+# Subtest: 01 first-store immutable identity
+ok 150 - 01 first-store immutable identity
+  ---
+  duration_ms: 1.636297
+  type: 'test'
+  ...
+# Subtest: 02 no fake real-time source
+ok 151 - 02 no fake real-time source
+  ---
+  duration_ms: 0.194523
+  type: 'test'
+  ...
+# Subtest: 03 empty state remains UNKNOWN
+ok 152 - 03 empty state remains UNKNOWN
+  ---
+  duration_ms: 0.168664
+  type: 'test'
+  ...
+# Subtest: 04 one independent LIVE becomes first detected open timestamp
+ok 153 - 04 one independent LIVE becomes first detected open timestamp
+  ---
+  duration_ms: 12.823312
+  type: 'test'
+  ...
+# Subtest: 05 one OFFLINE is not a confirmed end
+ok 154 - 05 one OFFLINE is not a confirmed end
+  ---
+  duration_ms: 1.614935
+  type: 'test'
+  ...
+# Subtest: 06 two OFFLINE close session with evidence window
+ok 155 - 06 two OFFLINE close session with evidence window
+  ---
+  duration_ms: 0.680873
+  type: 'test'
+  ...
+# Subtest: 07 known prior OFFLINE gives start interval bounds
+ok 156 - 07 known prior OFFLINE gives start interval bounds
+  ---
+  duration_ms: 0.389085
+  type: 'test'
+  ...
+# Subtest: 08 no preceding OFFLINE means unknown earliest start
+ok 157 - 08 no preceding OFFLINE means unknown earliest start
+  ---
+  duration_ms: 0.332079
+  type: 'test'
+  ...
+# Subtest: 09 15 minute snapshots produce only estimated times
+ok 158 - 09 15 minute snapshots produce only estimated times
+  ---
+  duration_ms: 0.469385
+  type: 'test'
+  ...
+# Subtest: 10 two sessions separated by confirmed OFFLINE
+ok 159 - 10 two sessions separated by confirmed OFFLINE
+  ---
+  duration_ms: 0.687161
+  type: 'test'
+  ...
+# Subtest: 11 missing observations not fabricated
+ok 160 - 11 missing observations not fabricated
+  ---
+  duration_ms: 0.364698
+  type: 'test'
+  ...
+# Subtest: 12 unauthorized arbitrary account rejected
+ok 161 - 12 unauthorized arbitrary account rejected
+  ---
+  duration_ms: 0.170436
+  type: 'test'
+  ...
+# Subtest: 13 raw throttled row must UNKNOWN
+ok 162 - 13 raw throttled row must UNKNOWN
+  ---
+  duration_ms: 0.279891
+  type: 'test'
+  ...
+# Subtest: 14 old evidence cannot be current live
+ok 163 - 14 old evidence cannot be current live
+  ---
+  duration_ms: 0.81948
+  type: 'test'
+  ...
+# Subtest: 15 archive omits non-timestamped aggregate-only rows
+ok 164 - 15 archive omits non-timestamped aggregate-only rows
+  ---
+  duration_ms: 0.661243
+  type: 'test'
+  ...
+# Subtest: 16 historical target has five valid LIVE, three UNKNOWN
+ok 165 - 16 historical target has five valid LIVE, three UNKNOWN
+  ---
+  duration_ms: 0.681643
+  type: 'test'
+  ...
+# Subtest: 17 deduplicate repeated identical source row
+ok 166 - 17 deduplicate repeated identical source row
+  ---
+  duration_ms: 0.250356
+  type: 'test'
+  ...
+# Subtest: 18 conflicting same-timestamp row fails closed
+ok 167 - 18 conflicting same-timestamp row fails closed
+  ---
+  duration_ms: 0.463566
+  type: 'test'
+  ...
+# Subtest: 19 future row cannot affect report
+ok 168 - 19 future row cannot affect report
+  ---
+  duration_ms: 0.107061
+  type: 'test'
+  ...
+# Subtest: 20 timepoint timeline sorted ascending
+ok 169 - 20 timepoint timeline sorted ascending
+  ---
+  duration_ms: 0.256075
+  type: 'test'
+  ...
+# Subtest: 21 date grouping uses Shanghai timezone
+ok 170 - 21 date grouping uses Shanghai timezone
+  ---
+  duration_ms: 0.195143
+  type: 'test'
+  ...
+# Subtest: 22 timeline CSV header and row
+ok 171 - 22 timeline CSV header and row
+  ---
+  duration_ms: 0.568464
+  type: 'test'
+  ...
+# Subtest: 23 session CSV includes observed start/end
+ok 172 - 23 session CSV includes observed start/end
+  ---
+  duration_ms: 1.087543
+  type: 'test'
+  ...
+# Subtest: 24 CSV Beijing time conversion
+ok 173 - 24 CSV Beijing time conversion
+  ---
+  duration_ms: 0.403016
+  type: 'test'
+  ...
+# Subtest: 25 CSV does not allow formula injection
+ok 174 - 25 CSV does not allow formula injection
+  ---
+  duration_ms: 0.260361
+  type: 'test'
+  ...
+# Subtest: 26 bad CSV export format fails
+ok 175 - 26 bad CSV export format fails
+  ---
+  duration_ms: 0.145448
+  type: 'test'
+  ...
+# Subtest: 27 R14 durable ledger can be loaded
+ok 176 - 27 R14 durable ledger can be loaded
+  ---
+  duration_ms: 0.737878
+  type: 'test'
+  ...
+# Subtest: 28 missing time samples excluded
+ok 177 - 28 missing time samples excluded
+  ---
+  duration_ms: 0.116305
+  type: 'test'
+  ...
+# Subtest: 29 schema and flags prevent unearned scoring
+ok 178 - 29 schema and flags prevent unearned scoring
+  ---
+  duration_ms: 0.083065
+  type: 'test'
+  ...
+# Subtest: 30 day aggregation counts LIVE and UNKNOWN separately
+ok 179 - 30 day aggregation counts LIVE and UNKNOWN separately
+  ---
+  duration_ms: 0.262544
+  type: 'test'
+  ...
+# Subtest: 60-minute live and idle cadence
+ok 180 - 60-minute live and idle cadence
+  ---
+  duration_ms: 0.986922
+  type: 'test'
+  ...
+# Subtest: Beijing boundary is UTC aligned, clock delay preserved
+ok 181 - Beijing boundary is UTC aligned, clock delay preserved
+  ---
+  duration_ms: 11.898277
+  type: 'test'
+  ...
+# Subtest: Beijing midnight is not merged into previous hour
+ok 182 - Beijing midnight is not merged into previous hour
+  ---
+  duration_ms: 0.399701
+  type: 'test'
+  ...
+# Subtest: manual run records UNKNOWN without requesting platform
+ok 183 - manual run records UNKNOWN without requesting platform
+  ---
+  duration_ms: 0.61897
+  type: 'test'
+  ...
+# Subtest: manual can repeat within an hour
+ok 184 - manual can repeat within an hour
+  ---
+  duration_ms: 0.594092
+  type: 'test'
+  ...
+# Subtest: hourly schedule is idempotent within same hour
+ok 185 - hourly schedule is idempotent within same hour
+  ---
+  duration_ms: 0.436095
+  type: 'test'
+  ...
+# Subtest: subsequent hour creates separate attempt
+ok 186 - subsequent hour creates separate attempt
+  ---
+  duration_ms: 0.537077
+  type: 'test'
+  ...
+# Subtest: exact duplicate timestamp skipped
+ok 187 - exact duplicate timestamp skipped
+  ---
+  duration_ms: 0.492259
+  type: 'test'
+  ...
+# Subtest: reversed chronology blocked
+ok 188 - reversed chronology blocked
+  ---
+  duration_ms: 0.831399
+  type: 'test'
+  ...
+# Subtest: fake LIVE input is ignored completely
+ok 189 - fake LIVE input is ignored completely
+  ---
+  duration_ms: 0.421853
+  type: 'test'
+  ...
+# Subtest: throttle and login failures never become OFFLINE
+ok 190 - throttle and login failures never become OFFLINE
+  ---
+  duration_ms: 2.167555
+  type: 'test'
+  ...
+# Subtest: invalid statuses and bad triggers rejected
+ok 191 - invalid statuses and bad triggers rejected
+  ---
+  duration_ms: 0.188773
+  type: 'test'
+  ...
+# Subtest: unknown means unknown, not false offline
+ok 192 - unknown means unknown, not false offline
+  ---
+  duration_ms: 0.45281
+  type: 'test'
+  ...
+# Subtest: historical verified LIVE remains historical, current is UNKNOWN
+ok 193 - historical verified LIVE remains historical, current is UNKNOWN
+  ---
+  duration_ms: 0.362374
+  type: 'test'
+  ...
+# Subtest: two consecutive hourly LIVE points provide estimated span only
+ok 194 - two consecutive hourly LIVE points provide estimated span only
+  ---
+  duration_ms: 0.194081
+  type: 'test'
+  ...
+# Subtest: two OFFLINE observations confirm first offline, not exact end
+ok 195 - two OFFLINE observations confirm first offline, not exact end
+  ---
+  duration_ms: 0.402354
+  type: 'test'
+  ...
+# Subtest: LIVE sample is only a candidate, never source attested by pure classifier
+ok 196 - LIVE sample is only a candidate, never source attested by pure classifier
+  ---
+  duration_ms: 1.887103
+  type: 'test'
+  ...
+# Subtest: fixed account and historical room are separate identities
+ok 197 - fixed account and historical room are separate identities
+  ---
+  duration_ms: 0.197837
+  type: 'test'
+  ...
+# Subtest: two liveIds under same account, same room create two sessions
+ok 198 - two liveIds under same account, same room create two sessions
+  ---
+  duration_ms: 0.814143
+  type: 'test'
+  ...
+# Subtest: same liveId and changed room is one session
+ok 199 - same liveId and changed room is one session
+  ---
+  duration_ms: 0.224497
+  type: 'test'
+  ...
+# Subtest: different liveId and changed room is a new session
+ok 200 - different liveId and changed room is a new session
+  ---
+  duration_ms: 0.251237
+  type: 'test'
+  ...
+# Subtest: different account cannot be reported live
+ok 201 - different account cannot be reported live
+  ---
+  duration_ms: 0.317317
+  type: 'test'
+  ...
+# Subtest: conflicting broadcaster identity cannot be reported live
+ok 202 - conflicting broadcaster identity cannot be reported live
+  ---
+  duration_ms: 0.170536
+  type: 'test'
+  ...
+# Subtest: missing liveId cannot prove new session
+ok 203 - missing liveId cannot prove new session
+  ---
+  duration_ms: 0.238217
+  type: 'test'
+  ...
+# Subtest: OFFLINE requires account verified and consecutive observations
+ok 204 - OFFLINE requires account verified and consecutive observations
+  ---
+  duration_ms: 0.351247
+  type: 'test'
+  ...
+# Subtest: UNKNOWN between two OFFLINE cannot silently close a session
+ok 205 - UNKNOWN between two OFFLINE cannot silently close a session
+  ---
+  duration_ms: 0.287191
+  type: 'test'
+  ...
+# Subtest: new liveId after UNKNOWN closes prior with uncertain end window
+ok 206 - new liveId after UNKNOWN closes prior with uncertain end window
+  ---
+  duration_ms: 0.211418
+  type: 'test'
+  ...
+# Subtest: stale last sample cannot claim current live
+ok 207 - stale last sample cannot claim current live
+  ---
+  duration_ms: 0.128723
+  type: 'test'
+  ...
+# Subtest: offline without matching data account ID is not accepted
+ok 208 - offline without matching data account ID is not accepted
+  ---
+  duration_ms: 0.181763
+  type: 'test'
+  ...
+# Subtest: request error is UNKNOWN, not OFFLINE
+ok 209 - request error is UNKNOWN, not OFFLINE
+  ---
+  duration_ms: 0.132189
+  type: 'test'
+  ...
+# Subtest: broad page text is not a valid live-detail payload
+ok 210 - broad page text is not a valid live-detail payload
+  ---
+  duration_ms: 0.164027
+  type: 'test'
+  ...
+# Subtest: conflicting simultaneous samples are rejected
+ok 211 - conflicting simultaneous samples are rejected
+  ---
+  duration_ms: 0.47311
+  type: 'test'
+  ...
+# Subtest: identical replay sample deduplicated
+ok 212 - identical replay sample deduplicated
+  ---
+  duration_ms: 0.153781
+  type: 'test'
+  ...
+# Subtest: future observations are excluded
+ok 213 - future observations are excluded
+  ---
+  duration_ms: 0.147842
+  type: 'test'
+  ...
+# Subtest: manual and hourly cadence is 60 minutes, no auto schedule
+ok 214 - manual and hourly cadence is 60 minutes, no auto schedule
+  ---
+  duration_ms: 0.143536
+  type: 'test'
+  ...
+# Subtest: R18 account mismatch fails closed and cannot rewrite target store key
+ok 215 - R18 account mismatch fails closed and cannot rewrite target store key
+  ---
+  duration_ms: 1.437409
+  type: 'test'
+  ...
+# Subtest: R18 stale evidence cannot prove LIVE or OFFLINE
+ok 216 - R18 stale evidence cannot prove LIVE or OFFLINE
+  ---
+  duration_ms: 0.214892
+  type: 'test'
+  ...
+# Subtest: R18 invalid attestation cannot prove OFFLINE
+ok 217 - R18 invalid attestation cannot prove OFFLINE
+  ---
+  duration_ms: 0.237477
+  type: 'test'
+  ...
+# Subtest: R18 recommendations never prove target LIVE
+ok 218 - R18 recommendations never prove target LIVE
+  ---
+  duration_ms: 0.350346
+  type: 'test'
+  ...
+# Subtest: R18 simultaneous conflicting source evidence is UNKNOWN
+ok 219 - R18 simultaneous conflicting source evidence is UNKNOWN
+  ---
+  duration_ms: 0.169374
+  type: 'test'
+  ...
+# Subtest: R18 historical room is not a current-room gate
+ok 220 - R18 historical room is not a current-room gate
+  ---
+  duration_ms: 0.723356
+  type: 'test'
+  ...
+# Subtest: R18 synthetic source cannot claim exact timing
+ok 221 - R18 synthetic source cannot claim exact timing
+  ---
+  duration_ms: 0.145749
+  type: 'test'
+  ...
+# Subtest: R18 malformed timestamps and missing LIVE id fail closed
+ok 222 - R18 malformed timestamps and missing LIVE id fail closed
+  ---
+  duration_ms: 0.227131
+  type: 'test'
+  ...
+# Subtest: R18 passive capture requires transport and matched page/response
+ok 223 - R18 passive capture requires transport and matched page/response
+  ---
+  duration_ms: 0.278128
+  type: 'test'
+  ...
+# Subtest: R18 passive capture stale response cannot prove state
+ok 224 - R18 passive capture stale response cannot prove state
+  ---
+  duration_ms: 0.277236
+  type: 'test'
+  ...
+# Subtest: R18 throttle is UNKNOWN with one GET and no retry
+ok 225 - R18 throttle is UNKNOWN with one GET and no retry
+  ---
+  duration_ms: 0.488644
+  type: 'test'
+  ...
+# Subtest: R18 captcha never becomes OFFLINE
+ok 226 - R18 captcha never becomes OFFLINE
+  ---
+  duration_ms: 0.23363
+  type: 'test'
+  ...
+# Subtest: R18 normal login redirect returns AUTH_REQUIRED
+ok 227 - R18 normal login redirect returns AUTH_REQUIRED
+  ---
+  duration_ms: 19.808786
+  type: 'test'
+  ...
+# Subtest: R18 network and timeout errors are UNKNOWN
+ok 228 - R18 network and timeout errors are UNKNOWN
+  ---
+  duration_ms: 0.268163
+  type: 'test'
+  ...
+# Subtest: R18 credentials and private refs do not pass normalized observation
+ok 229 - R18 credentials and private refs do not pass normalized observation
+  ---
+  duration_ms: 0.242384
+  type: 'test'
+  ...
+# Subtest: R18 new liveId replaces old session with observed interval
+ok 230 - R18 new liveId replaces old session with observed interval
+  ---
+  duration_ms: 2.5574
+  type: 'test'
+  ...
+# Subtest: R18 same liveId room change stays one session
+ok 231 - R18 same liveId room change stays one session
+  ---
+  duration_ms: 0.202704
+  type: 'test'
+  ...
+# Subtest: R18 two valid OFFLINE observations confirm CLOSED
+ok 232 - R18 two valid OFFLINE observations confirm CLOSED
+  ---
+  duration_ms: 0.256195
+  type: 'test'
+  ...
+# Subtest: R18 UNKNOWN interrupts OFFLINE confirmation
+ok 233 - R18 UNKNOWN interrupts OFFLINE confirmation
+  ---
+  duration_ms: 0.310476
+  type: 'test'
+  ...
+# Subtest: R18 new liveId after UNKNOWN still creates new session
+ok 234 - R18 new liveId after UNKNOWN still creates new session
+  ---
+  duration_ms: 0.175293
+  type: 'test'
+  ...
+# Subtest: R18 auto slot dedupes while preserving actual lag
+ok 235 - R18 auto slot dedupes while preserving actual lag
+  ---
+  duration_ms: 0.560611
+  type: 'test'
+  ...
+# Subtest: R18 repeated manual checks stay separate; exact request retry dedupes
+ok 236 - R18 repeated manual checks stay separate; exact request retry dedupes
+  ---
+  duration_ms: 0.375393
+  type: 'test'
+  ...
+# Subtest: R18 cooldown next eligible defaults 60 minutes
+ok 237 - R18 cooldown next eligible defaults 60 minutes
+  ---
+  duration_ms: 0.122434
+  type: 'test'
+  ...
+# Subtest: R18 browser challenges and expired login are distinct blockers
+ok 238 - R18 browser challenges and expired login are distinct blockers
+  ---
+  duration_ms: 0.761073
+  type: 'test'
+  ...
+# Subtest: R18 audit URL strips credentials paths and query
+ok 239 - R18 audit URL strips credentials paths and query
+  ---
+  duration_ms: 0.241602
+  type: 'test'
+  ...
+# Subtest: R18 profile inside repository is rejected
+ok 240 - R18 profile inside repository is rejected
+  ---
+  duration_ms: 0.580912
+  type: 'test'
+  ...
+# Subtest: R18 browser refuses unapproved entry without navigation
+ok 241 - R18 browser refuses unapproved entry without navigation
+  ---
+  duration_ms: 0.281993
+  type: 'test'
+  ...
+# Subtest: R18 CLI no-source writes UNKNOWN report and no invented sessions
+ok 242 - R18 CLI no-source writes UNKNOWN report and no invented sessions
+  ---
+  duration_ms: 45.245815
+  type: 'test'
+  ...
+# Subtest: R18 CLI manual fixed request retry dedupes disk state
+ok 243 - R18 CLI manual fixed request retry dedupes disk state
+  ---
+  duration_ms: 78.72357
+  type: 'test'
+  ...
+# Subtest: R18 CLI hourly same planned slot dedupes different actual time
+ok 244 - R18 CLI hourly same planned slot dedupes different actual time
+  ---
+  duration_ms: 79.126965
+  type: 'test'
+  ...
+# Subtest: R18 report escapes source/evidence content and distinguishes session status
+ok 245 - R18 report escapes source/evidence content and distinguishes session status
+  ---
+  duration_ms: 0.707252
+  type: 'test'
+  ...
+# Subtest: R18 UNKNOWN fault reasons survive schema normalization
+ok 246 - R18 UNKNOWN fault reasons survive schema normalization
+  ---
+  duration_ms: 0.507592
+  type: 'test'
+  ...
+# Subtest: R18 browser evidence conflict and auth override candidate LIVE
+ok 247 - R18 browser evidence conflict and auth override candidate LIVE
+  ---
+  duration_ms: 0.265018
+  type: 'test'
+  ...
+# Subtest: R18 runtime code contains no embedded private keys or provider tokens
+ok 248 - R18 runtime code contains no embedded private keys or provider tokens
+  ---
+  duration_ms: 0.834193
+  type: 'test'
+  ...
+# Subtest: R18 transaction atomically commits all three store views
+ok 249 - R18 transaction atomically commits all three store views
+  ---
+  duration_ms: 6.236795
+  type: 'test'
+  ...
+# Subtest: R18 atomic interrupted replacement preserves committed snapshot
+ok 250 - R18 atomic interrupted replacement preserves committed snapshot
+  ---
+  duration_ms: 9.907438
+  type: 'test'
+  ...
+# Subtest: R18 crash recovery ignores orphan temp and reclaims dead writer
+ok 251 - R18 crash recovery ignores orphan temp and reclaims dead writer
+  ---
+  duration_ms: 29.215483
+  type: 'test'
+  ...
+# Subtest: R18 corrupt primary fails closed; explicit verified backup recovery works
+ok 252 - R18 corrupt primary fails closed; explicit verified backup recovery works
+  ---
+  duration_ms: 5.774892
+  type: 'test'
+  ...
+# Subtest: R18 concurrent writer lock and optimistic revision conflict reject writes
+ok 253 - R18 concurrent writer lock and optimistic revision conflict reject writes
+  ---
+  duration_ms: 2.608538
+  type: 'test'
+  ...
+# Subtest: R18 schema1 migrates and rebuilds session data
+ok 254 - R18 schema1 migrates and rebuilds session data
+  ---
+  duration_ms: 3.141798
+  type: 'test'
+  ...
+# Subtest: R18 conflicting simultaneous observations invalidate both states and sessions
+ok 255 - R18 conflicting simultaneous observations invalidate both states and sessions
+  ---
+  duration_ms: 4.755851
+  type: 'test'
+  ...
+# Subtest: R18 persisted hourly slot dedupes while manual observations repeat
+ok 256 - R18 persisted hourly slot dedupes while manual observations repeat
+  ---
+  duration_ms: 7.914585
+  type: 'test'
+  ...
+# Subtest: R18 persisted cooldown suppresses source and does not extend itself
+ok 257 - R18 persisted cooldown suppresses source and does not extend itself
+  ---
+  duration_ms: 4.32182
+  type: 'test'
+  ...
+# Subtest: R18 fixed tmall identity cannot be overridden by check metadata
+ok 258 - R18 fixed tmall identity cannot be overridden by check metadata
+  ---
+  duration_ms: 1.242856
+  type: 'test'
+  ...
+# Subtest: R18 same target simultaneous checks call source only once
+ok 259 - R18 same target simultaneous checks call source only once
+  ---
+  duration_ms: 2.459323
+  type: 'test'
+  ...
+# Subtest: R18 simultaneous duplicate OFFLINE cannot confirm session ended
+ok 260 - R18 simultaneous duplicate OFFLINE cannot confirm session ended
+  ---
+  duration_ms: 6.109134
+  type: 'test'
+  ...
+# Subtest: end-to-end local fixture: read-only HTTP scan, safe JSON, zero POST, no raw business fields
+ok 261 - end-to-end local fixture: read-only HTTP scan, safe JSON, zero POST, no raw business fields
+  ---
+  duration_ms: 134.741882
+  type: 'test'
+  ...
+# Subtest: JD platform normalization excludes other platforms
+ok 262 - JD platform normalization excludes other platforms
+  ---
+  duration_ms: 2.146503
+  type: 'test'
+  ...
+# Subtest: Beijing date is not server time
+ok 263 - Beijing date is not server time
+  ---
+  duration_ms: 13.434365
+  type: 'test'
+  ...
+# Subtest: 6 JD rooms discovered, including newer IDs, no hardcoding
+ok 264 - 6 JD rooms discovered, including newer IDs, no hardcoding
+  ---
+  duration_ms: 2.060755
+  type: 'test'
+  ...
+# Subtest: shop_id is distinct from internal room id
+ok 265 - shop_id is distinct from internal room id
+  ---
+  duration_ms: 0.247081
+  type: 'test'
+  ...
+# Subtest: different response object shapes supported
+ok 266 - different response object shapes supported
+  ---
+  duration_ms: 0.387773
+  type: 'test'
+  ...
+# Subtest: missing rooms schema is not zero JD rooms
+ok 267 - missing rooms schema is not zero JD rooms
+  ---
+  duration_ms: 0.506711
+  type: 'test'
+  ...
+# Subtest: paginated response does not silently report all rooms
+ok 268 - paginated response does not silently report all rooms
+  ---
+  duration_ms: 0.157436
+  type: 'test'
+  ...
+# Subtest: room count over budget refuses to scan
+ok 269 - room count over budget refuses to scan
+  ---
+  duration_ms: 0.289384
+  type: 'test'
+  ...
+# Subtest: duplicate room id counted once and flagged
+ok 270 - duplicate room id counted once and flagged
+  ---
+  duration_ms: 1.088044
+  type: 'test'
+  ...
+# Subtest: invalid room id skipped and flagged
+ok 271 - invalid room id skipped and flagged
+  ---
+  duration_ms: 0.321773
+  type: 'test'
+  ...
+# Subtest: minute freshly observed, heartbeat alive -> LIVE
+ok 272 - minute freshly observed, heartbeat alive -> LIVE
+  ---
+  duration_ms: 0.615264
+  type: 'test'
+  ...
+# Subtest: fresh minute without capture heartbeat is not confirmed LIVE
+ok 273 - fresh minute without capture heartbeat is not confirmed LIVE
+  ---
+  duration_ms: 0.296264
+  type: 'test'
+  ...
+# Subtest: stale minute + alive heartbeat -> offline CANDIDATE but UNKNOWN
+ok 274 - stale minute + alive heartbeat -> offline CANDIDATE but UNKNOWN
+  ---
+  duration_ms: 0.240831
+  type: 'test'
+  ...
+# Subtest: no binding -> UNKNOWN regardless of fresh minute
+ok 275 - no binding -> UNKNOWN regardless of fresh minute
+  ---
+  duration_ms: 0.365889
+  type: 'test'
+  ...
+# Subtest: historical filter cannot claim current live
+ok 276 - historical filter cannot claim current live
+  ---
+  duration_ms: 0.321393
+  type: 'test'
+  ...
+# Subtest: heartbeat API failure must degrade to UNKNOWN
+ok 277 - heartbeat API failure must degrade to UNKNOWN
+  ---
+  duration_ms: 0.278788
+  type: 'test'
+  ...
+# Subtest: minute count deltas require same day, time forward, no reset
+ok 278 - minute count deltas require same day, time forward, no reset
+  ---
+  duration_ms: 0.516395
+  type: 'test'
+  ...
+# Subtest: catalog failure is unavailable, NOT an empty store list
+ok 279 - catalog failure is unavailable, NOT an empty store list
+  ---
+  duration_ms: 0.674803
+  type: 'test'
+  ...
+# Subtest: all six JD room states counted with no other platform
+ok 280 - all six JD room states counted with no other platform
+  ---
+  duration_ms: 1.470689
+  type: 'test'
+  ...
+# Subtest: new 7th JD room is automatically included
+ok 281 - new 7th JD room is automatically included
+  ---
+  duration_ms: 1.235976
+  type: 'test'
+  ...
+# Subtest: missing day API creates UNKNOWN, not OFFLINE
+ok 282 - missing day API creates UNKNOWN, not OFFLINE
+  ---
+  duration_ms: 0.51311
+  type: 'test'
+  ...
+# Subtest: missing heartbeats makes all unknown
+ok 283 - missing heartbeats makes all unknown
+  ---
+  duration_ms: 0.702675
+  type: 'test'
+  ...
+# Subtest: missing shops does not silently drop JD rooms
+ok 284 - missing shops does not silently drop JD rooms
+  ---
+  duration_ms: 0.907583
+  type: 'test'
+  ...
+# Subtest: unknown shop-to-room join never invents unmatched shops
+ok 285 - unknown shop-to-room join never invents unmatched shops
+  ---
+  duration_ms: 0.786211
+  type: 'test'
+  ...
+# Subtest: shop not covered is an unmatched ID, not OFFLINE
+ok 286 - shop not covered is an unmatched ID, not OFFLINE
+  ---
+  duration_ms: 0.908864
+  type: 'test'
+  ...
+# Subtest: no raw secrets or business data in sanitized prior snapshot
+ok 287 - no raw secrets or business data in sanitized prior snapshot
+  ---
+  duration_ms: 0.944618
+  type: 'test'
+  ...
+# Subtest: reader only GET fixed allowlist, no redirects and no credentials
+ok 288 - reader only GET fixed allowlist, no redirects and no credentials
+  ---
+  duration_ms: 0.691609
+  type: 'test'
+  ...
+# Subtest: invalid local date and high concurrency rejected
+ok 289 - invalid local date and high concurrency rejected
+  ---
+  duration_ms: 0.350086
+  type: 'test'
+  ...
+# Subtest: scan summary is correctly tri-state
+ok 290 - scan summary is correctly tri-state
+  ---
+  duration_ms: 0.150607
+  type: 'test'
+  ...
+# Subtest: synthetic six-room replay of 11-04 evidence: two LIVE, four UNKNOWN; no false OFFLINE
+ok 291 - synthetic six-room replay of 11-04 evidence: two LIVE, four UNKNOWN; no false OFFLINE
+  ---
+  duration_ms: 0.902586
+  type: 'test'
+  ...
+# Subtest: fresh minute + status 1 -> LIVE
+ok 292 - fresh minute + status 1 -> LIVE
+  ---
+  duration_ms: 0.854183
+  type: 'test'
+  ...
+# Subtest: agent alive, stale minutes -> OFFLINE candidate (UNKNOWN until validated)
+ok 293 - agent alive, stale minutes -> OFFLINE candidate (UNKNOWN until validated)
+  ---
+  duration_ms: 0.190316
+  type: 'test'
+  ...
+# Subtest: agent dead -> UNKNOWN, never OFFLINE
+ok 294 - agent dead -> UNKNOWN, never OFFLINE
+  ---
+  duration_ms: 0.172539
+  type: 'test'
+  ...
+# Subtest: fresh minute but status present and not 1 -> not LIVE
+ok 295 - fresh minute but status present and not 1 -> not LIVE
+  ---
+  duration_ms: 0.165979
+  type: 'test'
+  ...
+# Subtest: R0.7.1: fresh minute, status ABSENT, agent alive -> LIVE; agent stale -> not LIVE
+ok 296 - R0.7.1: fresh minute, status ABSENT, agent alive -> LIVE; agent stale -> not LIVE
+  ---
+  duration_ms: 0.190286
+  type: 'test'
+  ...
+# Subtest: minute delta
+ok 297 - minute delta
+  ---
+  duration_ms: 0.110937
+  type: 'test'
+  ...
+1..297
+# tests 297
+# suites 0
+# pass 297
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1769.418977

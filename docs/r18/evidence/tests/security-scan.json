@@ -1,0 +1,8 @@
+{
+  "scope": "R1.8 implementation, tests, reports and workflow; high-confidence patterns plus credential filenames; not a guarantee against every secret format",
+  "files_scanned": 36,
+  "findings": [],
+  "credential_files": [],
+  "raw_screenshots": [],
+  "result": "PASS"
+}

@@ -1,0 +1,8 @@
+{
+  "scope": "new R1.8 files and .gitignore; regex and file-name audit, no external scanner installed",
+  "files_scanned": 44,
+  "secret_findings": [],
+  "credential_profile_files": [],
+  "raw_screenshots": [],
+  "result": "PASS"
+}
