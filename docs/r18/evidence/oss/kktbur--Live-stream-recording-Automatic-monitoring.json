@@ -1,0 +1,93 @@
+{
+  "repository": "kktbur/Live-stream-recording-Automatic-monitoring",
+  "checked_at": "2026-11-08T11:46:20.927990+00:00",
+  "sources": {
+    "metadata": {
+      "url": "https://api.github.com/repos/kktbur/Live-stream-recording-Automatic-monitoring",
+      "result": {
+        "full_name": "kktbur/Live-stream-recording-Automatic-monitoring",
+        "default_branch": "main",
+        "pushed_at": "2026-09-22T04:56:23Z",
+        "license": {
+          "key": "mit",
+          "name": "MIT License",
+          "spdx_id": "MIT",
+          "url": "https://api.github.com/licenses/mit",
+          "node_id": "MDc6TGljZW5zZTEz"
+        },
+        "html_url": "https://github.com/kktbur/Live-stream-recording-Automatic-monitoring",
+        "archived": false
+      }
+    },
+    "license": {
+      "url": "https://api.github.com/repos/kktbur/Live-stream-recording-Automatic-monitoring/license",
+      "result": {
+        "path": "LICENSE",
+        "sha": "da9a8bd02df5ff812af7475895ef9375931ac07b",
+        "html_url": "https://github.com/kktbur/Live-stream-recording-Automatic-monitoring/blob/main/LICENSE",
+        "text": "MIT License\n\nCopyright (c) 2026 kktbur\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
+      }
+    },
+    "readme": {
+      "url": "https://api.github.com/repos/kktbur/Live-stream-recording-Automatic-monitoring/readme",
+      "result": {
+        "path": "README.md",
+        "sha": "65dcd9bb4dd7340a88cdec5f7c48d7330ec5406a",
+        "html_url": "https://github.com/kktbur/Live-stream-recording-Automatic-monitoring/blob/main/README.md",
+        "text": "# Reco Box\n\n[简体中文](README.md) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [日本語](README.ja.md) | [한국어](README.ko.md)\n\nReco Box 是一款面向 Windows 的本地直播自动监控与录制软件。它提供卡片式桌面界面、批量监控、直播开播自动录制、手动立即检查、分段录制、录制完成转 MP4、历史记录、运行日志、系统托盘和旧配置一键导入。\n\n软件无需 Reco Box 账号，也不会把直播间列表、录制记录或视频上传到 Reco Box 服务器。平台解析采用匿名模式，不导入账号 Cookie。\n\n> 当前为 `0.2.0` 早期测试版，仅面向 Windows x64。直播平台经常调整网页和接口，因此“已支持”不代表任何直播间都能永久稳定解析。\n\n## 下载与安装\n\n在仓库右侧的 **Releases** 页面下载：\n\n- `RecoBox-Setup-0.2.0.exe`：Windows 标准安装包\n- `RecoBox-Setup-0.2.0.exe.sha256.txt`：安装包校验值\n\n安装前建议核对 SHA-256。安装包目前没有商业代码签名，Windows SmartScreen 可能显示“未知发布者”。\n\n安装完成后直接打开 Reco Box 即可。安装包已内置经过 SHA-256 校验的 Node.js v24.20.0 LTS 最小运行时，专供 LiveMe 的 JavaScript 签名流程使用，不要求用户另行安装 Node.js。\n\n## 主要平台\n\n| 平台 | 当前状态 | 说明 |\n| --- | --- | --- |\n| 抖音 | 支持 | 匿名解析与自动监控 |\n| 快手 | 支持 | 匿名解析与自动监控 |\n| Bilibili | 支持 | 匿名解析与自动监控 |\n| 小红书 | 支持 | 匿名解析；稳定性受平台变化影响 |\n| TikTok | 支持 | 匿名解析；部分地区可能需要可用网络环境 |\n| YouTube | 支持 | 匿名解析；直播源可用性取决于房间状态 |\n| 京东 | 支持 | 匿名解析；稳定性受平台变化影响 |\n| 淘宝 | 暂不启用 | 锁定版解析器需要登录会话，本项目不会绕过登录或导入 Cookie |\n| Twitch | Beta | 公开直播匿名解析 |\n| SOOP Global | Beta | 仅公开、匿名可访问内容；受限内容不会尝试登录 |\n| CHZZK | Beta | 公开直播匿名解析 |\n| TwitCasting | Beta | 仅公开房间；登录保护内容明确拒绝 |\n| SHOWROOM | Beta | 公开直播匿名解析 |\n| BIGO LIVE | Beta | 公开直播匿名解析 |\n| 17LIVE | Beta | 公开直播匿名解析 |\n| LiveMe | Beta | 使用安装包内置 Node.js 签名运行时 |\n| Picarto | Beta | 公开直播匿名解析 |\n| Shopee Live | Beta | 覆盖已识别的区域站点公开直播 |\n\n“Beta”表示代码适配已经加入，但平台接口可能变化；发布前必须通过公开样本的开播、未开播、流地址和短时录制验证。Reco Box 不加入 Kick、Facebook Live、Instagram Live，不保存 Cookie，也不绕过付费、年龄、地区、私密或登录访问控制。\n\n## 录制规则\n\n- 默认不分段；启用后可输入分钟数，例如输入 `5` 即每 5 分钟生成一段，最后不足 5 分钟的片段按实际时长保存。\n- 分段文件按 `1`、`2`、`3`……编号。\n- 输出目录结构为：`主播名字 / 年月日 / 场次开始时间（24 小时制） / 视频文件`。\n- 可选择 TS 输出，并在录制完成后无损封装为 MP4；成功后可删除对应 TS。\n- 手动停止会暂停该直播间的监控，不会在五秒重试后自动重新开始。\n- 可设置全局默认代理，新直播间会继承；每个直播间可以单独覆盖。只接受不含账号密码的 HTTP/HTTPS 代理，代理同时用于平台解析和 FFmpeg，不写入运行日志。\n\n## 界面语言\n\n设置页可即时切换简体中文、繁體中文、English、Español、Français、Deutsch、Português、Русский、日本語和한국어，无需重启。新安装首次启动跟随受支持的 Windows 语言，无法识别时使用简体中文；旧数据库升级后保持简体中文，手动选择会永久保存。\n\n## 隐私与本地数据\n\n数据库、运行日志、导入报告和上游运行文件保存在当前 Windows 用户的应用数据目录；录制视频只写入用户指定的文件夹。详细说明见 [PRIVACY.md](PRIVACY.md)。\n\n旧配置导入只读取直播间地址及非敏感录制偏好，不导入或展示 Cookie、账号令牌、通知密钥和代理凭据。\n\n## 从源码运行\n\n要求：Windows x64、Python 3.12、PowerShell 7。开发版若需 LiveMe，请运行 `tools/prepare_node.ps1` 下载并校验固定 Node.js 运行时。\n\n```powershell\npy -3.12 -m venv .venv\n./.venv/Scripts/python.exe -m pip install -e \".[dev]\"\n./.venv/Scripts/reco-box.exe\n```\n\n运行测试：\n\n完整测试会真实调用 FFmpeg。请先按下方构建说明，把经过校验的 FFmpeg 运行时放入 `runtime/ffmpeg/`；二进制缺失时，预览解码和核心自检测试会失败。\n\n```powershell\n$env:QT_QPA_PLATFORM='offscreen'\n./.venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider\n```\n\n## 构建 Windows 安装包\n\n源码仓库不提交 FFmpeg 或 Node.js 二进制。发布者需要准备经过校验的 FFmpeg 运行时，并运行 `tools/prepare_node.ps1`；许可证文本保留在对应 runtime 目录，来源与校验值记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。\n\n安装 Inno Setup 后运行：\n\n```powershell\npwsh -NoProfile -File ./packaging/build.ps1\npwsh -NoProfile -File ./packaging/build_installer.ps1\n```\n\n打包后的程序支持离线自检：\n\n```powershell\n& \"./dist/Reco Box/RecoBox.exe\" --self-test\n```\n\n## 项目结构\n\n- `src/reco_box/`：应用、录制、监控、存储和桌面 UI\n- `vendor/DouyinLiveRecorder/`：锁定的上游解析源码与许可证\n- `tests/`：核心行为与 UI 冒烟测试\n- `packaging/`：PyInstaller 与 Inno Setup 构建配置\n- `runtime/ffmpeg/`：本地发布构建输入；二进制不进入 Git 历史\n\n参与开发、报告平台失效或提交新平台适配前，请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。安全问题请按 [SECURITY.md](SECURITY.md) 私密报告。\n\n## Roadmap\n\n- Improve TLS verification compatibility.\n- Improve Xiaohongshu, TikTok, and overseas Beta resolver stability.\n- Add automatic update checking.\n- Improve recording recovery after network interruption.\n- Add additional livestream platforms within the anonymous-access boundary.\n- Improve Windows packaging and code signing.\n- Expand GitHub Actions CI and Windows regression coverage.\n\nRoadmap 表示当前方向，不构成发布时间或平台长期可用性的承诺。具体工作通过 GitHub Issues 跟踪。\n\n## 许可证与免责声明\n\nReco Box 自有代码采用 [MIT License](LICENSE)。上游解析器、FFmpeg、Qt/PySide6 和其他依赖保留各自许可证，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。\n\n本软件仅用于录制你有权保存的内容。使用者应自行遵守直播平台条款、著作权、隐私权及所在地法律。项目不保证平台接口长期可用，也不提供绕过登录、访问控制或付费限制的功能。\n\n## 网络安全说明\n\n当前锁定的上游直播解析器对主要平台解析请求默认不校验 TLS 证书。这是上游为兼容部分反爬环境保留的设计，可能降低网络传输的抗中间人攻击能力；请仅在可信网络环境中使用。Reco Box 当前不会把解析到的临时直播地址写入日志。后续版本会逐个平台测试并逐步恢复证书校验，必要时只为特定请求保留兼容例外。\n\n## 版本 0.2.0\n\n- 新增十语言界面、托盘菜单、安装器和完整 README，并支持设置内即时切换。\n- 新增十个匿名海外 Beta 平台适配、全局/直播间代理和 LiveMe 内置 Node.js 运行时。\n- 保留原有卡片界面、目录结构、分段编号、MP4 封装和旧数据库数据。\n\n## 版本 0.1.4\n\n- 发布前隐私与凭据审计，隔离本地数据库、日志、配置和构建产物。\n- 项目改为独立源码结构，构建时不再依赖仓库外部路径。\n- 公共安装包改用 SHA-256 校验的 FFmpeg 9.0.1 LGPL shared 构建。\n- 保留 0.1.2 的卡片式主界面、筛选排序搜索、批量控制、可滚动编辑页、分段与 MP4 封装、实时大小修正和 Qt Multimedia 预览修复。\n- 关闭 UPX 压缩，降低未签名 Windows 构建的杀毒软件误报概率。\n- Node.js 缺失改为可选自检项，不再阻断当前核心平台使用。\n- 补充 TLS 证书校验风险披露与上游 v4.0.7 逐文件核对记录。\n"
+      }
+    }
+  },
+  "revision": {
+    "sha": "0637a7eca5dc41dabe0ac50dd2e17bf053f49641",
+    "url": "https://github.com/kktbur/Live-stream-recording-Automatic-monitoring/commit/0637a7eca5dc41dabe0ac50dd2e17bf053f49641",
+    "tree_sha": "f6e434df2aba3c618bab2fbe5898c0c159949ced"
+  },
+  "architecture_paths": [
+    "LICENSE",
+    "OPEN_SOURCE_AUDIT.md",
+    "THIRD_PARTY_NOTICES.md",
+    "runtime/ffmpeg/LICENSE.txt",
+    "runtime/node/LICENSE.txt",
+    "src/reco_box/monitor.py",
+    "tests/test_monitor.py",
+    "tests/test_recording_retry.py",
+    "vendor/DouyinLiveRecorder/LICENSE",
+    "vendor/DouyinLiveRecorder/src/javascript/taobao-sign.js"
+  ],
+  "static_reviews": [
+    {
+      "path": "src/reco_box/monitor.py",
+      "url": "https://raw.githubusercontent.com/kktbur/Live-stream-recording-Automatic-monitoring/0637a7eca5dc41dabe0ac50dd2e17bf053f49641/src/reco_box/monitor.py",
+      "sha256": "68376c836985ab5263205958ccdade1c1cbb5aca5d2e2a5af5c812a2fd74e2f7",
+      "bytes_read": 4855,
+      "symbols": [
+        "ResolverSignals",
+        "ResolverWorker",
+        "__init__",
+        "run",
+        "MonitoringCoordinator",
+        "__init__",
+        "start",
+        "check_now",
+        "checkNow",
+        "checkAllNow",
+        "stream_for_room",
+        "schedule_retry",
+        "_tick",
+        "_resolved",
+        "_failed",
+        "_safe_error"
+      ],
+      "inspected_only": true
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "url": "https://raw.githubusercontent.com/kktbur/Live-stream-recording-Automatic-monitoring/0637a7eca5dc41dabe0ac50dd2e17bf053f49641/THIRD_PARTY_NOTICES.md",
+      "sha256": "04ccae8f576fe756a59377bbb5912c45f4cf15c0638ecf2a949c4318b41290e6",
+      "bytes_read": 2503,
+      "symbols": [],
+      "inspected_only": true
+    }
+  ]
+}

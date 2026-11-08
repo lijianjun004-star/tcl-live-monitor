@@ -1,0 +1,15 @@
+{
+  "platform": "jd",
+  "check_at": "2026-11-08T11:48:08.487141+00:00",
+  "requested_public_url": "https://mall.jd.com/index-407681.html",
+  "request_count": 1,
+  "method": "normal public page GET; no cookie; no retry",
+  "state": "UNKNOWN",
+  "source_attested": false,
+  "http_status": 200,
+  "final_host": "www.jd.com",
+  "body_bytes": 26219,
+  "body_sha256": "d956132440e1fb126c7660b346c3f1e924b7b8d7b2bbb5323d0c2711bddfe049",
+  "result": "BLOCKED",
+  "failure_code": "NO_VALID_TARGET_EVIDENCE"
+}

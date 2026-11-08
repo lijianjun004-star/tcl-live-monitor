@@ -1,0 +1,37 @@
+{
+  "repository": "hotdogarea/chrome-taobao-live-crx",
+  "checked_at": "2026-11-08T11:46:20.928881+00:00",
+  "sources": {
+    "metadata": {
+      "url": "https://api.github.com/repos/hotdogarea/chrome-taobao-live-crx",
+      "result": {
+        "full_name": "hotdogarea/chrome-taobao-live-crx",
+        "default_branch": "master",
+        "pushed_at": "2025-02-18T16:56:25Z",
+        "license": null,
+        "html_url": "https://github.com/hotdogarea/chrome-taobao-live-crx",
+        "archived": false
+      }
+    },
+    "license": {
+      "url": "https://api.github.com/repos/hotdogarea/chrome-taobao-live-crx/license",
+      "error": "HTTP Error 404: Not Found"
+    },
+    "readme": {
+      "url": "https://api.github.com/repos/hotdogarea/chrome-taobao-live-crx/readme",
+      "result": {
+        "path": "README.md",
+        "sha": "51385a75710233a6a9bdb3d72a493d2632f1031f",
+        "html_url": "https://github.com/hotdogarea/chrome-taobao-live-crx/blob/master/README.md",
+        "text": "# 淘宝直播弹幕采集扩展\n\n这是一个用于采集淘宝直播弹幕的Chrome扩展。它可以实时捕获直播间的弹幕消息，并通过WebSocket发送到本地Python服务器进行处理。\n\n## 功能特点\n\n- 实时捕获淘宝直播弹幕\n- 自动去重，避免重复消息\n- 支持实时显示弹幕内容\n- 可以连接本地Python服务器进行数据处理\n- 优化的消息处理机制，确保消息传递的可靠性\n\n## 安装步骤\n\n1. 克隆仓库到本地：\n   ```bash\n   git clone https://github.com/hotdogarea/chrome-taobao-live-crx.git\n   ```\n\n2. 安装Python依赖：\n   ```bash\n   pip install -r requirements.txt\n   ```\n\n3. 在Chrome浏览器中加载扩展：\n   - 打开Chrome浏览器，进入扩展管理页面（chrome://extensions/）\n   - 开启\"开发者模式\"\n   - 点击\"加载已解压的扩展程序\"\n   - 选择项目根目录\n\n## 使用说明\n\n1. 启动本地服务器：\n   ```bash\n   python tb_server.py\n   ```\n\n2. 打开淘宝直播页面\n\n3. 点击扩展图标，打开控制面板\n\n4. 点击\"开始捕获\"按钮开始采集弹幕\n\n5. 弹幕会实时显示在扩展的弹窗中，同时发送到本地服务器\n\n## 文件结构\n\n- `manifest.json`: 扩展配置文件\n- `background.js`: 后台脚本，处理消息转发和WebSocket连接\n- `content.js`: 内容脚本，负责与页面交互\n- `inject.js`: 注入脚本，用于获取直播弹幕\n- `popup.html/js`: 扩展弹窗界面\n- `tb_server.py`: Python后端服务器\n- `requirements.txt`: Python依赖列表\n\n## 最新更新\n\n- 优化消息处理逻辑，修复重复消息问题\n- 改进WebSocket连接管理\n- 增强错误处理机制\n- 优化扩展性能和稳定性\n\n## 注意事项\n\n- 确保本地Python服务器（ws://127.0.0.1:8765）正在运行\n- 扩展仅在淘宝直播页面生效\n- 如遇到连接问题，请检查WebSocket服务器状态\n- 建议定期清理缓存数据以保持最佳性能\n\n## 贡献\n\n欢迎提交Issue和Pull Request！\n\n## 许可证\n\nMIT License\n"
+      }
+    }
+  },
+  "revision": {
+    "sha": "033275d41a50a0315be953e0d197dd495159b6f0",
+    "url": "https://github.com/hotdogarea/chrome-taobao-live-crx/commit/033275d41a50a0315be953e0d197dd495159b6f0",
+    "tree_sha": "a46315595ee84801562afe5547c0baca4d4d1785"
+  },
+  "architecture_paths": [],
+  "static_reviews": []
+}

@@ -1,0 +1,24 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { normalizeObservation } from '../probes/r18/schema.mjs';
+import { parsePage, parsePassiveResponse, observe, PAGE_URL } from '../probes/r18/sources/tmall/index.mjs';
+
+const T = '2026-11-08T08:04:00.000Z';
+const valid = (overrides = {}) => ({platform:'tmall',account_id:'2050532947',state:'LIVE',live_id:'102030405060',room_id:'777777',planned_check_at:'2026-11-08T08:00:00.000Z',actual_check_at:T,source_type:'PASSIVE_PAGE_RESPONSE',source_attested:true,...overrides});
+const response = (overrides={}) => ({page_url:PAGE_URL,response_url:'https://h5api.m.taobao.com/h5/mtop.mediaplatform.live.livedetail/4.0/',status:200,captured_at:T,planned_check_at:T,actual_check_at:T,transport_attested:true,payload:{ret:['SUCCESS::调用成功'],data:{accountId:'2050532947',roomNum:'777777',roomStatus:1,streamStatus:1,liveId:'102030405060',broadCaster:{accountId:'2050532947',accountName:'TCL集团官方旗舰店',roomNum:'777777'}}},...overrides});
+
+test('R18 account mismatch fails closed and cannot rewrite target store key',()=>{const o=normalizeObservation(valid({account_id:'other',store_key:'evil'}));assert.equal(o.state,'UNKNOWN');assert.equal(o.failure_code,'ACCOUNT_MISMATCH');assert.equal(o.store_key,'tmall:accountId:2050532947');});
+test('R18 stale evidence cannot prove LIVE or OFFLINE',()=>{for(const state of ['LIVE','OFFLINE']){const o=normalizeObservation(valid({state,observed_at:'2026-11-08T06:00:00Z'}));assert.equal(o.state,'UNKNOWN');assert.equal(o.failure_code,'STALE_EVIDENCE');}});
+test('R18 invalid attestation cannot prove OFFLINE',()=>{for(const source_attested of [false,'true',null])assert.equal(normalizeObservation(valid({state:'OFFLINE',source_attested})).state,'UNKNOWN');});
+test('R18 recommendations never prove target LIVE',()=>{assert.equal(normalizeObservation(valid({recommended:true})).state,'UNKNOWN');assert.equal(parsePage({html:'TCL集团官方旗舰店 推荐 正在直播中',actual_check_at:T}).state,'UNKNOWN');});
+test('R18 simultaneous conflicting source evidence is UNKNOWN',()=>assert.equal(normalizeObservation(valid({conflicting_evidence:true})).state,'UNKNOWN'));
+test('R18 historical room is not a current-room gate',()=>{const o=normalizeObservation(valid({room_id:'919191'}));assert.equal(o.state,'LIVE');assert.equal(o.room_id,'919191');assert.equal(parsePassiveResponse(response()).state,'LIVE');});
+test('R18 synthetic source cannot claim exact timing',()=>{const o=normalizeObservation(valid({exact_start_end:true,exact_start_end_time:true}));assert.equal(o.exact_start_end,false);assert.equal(o.exact_start_end_time,false);});
+test('R18 malformed timestamps and missing LIVE id fail closed',()=>{assert.equal(normalizeObservation(valid({actual_check_at:'bad'})).state,'UNKNOWN');assert.equal(normalizeObservation(valid({live_id:null})).state,'UNKNOWN');});
+test('R18 passive capture requires transport and matched page/response',()=>{assert.equal(parsePassiveResponse(response({transport_attested:false})).state,'UNKNOWN');assert.equal(parsePassiveResponse(response({page_url:PAGE_URL.replace('2050532947','1234')})).state,'UNKNOWN');assert.equal(parsePassiveResponse(response({response_url:'https://example.com/'})).state,'UNKNOWN');});
+test('R18 passive capture stale response cannot prove state',()=>assert.equal(parsePassiveResponse(response({captured_at:'2026-11-08T07:00:00Z'})).state,'UNKNOWN'));
+test('R18 throttle is UNKNOWN with one GET and no retry',async()=>{let n=0;const o=await observe({actual_check_at:T,fetch_impl:async()=>{n++;return {status:429,url:PAGE_URL,text:async()=>''};}});assert.equal(o.state,'UNKNOWN');assert.equal(o.failure_code,'PLATFORM_THROTTLED');assert.equal(n,1);});
+test('R18 captcha never becomes OFFLINE',()=>{for(const html of ['captcha','请完成验证','人机验证']){const o=parsePage({html,actual_check_at:T});assert.equal(o.state,'UNKNOWN');assert.equal(o.failure_code,'CAPTCHA_OR_SECURITY_BLOCK');}});
+test('R18 normal login redirect returns AUTH_REQUIRED',async()=>{const o=await observe({actual_check_at:T,fetch_impl:async()=>({status:302,headers:new Headers({location:'https://login.taobao.com/'})})});assert.equal(o.state,'UNKNOWN');assert.equal(o.failure_code,'AUTH_REQUIRED');});
+test('R18 network and timeout errors are UNKNOWN',async()=>{for(const name of ['Error','AbortError']){const o=await observe({actual_check_at:T,fetch_impl:async()=>{throw Object.assign(new Error('synthetic'),{name});}});assert.equal(o.state,'UNKNOWN');assert.equal(o.failure_code,name==='AbortError'?'TIMEOUT':'NETWORK_ERROR');}});
+test('R18 credentials and private refs do not pass normalized observation',()=>{const o=normalizeObservation(valid({cookie:'synthetic-secret',token:'synthetic-secret',evidence_ref:'../private/session.json'}));assert.equal(o.evidence_ref,null);assert.equal('cookie' in o,false);assert.equal('token' in o,false);});

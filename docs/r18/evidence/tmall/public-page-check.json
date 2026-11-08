@@ -1,0 +1,24 @@
+{
+  "checked_at": "2026-11-08T11:47:34.688Z",
+  "request_url": "https://h5.m.taobao.com/taolive/video.html?userId=2050532947",
+  "method": "GET",
+  "attempts": 1,
+  "status": "BLOCKED",
+  "observation": {
+    "platform": "tmall",
+    "store_key": "tmall:accountId:2050532947",
+    "account_id": "2050532947",
+    "room_id": null,
+    "live_id": null,
+    "state": "UNKNOWN",
+    "planned_check_at": "2026-11-08T11:47:34.688Z",
+    "actual_check_at": "2026-11-08T11:47:34.688Z",
+    "source_type": "PUBLIC_PAGE",
+    "source_attested": false,
+    "failure_code": "NETWORK_ERROR",
+    "evidence_ref": "docs/r18/evidence/tmall/public-page-check.json",
+    "exact_start_end": false
+  },
+  "interpretation": "One normal public-page GET was attempted. Runtime fetch failed before an HTTP response was received (NETWORK_ERROR). No platform live status was observed; this does not prove a platform security challenge. No retry. Logged-in and passive-response checks were not executed.",
+  "capture": null
+}

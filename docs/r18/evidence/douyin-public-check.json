@@ -1,0 +1,15 @@
+{
+  "platform": "douyin",
+  "check_at": "2026-11-08T11:48:17.997758+00:00",
+  "requested_public_url": "https://www.douyin.com/user/MS4wLjABAAAAVozXF9jRtNt6k62dH8TZXld0RGpvIK8aZxEh3oWcBfM",
+  "request_count": 1,
+  "method": "normal public page GET; no cookie; no retry",
+  "state": "UNKNOWN",
+  "source_attested": false,
+  "http_status": 200,
+  "final_host": "www.douyin.com",
+  "body_bytes": 0,
+  "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "result": "BLOCKED",
+  "failure_code": "NO_VALID_TARGET_EVIDENCE"
+}

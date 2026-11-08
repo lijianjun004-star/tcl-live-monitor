@@ -1,0 +1,34 @@
+name: R1.8 safe experiment (offline CI only)
+on:
+  push:
+    branches: [experiment/r18-safe-oss-session-monitor]
+  pull_request:
+    paths:
+      - 'probes/r18/**'
+      - 'tests/r18-*.test.mjs'
+      - '.github/workflows/r18-safe-experiment.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full offline regression
+        run: node --test tests/*.test.mjs
+      - name: Run no-source experiment
+        run: node probes/r18/cli.mjs --out-dir r18-output
+      - name: Verify no-source UNKNOWN
+        run: node --input-type=module -e "import fs from 'node:fs';const r=JSON.parse(fs.readFileSync('r18-output/report.json'));if(r.observations.length!==1||r.observations[0].state!=='UNKNOWN'||r.sessions.length)process.exit(1)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r18-offline-no-source
+          path: |
+            r18-output/report.json
+            r18-output/report.html
+          retention-days: 14
