@@ -84,7 +84,7 @@ export function reduceAccountSessions(raw,{asOf=new Date().toISOString()}={}){
   if(!item||typeof item!=='object'||typeof item.at!=='string'){ignored.push({reason:'INVALID_ROW'});continue;}
   let ms;try{ms=when(item.at);}catch{ignored.push({reason:'BAD_TIMESTAMP'});continue;}
   if(ms>asOfMs){ignored.push({reason:'FUTURE_OBSERVATION'});continue;}
-  const key=ISO(ms),normalized={at:key,...item};
+  const key=ISO(ms),normalized={...item,at:key};
   if(dedup.has(key)){
    if(JSON.stringify(dedup.get(key))!==JSON.stringify(normalized))throw Error('CONFLICTING_SAMPLES_AT_SAME_TIME');
    continue;
