@@ -38,7 +38,7 @@ async function captureProfile(target){
     .filter(a=>a.href.startsWith('https://live.douyin.com/'))
     .slice(0,25).map(a=>({href:a.href,text:((a.innerText||'')+' '+(a.parentElement?.innerText||'')).replace(/\s+/g,' ').slice(0,120)}))
  }));
- return {...p,profile_url:target.profile_url,httpStatus:response?.status()??null,
+ return {...p,profile_url:page.url().split('?')[0],httpStatus:response?.status()??null,
   observed_at:new Date().toISOString()};
 }
 
@@ -66,7 +66,7 @@ try{
   let proof,stop=false;
   const adapter=async()=>{
    const profile=await captureProfile(t);
-   const profileBlocked=!!profile.error_code||profile.httpStatus===429||
+   const profileBlocked=!!profile.error_code||profile.httpStatus!==200||
      challenge.test(String(profile.title||'')+' '+String(profile.body_excerpt||''));
    const preview=profileBlocked?null:corroborateDouyin(profile,null,t,{now:new Date().toISOString()});
    let room=null;
