@@ -69,3 +69,13 @@ test('stale or future room evidence is rejected',()=>{
   assert.equal(x.reason,'ROOM_EVIDENCE_STALE');
  }
 });
+
+
+test('pilot preflight exposes live_route as room_id for second-page navigation',()=>{
+ const preview=corroborateDouyin(profile(),null,t,{now});
+ assert.equal(preview.reason,'ROOM_PAGE_NOT_VISITED');
+ assert.equal(preview.profile_badge,true);
+ assert.equal(preview.room_id,'31878890513');
+ assert.equal(preview.dynamic_room_id,'7705907855488043785');
+ assert.equal(preview.live_id,null);
+});
