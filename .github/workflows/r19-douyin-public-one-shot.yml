@@ -1,13 +1,32 @@
 # Second bounded test: response-commit navigation after first DOMContentLoaded TIMEOUT.
 # Third bounded test: correct room_id field mapping to visit the actual linked room once.
-name: R1.9 TCL + FFALCON guest one-shot (manual experiment)
+name: R1.9 Douyin exact-account one-shot (explicit manual only)
 on:
-  push:
-    branches:
-      - experiment/r19-douyin-tcl-ffalcon-roster-first
-    paths:
-      - '.github/workflows/r19-douyin-public-one-shot.yml'
   workflow_dispatch:
+    inputs:
+      account_key:
+        description: 'Choose one known TCL/FFALCON Douyin account (no general search)'
+        required: true
+        type: choice
+        options:
+          - tcl-douyin-flagship
+          - tcl-douyin-air-direct
+          - tcl-douyin-tv-official-live
+          - tcl-douyin-tv-corporate
+          - tcl-douyin-ac-zhongshan
+          - tcl-douyin-tv-brand
+          - tcl-douyin-ac-flagship
+          - tcl-douyin-flagship-tv-live
+          - tcl-douyin-groupbuy
+          - ffalcon-douyin-tv-flagship
+          - ffalcon-douyin-home-appliances-flagship
+          - ffalcon-douyin-monitor-flagship
+      confirm:
+        description: 'Explicit opt-in to a single public-page check; never retry blocked paths'
+        required: true
+        type: choice
+        default: 'NO'
+        options: ['NO', 'YES']
 permissions:
   contents: read
 concurrency:
@@ -15,6 +34,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   guest-public-check:
+    if: ${{ inputs.confirm == 'YES' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -27,7 +47,7 @@ jobs:
           npm install --no-save playwright@1.56.1
           npx playwright install chromium --with-deps
       - name: Execute at most two regular public profile checks, no retries
-        run: node probes/r19/public-one-shot.mjs
+        run: node probes/r19/public-one-shot.mjs --key "${{ inputs.account_key }}" --execute
       - name: Review sanitized one-shot status
         if: always()
         run: |
