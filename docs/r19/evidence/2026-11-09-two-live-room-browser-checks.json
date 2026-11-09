@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "date_beijing": "2026-11-09",
+  "time_precision": "DATE_ONLY",
+  "purpose": "Independent normal-browser second-page read-only verification outside GitHub Actions; NOT continuous monitoring",
+  "verification_rules": "Identity requires matching account profile secUid/name/display ID and live-room page. Dynamic room ID is not to be confused with stable live.douyin.com route ID.",
+  "observations": [
+    {
+      "account_key": "ffalcon-douyin-tv-flagship",
+      "account_name": "FFALCON雷鸟电视旗舰店",
+      "display_douyin_id": "83165143028",
+      "sec_uid": "MS4wLjABAAAAHLgxNf9c59NqJuH9tm5U2L3E1B6bNBehePdI5rKsZ2s",
+      "stable_live_route_id": "988541363148",
+      "attempted_url": "https://live.douyin.com/988541363148?room_id=7705939961182636842",
+      "canonical_url": "https://live.douyin.com/988541363148",
+      "profile_account_verified": true,
+      "room_page_account_verified": true,
+      "room_live_visual_evidence": true,
+      "previous_profile_badge_dynamic_room_id": "7705939961182636842",
+      "room_url_query_dynamic_room_id": "7705939961182636842",
+      "dynamic_room_id_from_current_live_page": null,
+      "observation_class": "LIVE_ROOM_IDENTITY_AND_PLAYER_VERIFIED",
+      "warning": "Canonical room page removed query. Dynamic room id came from a prior clicked profile link/initial URL, not from an independently parsed current-room payload.",
+      "run_url": "https://agent.tinyfish.ai/runs/8dd55b79-a9b9-4ea2-acd0-3a069f42d24d"
+    },
+    {
+      "account_key": "tcl-douyin-flagship",
+      "account_name": "TCL官方旗舰店",
+      "display_douyin_id": "79013748820",
+      "sec_uid": "MS4wLjABAAAAVozXF9jRtNt6k62dH8TZXld0RGpvIK8aZxEh3oWcBfM",
+      "stable_live_route_id": "31878890513",
+      "attempted_url": "https://live.douyin.com/31878890513",
+      "canonical_url": "https://live.douyin.com/31878890513",
+      "profile_account_verified": true,
+      "room_page_account_verified": true,
+      "room_live_visual_evidence": true,
+      "previous_profile_badge_dynamic_room_id": "7705907855488043785",
+      "room_url_query_dynamic_room_id": null,
+      "dynamic_room_id_from_current_live_page": null,
+      "observation_class": "LIVE_ROOM_ACCOUNT_VERIFIED_DYNAMIC_ID_NOT_RECONFIRMED",
+      "warning": "Browser output mislabeled the route path 31878890513 as a current dynamic room_id. This is a stable route ID only. Exact session ID cannot be attested from this visit.",
+      "run_url": "https://agent.tinyfish.ai/runs/335335fe-06e0-4c73-bdbe-0ae529fc5e4c"
+    }
+  ],
+  "github_actions_guest_trials": [
+    {
+      "run_id": 42578287544,
+      "status": "UNKNOWN",
+      "reason": "TIMEOUT"
+    },
+    {
+      "run_id": 42578588148,
+      "status": "PARTIAL_PROFILE_PASS",
+      "reason": "Two profile badges and dynamic room IDs; buggy field mapping prevented second check"
+    },
+    {
+      "run_id": 42578776368,
+      "status": "UNKNOWN",
+      "reason": "ACCESS_OR_AUTH_BLOCKED"
+    }
+  ],
+  "production_status": "NOT_ENABLED",
+  "hourly_monitoring_status": "NOT_EXECUTED",
+  "offline_real_ending_observed": false
+}
