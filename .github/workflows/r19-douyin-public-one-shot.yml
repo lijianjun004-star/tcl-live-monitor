@@ -1,4 +1,5 @@
 # Second bounded test: response-commit navigation after first DOMContentLoaded TIMEOUT.
+# Third bounded test: correct room_id field mapping to visit the actual linked room once.
 name: R1.9 TCL + FFALCON guest one-shot (manual experiment)
 on:
   push:
