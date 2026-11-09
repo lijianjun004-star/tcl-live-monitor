@@ -1,3 +1,4 @@
+# Second bounded test: response-commit navigation after first DOMContentLoaded TIMEOUT.
 name: R1.9 TCL + FFALCON guest one-shot (manual experiment)
 on:
   push:
