@@ -51,9 +51,12 @@ async function captureRoom(route,webcast){
  const s=await page.evaluate(()=>({
   title:document.title,
   bodyExcerpt:(document.body?.innerText||'').slice(0,1400),
-  metaDescription:document.querySelector('meta[name="description"]')?.content||''
+  metaDescription:document.querySelector('meta[name="description"]')?.content||'',
+  videoVisible:[...document.querySelectorAll('video')].some(v=>v.getClientRects().length>0),
+  liveBadgeVisible:/直播中/.test((document.body?.innerText||'').slice(0,800))
  }));
- return {...s,url:page.url(),httpStatus:response?.status()??null,observed_at:new Date().toISOString()};
+ return {...s,requested_url:intended,url:page.url(),httpStatus:response?.status()??null,
+  observed_at:new Date().toISOString()};
 }
 
 try{
