@@ -28,7 +28,7 @@ const page=await ctx.newPage();
 
 async function captureProfile(target){
  let response;
- try {response=await page.goto(target.profile_url,{waitUntil:'domcontentloaded',timeout:28000});}
+ try {response=await page.goto(target.profile_url,{waitUntil:'commit',timeout:20000});}
  catch(e){return {error_code:errorCode(e),observed_at:new Date().toISOString()};}
  await page.waitForTimeout(5000);
  const p=await page.evaluate(()=>({
@@ -45,7 +45,7 @@ async function captureProfile(target){
 async function captureRoom(route,webcast){
  let response;
  const intended='https://live.douyin.com/'+route+'?room_id='+webcast;
- try {response=await page.goto(intended,{waitUntil:'domcontentloaded',timeout:28000});}
+ try {response=await page.goto(intended,{waitUntil:'commit',timeout:20000});}
  catch(e){return {error_code:errorCode(e),url:page.url(),observed_at:new Date().toISOString()};}
  await page.waitForTimeout(4500);
  const s=await page.evaluate(()=>({
