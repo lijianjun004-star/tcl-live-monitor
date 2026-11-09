@@ -14,6 +14,7 @@ TCL 京东 / 淘宝天猫 / 抖音直播间状态监控与满播率考核。**�
 - **程序与测试：** `probes/r19/operation-path.mjs`、`probes/r19/path-cli.mjs`、`tests/r19-operation-path.test.mjs`
 - **账号：** `config/r19-douyin-tcl-ffalcon-registry.json`（14 个独立账号；12 个首期主目标）
 - **历史证据：** [2026-11-09 两账号直播页二次核验](docs/r19/2026-11-09-REAL-LIVE-ROOM-CROSS-CHECK.md)
+- **最新三账号真实复验：** [雷鸟大家电、雷鸟显示器与 TCL 空调总部账号](docs/r19/2026-11-09-FIXED-PATH-THREE-ACCOUNT-ACCEPTANCE.md)（两条 LIVE 页面观测，一条登录阻断 UNKNOWN）
 - **代理工作说明：** [AGENTS.md](AGENTS.md)
 - **交付状态：** [R1.9 草稿 PR #30](https://github.com/lijianjun004-star/tcl-live-monitor/pull/30)
 
