@@ -51,7 +51,7 @@ function identityMatches(s,t){
 /* A profile live badge is not full room-page validation. Old badge snapshots
  * must never be treated as current status without a new visit.
  */
-export function classifyFreshProfileCapture(s,t){
+export function classifyFreshProfileCapture(s,t,{now=new Date().toISOString(),max_age_ms=600000}={}){
  let observed=null;
  try{if(s?.observed_at)observed=new Date(s.observed_at).toISOString();}catch{}
  const blank={account_key:t?.key??null,profile_url:t?.profile_url??null,
@@ -59,6 +59,8 @@ export function classifyFreshProfileCapture(s,t){
   live_badge_observed:false,live_route_id:null,webcast_room_id:null,
   reason:'NO_VALID_TARGET_EVIDENCE',room_page_second_verification:false};
  if(!observed||!t||!s)return {...blank,reason:'INVALID_CAPTURE_TIME'};
+ const nowMs=Date.parse(now),age=nowMs-Date.parse(observed);
+ if(!Number.isFinite(nowMs)||!Number.isFinite(age)||age>max_age_ms||age < -60000)return {...blank,reason:'STALE_OR_FUTURE_PROFILE_CAPTURE'};
  if(DENY.test(String(s.title||'')+' '+String(s.body_excerpt||'')))return {...blank,reason:'ACCESS_OR_AUTH_BLOCKED'};
  if(!identityMatches(s,t))return {...blank,reason:'ACCOUNT_IDENTITY_MISMATCH'};
  const links=(Array.isArray(s.live_anchors)?s.live_anchors:[]).filter(a=>String(a.text||'').includes('直播中'));
