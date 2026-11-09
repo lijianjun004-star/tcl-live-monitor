@@ -1,0 +1,36 @@
+name: R1.9 Douyin TCL FFALCON roster (offline only)
+on:
+  push:
+    branches:
+      - experiment/r19-douyin-tcl-ffalcon-roster-first
+  pull_request:
+    paths:
+      - 'config/r19-douyin-tcl-ffalcon-registry.json'
+      - 'probes/r19/**'
+      - 'tests/r19-*.test.mjs'
+      - '.github/workflows/r19-douyin-roster-offline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  roster-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: All existing plus R1.9 offline tests
+        run: node --test tests/*.test.mjs
+      - name: Generate offline Douyin check plan
+        run: node probes/r19/cli.mjs --mode hourly --at 2026-11-09T06:04:00Z --out r19-output/check-plan.json
+      - name: Guard no real-source or production claims
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; const p=JSON.parse(fs.readFileSync('r19-output/check-plan.json','utf8')); if(p.source_connected!==false||p.live_data_fetched_by_cli!==false||p.scheduled_checks.length!==12||p.observations.length!==0||p.scheduled_checks.some(c=>c.planned_check_at!=='2026-11-09T06:00:00.000Z'))process.exit(1); console.log('R1.9: 12 account checks planned safely without accessing Douyin');"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r19-douyin-safe-roster-plan
+          path: r19-output/check-plan.json
+          retention-days: 14
+          if-no-files-found: error

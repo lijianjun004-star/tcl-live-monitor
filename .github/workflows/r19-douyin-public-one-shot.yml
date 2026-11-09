@@ -1,0 +1,66 @@
+# Explicit single-target public browser probe; no push trigger, no cron, no login or retries.
+name: R1.9 Douyin exact-account one-shot (explicit manual only)
+on:
+  workflow_dispatch:
+    inputs:
+      account_key:
+        description: 'Choose one known TCL/FFALCON Douyin account (no general search)'
+        required: true
+        type: choice
+        options:
+          - tcl-douyin-flagship
+          - tcl-douyin-air-direct
+          - tcl-douyin-tv-official-live
+          - tcl-douyin-tv-corporate
+          - tcl-douyin-ac-zhongshan
+          - tcl-douyin-tv-brand
+          - tcl-douyin-ac-flagship
+          - tcl-douyin-flagship-tv-live
+          - tcl-douyin-groupbuy
+          - ffalcon-douyin-tv-flagship
+          - ffalcon-douyin-home-appliances-flagship
+          - ffalcon-douyin-monitor-flagship
+      confirm:
+        description: 'Explicit opt-in to a single public-page check; never retry blocked paths'
+        required: true
+        type: choice
+        default: 'NO'
+        options: ['NO', 'YES']
+permissions:
+  contents: read
+concurrency:
+  group: r19-douyin-public-one-shot
+  cancel-in-progress: false
+jobs:
+  guest-public-check:
+    if: ${{ inputs.confirm == 'YES' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install standard Chromium (no stealth plugins or proxy)
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: Visit one chosen public profile and its current linked room at most once
+        run: node probes/r19/public-one-shot.mjs --key "${{ inputs.account_key }}" --execute
+      - name: Review sanitized one-shot status
+        if: always()
+        run: |
+          if [ -f r19-public-pilot-output/results.json ]; then
+            node --input-type=module -e "import fs from 'node:fs';const r=JSON.parse(fs.readFileSync('r19-public-pilot-output/results.json'));console.log(JSON.stringify({count:r.results.length,blocked:r.platform_blocked,results:r.results.map(x=>({key:x.key,state:x.state,reason:x.failure_code,profile_badge:x.profile_live_badge_observed,room_verified:x.room_page_second_verification}))}));"
+          else
+            echo "No result file. Pilot is NOT_EXECUTED or FAILED; do not infer live status."
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r19-douyin-single-account-guest-one-shot
+          path: |
+            r19-public-pilot-output/results.json
+            r19-public-pilot-output/store-state.json
+          retention-days: 14
+          if-no-files-found: warn

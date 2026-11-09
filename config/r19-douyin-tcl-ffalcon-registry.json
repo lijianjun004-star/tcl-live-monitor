@@ -1,0 +1,355 @@
+{
+  "schema_version": 19,
+  "source_baseline": "experiment/r18-safe-oss-session-monitor",
+  "date_beijing": "2026-11-09",
+  "description": "TCL与FFALCON雷鸟抖音账号去重名单；浏览器已验证的账号主页状态仅作一次观测，不代表持续实时或实际开播分钟",
+  "time_precision": "DATE_ONLY",
+  "production_cron_enabled": false,
+  "badge_semantics": "PROFILE_LIVE_BADGE不等于直播间二次验证，也不等于真实开播时刻",
+  "targets": [
+    {
+      "key": "tcl-douyin-flagship",
+      "account_name": "TCL官方旗舰店",
+      "display_douyin_id": "79013748820",
+      "sec_uid": "MS4wLjABAAAAVozXF9jRtNt6k62dH8TZXld0RGpvIK8aZxEh3oWcBfM",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAVozXF9jRtNt6k62dH8TZXld0RGpvIK8aZxEh3oWcBfM",
+      "business_segment": "TCL_MAIN",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": "31878890513",
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "PROFILE_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": "31878890513",
+        "webcast_room_id": "7705907855488043785",
+        "run_url": "https://agent.tinyfish.ai/runs/389bf55d-45f4-4af3-aede-d86caa91a4ad",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "tcl-douyin-air-direct",
+      "account_name": "TCL空调总部官方直播间",
+      "display_douyin_id": "75800827047",
+      "sec_uid": "MS4wLjABAAAAhiY52DG42njffnKGyWFpKSXJzn2au4FDC40NUdz56TtOxx56LLxa55v9pzk3F8yx",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAhiY52DG42njffnKGyWFpKSXJzn2au4FDC40NUdz56TtOxx56LLxa55v9pzk3F8yx",
+      "business_segment": "TCL_AIR",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": "802817151945",
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "PROFILE_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": "802817151945",
+        "webcast_room_id": "7705954733369854730",
+        "run_url": "https://agent.tinyfish.ai/runs/8950a90c-5939-4e20-b70e-9df15f8280bc",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "tcl-douyin-tv-official-live",
+      "account_name": "TCL电视官方直播间",
+      "display_douyin_id": "89706879747",
+      "sec_uid": "MS4wLjABAAAAsXDlbg6rHqDV6y7kMxV2GCba4ey2QgDcmUxTuFhnGf5kYIphYC_ieueMXsLlWXgY",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAsXDlbg6rHqDV6y7kMxV2GCba4ey2QgDcmUxTuFhnGf5kYIphYC_ieueMXsLlWXgY",
+      "business_segment": "TCL_TV",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": "570552456352",
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "PROFILE_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": "570552456352",
+        "webcast_room_id": "7705939187878365978",
+        "run_url": "https://agent.tinyfish.ai/runs/8c779c7f-42b3-47fa-91a3-256925f2b7b8",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "tcl-douyin-tv-corporate",
+      "account_name": "TCL电视官方",
+      "display_douyin_id": "83749174633",
+      "sec_uid": "MS4wLjABAAAAIOvCAk_PEYrfvxNT547O5JaYPQvuKY8XgtYpRPtrh74zat0zFLH4vXXK1rF36Got",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAIOvCAk_PEYrfvxNT547O5JaYPQvuKY8XgtYpRPtrh74zat0zFLH4vXXK1rF36Got",
+      "business_segment": "TCL_TV",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": "478709678965",
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "PROFILE_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": "478709678965",
+        "webcast_room_id": "7705923604533676835",
+        "run_url": "https://agent.tinyfish.ai/runs/38bb8600-d096-45c8-8ef8-d39d0820476a",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "tcl-douyin-ac-zhongshan",
+      "account_name": "TCL空调",
+      "display_douyin_id": "TCLkongtiao",
+      "sec_uid": "MS4wLjABAAAAk8PCRiqiKMYYO7CUUgeotMKKxkg9-HOWe8Lrn2Dv-xQ",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAk8PCRiqiKMYYO7CUUgeotMKKxkg9-HOWe8Lrn2Dv-xQ",
+      "business_segment": "TCL_AIR",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": null,
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "NO_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": null,
+        "webcast_room_id": null,
+        "run_url": "https://agent.tinyfish.ai/runs/4d16268a-a028-4f6f-8a45-db87d47537e7",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "tcl-douyin-tv-brand",
+      "account_name": "TCL电视品牌官方",
+      "display_douyin_id": "93342457359",
+      "sec_uid": "MS4wLjABAAAAP8tKoNhZj6nqftKiW-jDXLF8UFf5r6E9rJRfO_e5UWAphNlJMqefVMcqG6wYXN-E",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAP8tKoNhZj6nqftKiW-jDXLF8UFf5r6E9rJRfO_e5UWAphNlJMqefVMcqG6wYXN-E",
+      "business_segment": "TCL_TV",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": null,
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "NO_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": null,
+        "webcast_room_id": null,
+        "run_url": "https://agent.tinyfish.ai/runs/1d1e8702-d705-4eaf-b71c-f257b91068fa",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "tcl-douyin-ac-flagship",
+      "account_name": "TCL空调旗舰店",
+      "display_douyin_id": "38396581665",
+      "sec_uid": "MS4wLjABAAAAHrYdQDu8_LBNttclBsq8-X7ye5-8oVFB2FzCeUJJVEM",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAHrYdQDu8_LBNttclBsq8-X7ye5-8oVFB2FzCeUJJVEM",
+      "business_segment": "TCL_AIR",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": "7774305058",
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "PROFILE_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": "7774305058",
+        "webcast_room_id": "7705969579402529536",
+        "run_url": "https://agent.tinyfish.ai/runs/12c5fd38-d307-4786-baa8-da5b37d30fec",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "tcl-douyin-flagship-tv-live",
+      "account_name": "TCL旗舰店电视直播间",
+      "display_douyin_id": "55176072706",
+      "sec_uid": "MS4wLjABAAAArESAdekhgm3-DvKIXCzheIIg1WHbedqjDvl6MAP0XfY",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAArESAdekhgm3-DvKIXCzheIIg1WHbedqjDvl6MAP0XfY",
+      "business_segment": "TCL_TV",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": null,
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "NO_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": null,
+        "webcast_room_id": null,
+        "run_url": "https://agent.tinyfish.ai/runs/3240ca6e-c61c-4c2c-af26-b19017d93beb",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "tcl-douyin-groupbuy",
+      "account_name": "TCL团购官方号",
+      "display_douyin_id": "14145381",
+      "sec_uid": "MS4wLjABAAAAmgy7O_sAD6iWyifBhFNb6ha82RkQUAFvpJDr06fxHlw",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAmgy7O_sAD6iWyifBhFNb6ha82RkQUAFvpJDr06fxHlw",
+      "business_segment": "TCL_LOCAL_LIFE",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": "53987804768",
+      "evidence": {
+        "verification_date_beijing": null,
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "NOT_CHECKED_THIS_ROUND",
+        "target_profile_identity_verified": false,
+        "live_route_id": null,
+        "webcast_room_id": null,
+        "run_url": null,
+        "source": "PRIOR_REPO_CONFIG_ONLY",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "tcl-douyin-dealer-fushixin",
+      "account_name": "TCL富世新家电智选店",
+      "display_douyin_id": "FoxsineZN",
+      "sec_uid": "MS4wLjABAAAAtTiJVyarvAsis4Af4PwnVxg00B-CRvFZci4E6Xl7-94",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAtTiJVyarvAsis4Af4PwnVxg00B-CRvFZci4E6Xl7-94",
+      "business_segment": "THIRD_PARTY_DEALER",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": null,
+      "evidence": {
+        "verification_date_beijing": null,
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "NOT_CHECKED_THIS_ROUND",
+        "target_profile_identity_verified": false,
+        "live_route_id": null,
+        "webcast_room_id": null,
+        "run_url": null,
+        "source": "PRIOR_REPO_CONFIG_ONLY",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "ffalcon-douyin-tv-flagship",
+      "account_name": "FFALCON雷鸟电视旗舰店",
+      "display_douyin_id": "83165143028",
+      "sec_uid": "MS4wLjABAAAAHLgxNf9c59NqJuH9tm5U2L3E1B6bNBehePdI5rKsZ2s",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAHLgxNf9c59NqJuH9tm5U2L3E1B6bNBehePdI5rKsZ2s",
+      "business_segment": "FFALCON_TV",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": "988541363148",
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "PROFILE_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": "988541363148",
+        "webcast_room_id": "7705939961182636842",
+        "run_url": "https://agent.tinyfish.ai/runs/79dd9e65-2643-4861-96cd-7d52d2bc65d9",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "rayneo-douyin-official",
+      "account_name": "RayNeo雷鸟创新",
+      "display_douyin_id": "84566591005",
+      "sec_uid": "MS4wLjABAAAAwcBNfIs0QX9hhBWHM8MTs8xArSi5_6ZEdk97-NKsIT8",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAwcBNfIs0QX9hhBWHM8MTs8xArSi5_6ZEdk97-NKsIT8",
+      "business_segment": "RAYNEO_AR_SEPARATE",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": true,
+      "legacy_historical_route_id": null,
+      "evidence": {
+        "verification_date_beijing": null,
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "NOT_CHECKED_THIS_ROUND",
+        "target_profile_identity_verified": false,
+        "live_route_id": null,
+        "webcast_room_id": null,
+        "run_url": null,
+        "source": "PRIOR_REPO_CONFIG_ONLY",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "ffalcon-douyin-home-appliances-flagship",
+      "account_name": "FFALCON雷鸟大家电旗舰店",
+      "display_douyin_id": "81975502282",
+      "sec_uid": "MS4wLjABAAAAkr3REutsU5nIGR6Gn0LOZRVL_krzCL1vXUwtCDBUjF_Rg1ORedkdrpYFk5ddxEz2",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAkr3REutsU5nIGR6Gn0LOZRVL_krzCL1vXUwtCDBUjF_Rg1ORedkdrpYFk5ddxEz2",
+      "business_segment": "FFALCON_TV",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": false,
+      "legacy_historical_route_id": null,
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "PROFILE_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": "792045716593",
+        "webcast_room_id": "7705908698773785407",
+        "run_url": "https://agent.tinyfish.ai/runs/d38876ab-482e-41f2-a90f-b4600a5ca79d",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    },
+    {
+      "key": "ffalcon-douyin-monitor-flagship",
+      "account_name": "FFALCON雷鸟显示器旗舰店",
+      "display_douyin_id": "33935558506",
+      "sec_uid": "MS4wLjABAAAAHeBNXB5x3K9o4A6lU_1Za6WVEcGJ-KR_4RoqnuYNSg8",
+      "profile_url": "https://www.douyin.com/user/MS4wLjABAAAAHeBNXB5x3K9o4A6lU_1Za6WVEcGJ-KR_4RoqnuYNSg8",
+      "business_segment": "FFALCON_MONITORS",
+      "monitored_only": true,
+      "score_eligible": false,
+      "legacy_in_main": false,
+      "legacy_historical_route_id": null,
+      "evidence": {
+        "verification_date_beijing": "2026-11-09",
+        "time_precision": "DATE_ONLY_NO_PRECISE_BROWSER_TIMESTAMP",
+        "kind": "PROFILE_LIVE_BADGE",
+        "target_profile_identity_verified": true,
+        "live_route_id": "497124718033",
+        "webcast_room_id": "7706010457504811786",
+        "run_url": "https://agent.tinyfish.ai/runs/e0dccf11-9b4f-4460-8c41-4a9fa8380a8c",
+        "source": "ORDINARY_PUBLIC_PROFILE_BROWSER",
+        "room_page_second_verification": false
+      }
+    }
+  ],
+  "unconfirmed_identity_leads": [
+    {
+      "name": "雷鸟电视品牌官方直营",
+      "display_douyin_id": "wlhnumber1",
+      "reason": "暂无稳定secUid"
+    },
+    {
+      "name": "雷鸟官方旗舰店壁纸电视",
+      "display_douyin_id": "87826221679",
+      "reason": "未核实是否与现有旗舰店同号"
+    },
+    {
+      "name": "FFALCON雷鸟官方电视直播间",
+      "display_douyin_id": null,
+      "reason": "仅有公开视频昵称"
+    },
+    {
+      "name": "TCL冰洗官方旗舰店",
+      "display_douyin_id": null,
+      "reason": "未取得独立secUid"
+    }
+  ]
+}
