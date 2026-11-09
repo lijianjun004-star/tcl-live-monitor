@@ -46,7 +46,7 @@ test('room URL cannot divert to another host or room ID',()=>{
  }
 });
 test('room page auth gate, captcha, and explicit ended state stay UNKNOWN',()=>{
- for(const message of ['直播已结束','请先登录后观看','安全验证','验证码','扫码登录']){
+ for(const message of ['直播已结束','直播已经结束','暂未开播','请先登录后观看','安全验证','验证码','扫码登录']){
   const x=corroborateDouyin(profile(),room({bodyExcerpt:message}),t,{now});
   assert.equal(x.reason,'ROOM_ACCESS_OR_ENDED');
  }
