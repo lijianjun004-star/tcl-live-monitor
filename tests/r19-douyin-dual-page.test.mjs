@@ -15,6 +15,7 @@ const room=(overrides={})=>({
  title:t.account_name+'的抖音直播间 - 抖音直播',
  metaDescription:'欢迎来到'+t.account_name+'的抖音直播间，查看直播内容',
  bodyExcerpt:'正在直播 电视型号',
+ videoVisible:true,liveBadgeVisible:true,
  url:'https://live.douyin.com/31878890513?room_id=7705907855488043785',
  httpStatus:200,observed_at:now,...overrides
 });
@@ -78,4 +79,41 @@ test('pilot preflight exposes live_route as room_id for second-page navigation',
  assert.equal(preview.room_id,'31878890513');
  assert.equal(preview.dynamic_room_id,'7705907855488043785');
  assert.equal(preview.live_id,null);
+});
+
+test('canonical room URL may drop room_id if clicked profile URL and room route are exact',()=>{
+ const x=corroborateDouyin(profile(),room({
+  requested_url:'https://live.douyin.com/31878890513?room_id=7705907855488043785',
+  url:'https://live.douyin.com/31878890513'
+ }),t,{now});
+ assert.equal(x.state,'LIVE');
+ assert.equal(x.live_id,'7705907855488043785');
+ assert.equal(x.dynamic_room_id_source,'FRESH_PROFILE_BADGE_LINK');
+ assert.equal(x.current_room_payload_attested,false);
+});
+test('canonical stripped URL without an audited requested link remains UNKNOWN',()=>{
+ const x=corroborateDouyin(profile(),room({
+   url:'https://live.douyin.com/31878890513'
+ }),t,{now});
+ assert.equal(x.state,'UNKNOWN');
+ assert.equal(x.reason,'ROOM_LINK_MISMATCH');
+});
+test('canonical redirect to another room or forged requested URL remains UNKNOWN',()=>{
+ const samples=[
+  {requested_url:'https://live.douyin.com/31878890513?room_id=7705907855488043786',url:'https://live.douyin.com/31878890513'},
+  {requested_url:'https://live.douyin.com/31878890513?room_id=7705907855488043785',url:'https://live.douyin.com/31878890514'},
+  {requested_url:'https://live.douyin.com/31878890513?room_id=7705907855488043785',url:'https://evil.douyin.com/31878890513'}
+ ];
+ for(const s of samples){
+  const x=corroborateDouyin(profile(),room(s),t,{now});
+  assert.equal(x.state,'UNKNOWN');
+  assert.equal(x.reason,'ROOM_LINK_MISMATCH');
+ }
+});
+test('matching room metadata without live UI is UNKNOWN',()=>{
+ const x=corroborateDouyin(profile(),room({
+  videoVisible:false,liveBadgeVisible:false
+ }),t,{now});
+ assert.equal(x.state,'UNKNOWN');
+ assert.equal(x.reason,'ROOM_LIVE_UI_SIGNAL_MISSING');
 });
