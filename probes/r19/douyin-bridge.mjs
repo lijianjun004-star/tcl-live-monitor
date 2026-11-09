@@ -1,6 +1,6 @@
 /** Pure two-page corroboration: badge evidence alone cannot become LIVE. */
 import {classifyFreshProfileCapture} from './douyin-first.mjs';
-const BLOCK=/(验证码|安全验证|滑块|captcha|登录后观看|扫码登录|请先登录|直播已结束|主播已下播|访问过于频繁|异常流量)/i;
+const BLOCK=/(验证码|安全验证|滑块|captcha|登录后观看|扫码登录|请先登录|直播已结束|直播已经结束|直播结束|主播已下播|暂未开播|主播暂未开播|访问过于频繁|异常流量)/i;
 const ROOMID=/^[1-9][0-9]{15,22}$/;
 function sameUrl(url,route,roomid){
  try{
