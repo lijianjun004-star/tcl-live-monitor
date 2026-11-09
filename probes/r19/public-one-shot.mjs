@@ -70,8 +70,8 @@ try{
      challenge.test(String(profile.title||'')+' '+String(profile.body_excerpt||''));
    const preview=profileBlocked?null:corroborateDouyin(profile,null,t,{now:new Date().toISOString()});
    let room=null;
-   if(!profileBlocked&&preview?.profile_badge&&preview.live_route_id&&preview.dynamic_room_id){
-    room=await captureRoom(preview.live_route_id,preview.dynamic_room_id);
+   if(!profileBlocked&&preview?.profile_badge&&preview.room_id&&preview.dynamic_room_id){
+    room=await captureRoom(preview.room_id,preview.dynamic_room_id);
    }
    proof=profileBlocked?
      {state:'UNKNOWN',source_attested:false,reason:profile.error_code||'ACCESS_OR_AUTH_BLOCKED',
