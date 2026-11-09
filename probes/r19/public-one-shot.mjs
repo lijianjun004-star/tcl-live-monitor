@@ -7,10 +7,20 @@ import {createCheck} from '../r18/core/scheduler.mjs';
 import {DurableStore} from '../r18/store/index.mjs';
 import {corroborateDouyin} from './douyin-bridge.mjs';
 import {validateRegistry} from './douyin-first.mjs';
+import {findAccount,fixedOperationPath} from './operation-path.mjs';
 
 const roster=JSON.parse(await fs.readFile('config/r19-douyin-tcl-ffalcon-registry.json','utf8'));
 validateRegistry(roster);
-const ids=['tcl-douyin-flagship','ffalcon-douyin-tv-flagship']; // 2 strictly preselected targets, once each
+const args=process.argv.slice(2);
+const only=new Set(['--key','--execute']);
+for(const arg of args)if(arg.startsWith('--')&&!only.has(arg))throw Error('UNKNOWN_OPTION_'+arg);
+const keyIndex=args.indexOf('--key');
+const key=keyIndex>=0?args[keyIndex+1]:null;
+if(!key||key.startsWith('--'))throw Error('EXPLICIT_ACCOUNT_KEY_REQUIRED: --key <account-key>');
+const selected=findAccount(roster,key);
+if(!args.includes('--execute'))throw Error('DRY_RUN_ONLY: use node probes/r19/path-cli.mjs --key '+selected.key+'; --execute is required for public-page access');
+const ids=[selected.key]; // exactly one account per explicit manual run
+console.log(JSON.stringify({path_version:fixedOperationPath(selected).path_version,target_key:selected.key,live_web_access:true,scope:'SINGLE_SHOT_READ_ONLY'}));
 const output=path.resolve('r19-public-pilot-output');
 await fs.mkdir(output,{recursive:true});
 const store=new DurableStore(path.join(output,'store'));
