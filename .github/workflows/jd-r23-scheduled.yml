@@ -1,4 +1,4 @@
-name: R2.4 JD scheduled background monitor (default-branch launcher)
+name: R2.7 JD scheduled background monitor (daily 90d checkpoint)
 # MAIN-branch state isolation; scan implementation is SHA-pinned and read-only.
 # No Pages/site files altered. No repository write permissions.
 on:
@@ -13,7 +13,8 @@ on:
       - '.github/workflows/jd-r23-scheduled.yml'
   workflow_dispatch:
   schedule:
-    - cron: '0,5,10,15,30,45,55 * * * *'
+    # Offset +2 minutes from whole-hour congestion; preserves 5/15-minute intervals.
+    - cron: '2,7,12,17,32,47,57 * * * *'
 permissions:
   contents: read
   actions: read
@@ -47,7 +48,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify MAIN-only artifact selection with adversarial fixtures
-        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs tests/r27-schedule-daily-archive.test.mjs tests/r28-jd-archive-shell.test.mjs
   inspect:
     # A main-branch smoke scan is allowed only for a labelled one-time release commit.
     # Normal main pushes and all pull requests cannot access source or persist state.
@@ -71,13 +72,13 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import fs from 'node:fs';
-          import {isOperatingTime,plannedSample} from './probes/r23/jd-window.mjs';
+          import {isOperatingTime,beijingClock} from './probes/r23/jd-window.mjs';
           const scheduled=process.env.GITHUB_EVENT_NAME==='schedule';
           const due=!scheduled||isOperatingTime(new Date());
-          const slot=plannedSample(new Date());
+          const clock=beijingClock(new Date());
           fs.appendFileSync(process.env.GITHUB_OUTPUT,'should_run='+String(due)+'\n');
-          console.log(JSON.stringify({scheduled,should_run:due,slot:slot.reason,beijing_hour:slot.beijing_hour,
-            timetable:'06:30-02:00 BJT, GitHub cron best effort'}));
+          console.log(JSON.stringify({scheduled,should_run:due,beijing_hour:clock.hour,beijing_minute:clock.minute,
+            cron_offset_minutes:2,timetable:'06:30-02:00 BJT, shifted +2m, GitHub cron best effort'}));
           JS
       - name: Restore latest 7-day rolling state from Actions artifact
         id: restore
@@ -124,6 +125,33 @@ jobs:
             r23-summary.json
           retention-days: 7
           if-no-files-found: error
+      - name: Check if today's 90-day history checkpoint already exists
+        id: dailycheck
+        if: steps.window.outputs.should_run == 'true' && steps.state.outcome == 'success' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          checkpoint_name="r27-jd-daily-$(TZ=Asia/Shanghai date +%Y-%m-%d)"
+          count=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${checkpoint_name}&per_page=100" --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main" and .workflow_run.repository_id != null and .workflow_run.repository_id == .workflow_run.head_repository_id)] | length')
+          echo "name=${checkpoint_name}" >> "${GITHUB_OUTPUT}"
+          if test "${count}" = 0; then
+            echo "should_upload=true" >> "${GITHUB_OUTPUT}"
+            echo "New Beijing-day checkpoint: ${checkpoint_name}"
+          else
+            echo "should_upload=false" >> "${GITHUB_OUTPUT}"
+            echo "Existing Beijing-day checkpoint: ${checkpoint_name}; avoiding duplicate archive"
+          fi
+      - name: Upload one daily 90-day immutable checkpoint
+        id: dailyupload
+        if: steps.dailycheck.outputs.should_upload == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.dailycheck.outputs.name }}
+          path: |
+            r23-state.json
+            r23-summary.json
+          retention-days: 90
+          if-no-files-found: error
       - name: Write safe run proof to Actions job summary
         if: always() && steps.window.outputs.should_run == 'true'
         shell: bash
@@ -139,9 +167,9 @@ jobs:
             '- Branch: `' + process.env.GITHUB_REF + '`',
             '- Run: `' + process.env.GITHUB_RUN_ID + '.' + process.env.GITHUB_RUN_ATTEMPT + '`',
             '- Previous state: ' + (fs.existsSync('r23-previous.json') ? 'restored' : 'no eligible main artifact (fresh baseline)'),
-            '- Previous run ID: `' + (()=>{try{return JSON.parse(fs.readFileSync('r23-previous.json','utf8')).last_processed_run||'none'}catch{return 'none'}})() + '`',
             '- Source evidence accepted: ' + (summary?.source_evidence_accepted === true ? 'true' : 'false/unknown'),
             '- Sanitized state artifact: `r24-jd-main-state` (check upload step result)',
+            '- Daily checkpoint status: ' + (process.env.GITHUB_REF === 'refs/heads/main' ? 'see dailycheck/dailyupload steps' : 'not-main'),
             '- Exact broadcast starts, ends and formal opening rate: NOT VERIFIED',
             '- The next automatic cron run must be verified separately; a push smoke run does not prove cron.'
           ];
@@ -152,8 +180,8 @@ jobs:
         shell: bash
         run: |
           echo "Restore: ${{ steps.restore.outcome }}; source: ${{ steps.source.outcome }}; accept: ${{ steps.accepted.outcome }}; state: ${{ steps.state.outcome }}"
-          if test "${{ steps.restore.outcome }}" != success || test "${{ steps.source.outcome }}" != success || test "${{ steps.accepted.outcome }}" != success || test "${{ steps.state.outcome }}" != success; then
+          if test "${{ steps.restore.outcome }}" != success || test "${{ steps.source.outcome }}" != success || test "${{ steps.accepted.outcome }}" != success || test "${{ steps.state.outcome }}" != success || test "${{ steps.dailycheck.outcome }}" != success || { test "${{ steps.dailycheck.outputs.should_upload }}" = true && test "${{ steps.dailyupload.outcome }}" != success; }; then
             echo "::error::JD source, validation, or persistence failed. UNKNOWN retained; NOT OFFLINE."
             exit 1
           fi
-          echo "R2.3: read-only JD source accepted, state saved; formal opening rate remains NULL"
+          echo "R2.7: JD source accepted; 7-day state saved and Beijing-day checkpoint verified; formal opening rate remains NULL"
