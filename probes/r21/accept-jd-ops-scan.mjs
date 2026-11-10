@@ -1,3 +1,4 @@
+import {beijingDate} from '../lib/tcl-jd-all.mjs';
 /**
  * R2.1: reliability gate for sanitized TCL OPS read-only JD scans.
  * Does not access JD nor TCL source, does not calculate formal opening rate.
@@ -6,7 +7,7 @@ export const FRESHNESS_MS=15*60*1000;
 const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const ID=/^\d{1,16}$/;
 const statuses=new Set(['LIVE','OFFLINE','UNKNOWN']);
-const bjt=(d)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+const bjt=beijingDate;
 export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRESHNESS_MS}={}){
  const empty={schema_version:21,platform:'jd',readiness:'BLOCKED',checked_at:null,
   age_seconds:null,source:'TCL_OPS_READ_ONLY',live:0,unknown:0,offline:0,room_count:0,
