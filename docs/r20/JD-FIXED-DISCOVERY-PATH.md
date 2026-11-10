@@ -71,3 +71,22 @@ node probes/r20/jd-opening-rate-cli.mjs --as-of 2026-11-10T12:00:00Z
 - **本轮依然没有确认任何 TCL 京东公开直播间的真实主播主页链接**。下一步只能依据正常手机京东分享链接或真实公开主播主页证据，逐个完成独立身份与场次核验。
 
 保护边界：不改 main、不合并草稿 PR #31、不部署、不启用自动巡检、不得采集未经授权的数据或绕过平台访问限制。
+
+## 六、官方 TCL 历史推广链接的新实证（仅作发现链路）
+
+京东超级品牌日官方账号在 2026-05-23 的活动公告中提到 2026-05-24 TCL 京东自营旗舰店直播，并发布公开短链：https://t.cn/AX6U24yU。正常只读浏览器追踪该短链时，京东系统跳转到了 `plogin.m.jd.com` 登录页，`returnurl` 明确指向京东直播哈希路由：
+
+```text
+https://lives.jd.com/#/45583477
+```
+
+- 该 `45583477` 是**历史直播场次 URL 线索**，不是已核实的当前直播、当前主播账号或任何内部 `ops_room_id`。
+- 因为京东要求登录，直播页内部的品牌/主播身份和直播内容 **BLOCKED**。没有绕过或重复访问。
+- 为防泄露，公开仓库只保存去掉登录参数和追踪参数后的 `https://lives.jd.com/#/45583477`，不保留登录页完整查询串。
+- 机器证据：`docs/r20/evidence/jd-2026-05-24-tcl-official-promo-historical-live-route.json`；
+  正常浏览器：[只读核验记录](https://agent.tinyfish.ai/runs/f5a4adbb-e385-45db-a9ea-1f6dcab1dc77)；
+  [京东官方活动公告（微博同步页面）](https://www.sina.cn/news/detail/5301676329930260.html)。
+- 对应离线模块 `probes/r20/jd-login-redirect-evidence.mjs`，只会从允许的京东登录 `returnurl` 提取历史场次候选，不会登录、刷新或将此历史线索升级为当前 LIVE。
+- 最新的 `probes/r20/jd-mobile-share-cli.mjs` 可以通过 **stdin** 处理手机京东分享消息，仅输出脱敏来源摘要；真实分享短链可能含追踪参数，未经脱敏不得提交到公开 GitHub。
+
+截止本轮：**京东 TCL 公开主播主页的可持续身份仍未完成核验，六个运营房间依然全为 PENDING。** 这个历史场次线索不能替代正式排班与实时巡检。
