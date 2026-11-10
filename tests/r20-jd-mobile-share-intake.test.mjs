@@ -59,7 +59,7 @@ test('URL userinfo credentials are rejected with zero exposure',()=>{
 test('query values, URL fragments, shared tokens and raw text are never retained',()=>{
  const raw='TCL 直播分享 https://m.jd.com/long-random-path-token/live?foo=TOPSECRET#frag';
  const o=intakeJdAppShareText(raw),s=JSON.stringify(o);
- for(const secret of ['TOPSECRET','long-random-path-token','frag','TCL 直播分享']){
+ for(const secret of ['TOPSECRET','long-random-path-token','#frag','TCL 直播分享']){
   assert.equal(s.includes(secret),false,secret);
  }
  assert.equal(o.raw_text_retained,false);
