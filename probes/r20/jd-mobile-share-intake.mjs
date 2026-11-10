@@ -9,6 +9,18 @@ const knownNonLiveHost=new Set(['mall.jd.com','item.jd.com','search.jd.com','www
 const sensitive=/^(?:token|access_token|auth|authorization|cookie|session|sessionid|ticket|sign|signature|pwd|password|sk|apikey|api_key|secret)$/i;
 const hrefs=/https?:\/\/[^\s"'<>，。！？；、）)】]+/giu;
 
+function parseVisibleJdLiveHash(u){
+ if(u.hostname.toLowerCase()!=='lives.jd.com')return null;
+ const m=/^#\/([1-9][0-9]{3,15})(?:\?([^#]*))?$/.exec(u.hash);
+ if(!m)return null;
+ const qp=new URLSearchParams(m[2]||'');
+ const keys=[...qp.keys()];
+ if(keys.some(k=>sensitive.test(k)))return {error:'SECRET_BEARING_URL_REJECTED'};
+ const suppliedId=qp.get('id');
+ if(suppliedId!==null&&suppliedId!==m[1])return {error:'LIVE_ROUTE_QUERY_ID_CONFLICT'};
+ return {route_id:m[1],source:'VISIBLE_JD_LIVE_URL_FRAGMENT_ONLY'};
+}
+
 export function classifyJdShareLink(raw){
  if(typeof raw!=='string'||raw.length===0||raw.length>4096)throw Error('INVALID_SHARE_URL_INPUT');
  let u;
@@ -22,9 +34,11 @@ export function classifyJdShareLink(raw){
   result:'SECRET_BEARING_URL_REJECTED',verified:false,
   hostname:host,query_key_count:queryKeys.length
  };
+ const route=parseVisibleJdLiveHash(u);
+ if(route?.error)return {result:route.error,verified:false,hostname:host};
  const isJd=jdHost(host);
  const short=externalShort.has(host);
- const entryType=!isJd?(short?'EXTERNAL_SHORTLINK_UNRESOLVED':'NON_JD_DOMAIN') :
+ const entryType=route?.route_id?'JD_LIVE_ROUTE_CANDIDATE_UNVERIFIED':!isJd?(short?'EXTERNAL_SHORTLINK_UNRESOLVED':'NON_JD_DOMAIN') :
   knownNonLiveHost.has(host)?'JD_NON_LIVE_PAGE_UNVERIFIED':
   'JD_DOMAIN_PAGE_TYPE_UNVERIFIED';
  const canOpenInAuthorizedBrowser=(isJd||short)&&u.protocol==='https:';
@@ -32,6 +46,9 @@ export function classifyJdShareLink(raw){
   result:entryType,verified:false,
   hostname:host, safe_origin:u.origin,
   path_omitted:true,path_segment_count:u.pathname.split('/').filter(Boolean).length,
+  jd_live_url_route_id_candidate:route?.route_id??null,
+  route_candidate_source:route?.source??null,
+  current_room_id_verified:false,
   has_query:u.search.length>0,query_key_count:queryKeys.length,
   sensitive_query_values_removed:true,fragment_removed:true,
   can_open_in_authorized_browser:canOpenInAuthorizedBrowser,
