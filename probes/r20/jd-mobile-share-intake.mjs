@@ -31,7 +31,7 @@ export function classifyJdShareLink(raw){
  return{
   result:entryType,verified:false,
   hostname:host, safe_origin:u.origin,
-  safe_pathname:u.pathname.slice(0,240),
+  path_omitted:true,path_segment_count:u.pathname.split('/').filter(Boolean).length,
   has_query:u.search.length>0,query_key_count:queryKeys.length,
   sensitive_query_values_removed:true,fragment_removed:true,
   can_open_in_authorized_browser:canOpenInAuthorizedBrowser,
@@ -52,7 +52,7 @@ export function intakeJdAppShareText(text){
  for(const raw of matches){
   // Only use raw URL internally; never include it in the returned object.
   const o=classifyJdShareLink(raw);
-  const id=String(o.hostname)+'|'+String(o.safe_pathname)+'|'+String(o.result);
+  const id=raw;
   if(!seen.has(id)){seen.add(id);links.push(o);}
  }
  return{
