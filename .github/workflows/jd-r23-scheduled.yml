@@ -48,7 +48,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify MAIN-only artifact selection with adversarial fixtures
-        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-schedule-daily-archive.test.mjs
   inspect:
     # A main-branch smoke scan is allowed only for a labelled one-time release commit.
     # Normal main pushes and all pull requests cannot access source or persist state.
