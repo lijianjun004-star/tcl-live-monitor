@@ -1,23 +1,24 @@
-name: R2.9 JD schedule and archive offline acceptance
+name: R3.1 JD seven-day rolling safety (offline)
 on:
   push:
     branches:
-      - fix/r29-jd-schedule-archive-integrated-20261111
+      - fix/r31-jd-seven-day-only-20261111
+      - main
     paths:
       - '.github/workflows/jd-r23-scheduled.yml'
       - '.github/workflows/r27-jd-schedule-quality.yml'
       - 'tests/r26-jd-main-smoke.test.mjs'
-      - 'tests/r27-schedule-daily-archive.test.mjs'
+      - 'tests/r31-jd-seven-day-only.test.mjs'
   pull_request:
     paths:
       - '.github/workflows/jd-r23-scheduled.yml'
       - '.github/workflows/r27-jd-schedule-quality.yml'
       - 'tests/r26-jd-main-smoke.test.mjs'
-      - 'tests/r27-schedule-daily-archive.test.mjs'
+      - 'tests/r31-jd-seven-day-only.test.mjs'
 permissions:
   contents: read
 jobs:
-  offline-safety-and-archive-gate:
+  offline-seven-day-only:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -27,5 +28,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify main artifact isolation, smoke gate, cron and daily history
-        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-schedule-daily-archive.test.mjs
+      - name: Verify main restore, seven-day policy, schedule and Bash safety
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r31-jd-seven-day-only.test.mjs
