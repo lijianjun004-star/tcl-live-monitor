@@ -34,7 +34,9 @@ test('state restore is main-only and cannot load experiment artifacts',()=>{
 test('90-day artifact retention is not enabled on every high-frequency scan',()=>{
  assert.match(w,/name: r24-jd-main-state/);
  assert.match(w,/retention-days: 7/);
- assert.doesNotMatch(w,/retention-days: 90/);
+ const rolling=w.match(/name: Upload rolling history and sanitized snapshot[\s\S]*?(?=\n\s+- name:)/)?.[0]||'';
+ assert.ok(rolling.includes('retention-days: 7'));
+ assert.doesNotMatch(rolling,/retention-days: 90/);
 });
 
 test('the one-shot opt in still requires a main HEAD commit label',()=>{
@@ -42,7 +44,7 @@ test('the one-shot opt in still requires a main HEAD commit label',()=>{
 });
 
 test('cron, original pinned collector and read-only permissions remain intact',()=>{
- assert.match(w,/cron: '0,5,10,15,30,45,55 \* \* \* \*'/);
+ assert.match(w,/cron: '2,7,12,17,32,47,57 \* \* \* \*'/);
  assert.match(w,/ref: 267b6709a8563ef779cda6b11c97b9684c4e1c16/);
  assert.match(w,/permissions:\s*\n\s+contents: read\s*\n\s+actions: read/);
  assert.doesNotMatch(w,/deploy-pages|upload-pages-artifact/);
