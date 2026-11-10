@@ -1,0 +1,29 @@
+name: R2.7 restore-shell hotfix regression (offline only)
+on:
+  push:
+    branches:
+      - fix/r27-jd-restore-bash-heredoc-20261111
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - 'tests/r27-jd-main-restore.test.mjs'
+      - '.github/workflows/r27-restore-heredoc-hotfix.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - 'tests/r27-jd-main-restore.test.mjs'
+      - '.github/workflows/r27-restore-heredoc-hotfix.yml'
+permissions:
+  contents: read
+jobs:
+  validate-restoration-shell:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate state guard, main artifact policy, and actual Bash syntax
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs
