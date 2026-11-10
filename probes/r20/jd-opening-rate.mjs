@@ -131,7 +131,11 @@ export function evaluateJdOpening({schedule,crosswalk,observations=[],as_of}){
  }
  const due=results.length,confirmed=results.filter(x=>x.observed_opened).length,
   timely=results.filter(x=>x.on_time_observed).length;
- const fullCoverage=due>0&&confirmed===due;
+ // A rate over a subset is misleading: while any crosswalk room is still PENDING/CONFLICT,
+ // shifts of the verified rooms alone must not be published as the JD opening rate.
+ const identityComplete=crosswalk.entries.length>0&&crosswalk.entries.every(e=>e.identity_status==='VERIFIED');
+ const allOpened=due>0&&confirmed===due;
+ const fullCoverage=allOpened&&identityComplete;
  const allTimely=fullCoverage&&timely===due;
  return {
   schema_version:20,as_of,timezone:'Asia/Shanghai',
@@ -139,7 +143,9 @@ export function evaluateJdOpening({schedule,crosswalk,observations=[],as_of}){
   observed_opened_shifts:confirmed,confirmed_within_grace:timely,
   unknown_or_blocked_shifts:due-confirmed,
   opening_rate_percent:fullCoverage?100:null,
-  opening_rate_status:due===0?'NO_DUE_SCHEDULE':fullCoverage?'ALL_DUE_SHIFTS_POSITIVELY_OBSERVED':'NOT_READY_UNRESOLVED_DENOMINATOR',
+  opening_rate_status:due===0?'NO_DUE_SCHEDULE':fullCoverage?'ALL_DUE_SHIFTS_POSITIVELY_OBSERVED':
+   allOpened?'NOT_READY_CROSSWALK_IDENTITIES_INCOMPLETE':'NOT_READY_UNRESOLVED_DENOMINATOR',
+  crosswalk_identities_complete:identityComplete,
   on_time_rate_percent:allTimely?100:null,
   on_time_rate_status:allTimely?'ALL_DUE_SHIFTS_OBSERVED_WITHIN_GRACE':'NOT_READY_UNKNOWN_START_TIMES',
   actual_open_start_times_known:false,offline_detection_validated:false,

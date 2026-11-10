@@ -8,6 +8,11 @@ const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const ID=/^\d{1,16}$/;
 const statuses=new Set(['LIVE','OFFLINE','UNKNOWN']);
 const bjt=beijingDate;
+// Mirrors probes/lib/tcl-ops.mjs: LIVE needs minute data no older than 3 min (1 min future skew).
+const LIVE_MAX_MINUTE_AGE_MIN=3,LIVE_MIN_MINUTE_AGE_MIN=-1;
+const CONTROL=/[\u0000-\u001f\u007f]+/g;
+const code=v=>String(v).replace(/[^A-Za-z0-9_:.-]/g,'_').slice(0,80);
+const text=(v,n)=>String(v).replace(CONTROL,' ').slice(0,n);
 export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRESHNESS_MS}={}){
  const empty={schema_version:21,platform:'jd',readiness:'BLOCKED',checked_at:null,
   age_seconds:null,source:'TCL_OPS_READ_ONLY',live:0,unknown:0,offline:0,room_count:0,
@@ -17,6 +22,8 @@ export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRES
  if(!scan||scan.schemaVersion!==2||scan.source!=='TCL_OPS_READ_ONLY'||
     !ISO.test(String(scan.checkedAt||'')))return empty;
  const t=Date.parse(scan.checkedAt),n=Date.parse(now),age=n-t;
+ // Reject rolled-over calendar values (Feb 30, hour 24) instead of accepting JS normalization.
+ if(Number.isFinite(t)&&new Date(t).toISOString().slice(0,19)!==scan.checkedAt.slice(0,19))return empty;
  // A non-finite or negative window (NaN compares false) must never disable the staleness gate.
  if(!Number.isFinite(t)||!Number.isFinite(n)||!Number.isFinite(maxAgeMs)||maxAgeMs<0||age>maxAgeMs||age< -60000)
    return {...empty,checked_at:scan.checkedAt,reason:'STALE_OR_FUTURE_SCAN'};
@@ -32,8 +39,12 @@ export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRES
      !statuses.has(r.status)||typeof r.reason!=='string')
    return {...empty,checked_at:scan.checkedAt,reason:'ROOM_SCHEMA_OR_DUPLICATE'};
   if(r.status==='OFFLINE')return {...empty,checked_at:scan.checkedAt,reason:'OFFLINE_NOT_FIELD_VALIDATED'};
+  // A LIVE claim without the evidence the classifier requires means the upstream contract drifted.
+  if(r.status==='LIVE'&&(r.agentAlive!==true||r.offlineCandidate===true||!Number.isFinite(r.latestMinuteAgeMin)||
+     r.latestMinuteAgeMin>LIVE_MAX_MINUTE_AGE_MIN||r.latestMinuteAgeMin<LIVE_MIN_MINUTE_AGE_MIN))
+   return {...empty,checked_at:scan.checkedAt,reason:'LIVE_EVIDENCE_INCONSISTENT'};
   const room={room_id:String(r.roomId),shop_id:r.shopId===null?null:String(r.shopId),
-    category:String(r.category||'').slice(0,50),state:r.status,reason:r.reason,
+    category:text(r.category||'',50),state:r.status,reason:code(r.reason),
     agent_alive:r.agentAlive===true,
     minute_age_min:Number.isFinite(r.latestMinuteAgeMin)?r.latestMinuteAgeMin:null,
     offline_candidate:r.offlineCandidate===true};
@@ -49,7 +60,7 @@ export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRES
    return {...empty,checked_at:scan.checkedAt,reason:'PARTIAL_ROOM_CATALOG'};
  if(!['API_DECLARED_COMPLETE','API_RESPONSE_NOT_PROVEN_EXHAUSTIVE'].includes(scan.roomListScope))
    return {...empty,checked_at:scan.checkedAt,reason:'ROOM_CATALOG_SCOPE_UNVERIFIED'};
- const warnings=Array.isArray(scan.warnings)?scan.warnings.map(x=>String(x).slice(0,100)).slice(0,20):[];
+ const warnings=Array.isArray(scan.warnings)?scan.warnings.map(x=>text(x,100)).slice(0,20):[];
  const integrityBlocked=scan.catalogStatus!=='RECEIVED'||scan.roomListScope!=='API_DECLARED_COMPLETE'||warnings.length>0;
  return {...empty,readiness:integrityBlocked?'PARTIAL':'OBSERVED',
   checked_at:scan.checkedAt,age_seconds:Math.round(age/1000),
