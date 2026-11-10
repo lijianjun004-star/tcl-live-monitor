@@ -8,7 +8,7 @@
 const STATES=new Set(['LIVE','UNKNOWN']);
 const ISO=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/;
 const ROOM=/^\d{1,16}$/;
-const WINDOW_MS=90*86400_000,MAX_RECORDS=100_000;
+const WINDOW_MS=90*86400_000,CHECK_WINDOW_MS=7*86400_000,MAX_RECORDS=100_000;
 const bool=x=>x===true;
 const timestamp=x=>typeof x==='string'&&ISO.test(x)&&Number.isFinite(Date.parse(x))&&
   new Date(Date.parse(x)).toISOString().slice(0,19)===x.slice(0,19);
@@ -96,7 +96,8 @@ export function updateJdHistory(previous,report,{now,run_id,maxAgeMs=15*60_000}=
   state.rooms[id]=room;
   state.checks.push({at,room_id:id,state:next,source_valid:sourceValid,reason:room.reason});
  }
- state.checks=trimRows(state.checks,cutoff,MAX_RECORDS);
+ // Per-scan samples roll for 7 days to avoid multiplying large artifacts 140x/day.
+ state.checks=trimRows(state.checks,t-CHECK_WINDOW_MS,MAX_RECORDS);
  state.events=trimRows(state.events,cutoff,MAX_RECORDS);
  state.last_checked_at=at;state.last_processed_run=run_id;
  state.source_coverage=sourceValid?report.readiness:'UNKNOWN';
