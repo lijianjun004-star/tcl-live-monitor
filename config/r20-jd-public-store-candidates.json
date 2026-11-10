@@ -33,7 +33,13 @@
       "ops_shop_id": null,
       "public_jd_account_id": null,
       "verified_live_profile_url": null,
-      "status": "UNMAPPED_CANDIDATE"
+      "status": "UNMAPPED_CANDIDATE",
+      "customer_service_vender_id_candidate": "624085",
+      "customer_service_vender_id_kind": "JD_SELLER_ID_UNVERIFIED_AS_LIVE_ANCHOR",
+      "browser_evidence_run": "https://agent.tinyfish.ai/runs/231a6403-8b51-4fba-b5d2-df9c3805405c",
+      "live_entry_checked": "NO_ENTRY_VISIBLE_ON_NORMAL_DESKTOP_STORE_PAGE",
+      "live_state_at_observation": "UNKNOWN",
+      "mapping_warning": "624085 only appeared in a customer-service link; DO NOT treat as public JD live anchor ID, ops_room_id or liveId."
     },
     {
       "store_name": "FFALCON雷鸟官方旗舰店",
