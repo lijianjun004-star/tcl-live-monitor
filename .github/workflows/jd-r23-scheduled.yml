@@ -82,6 +82,8 @@ jobs:
       - name: Restore latest 7-day rolling state from Actions artifact
         id: restore
         if: steps.window.outputs.should_run == 'true'
+        env:
+          REQUIRE_PRIOR_MAIN: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[jd-main-smoke-2]') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -92,6 +94,30 @@ jobs:
             node --input-type=module -e "import fs from 'node:fs';const s=JSON.parse(fs.readFileSync('r23-previous.json','utf8'));if(s.schema_version!==23||!s.rooms||!Array.isArray(s.events))process.exit(2);console.log('Restored previous run state; no reset');"
           else
             echo "No eligible MAIN-branch state artifact; experimental artifacts were not imported."
+          fi
+          # Second release smoke is a continuity assertion, never a silent reset.
+          # Normal scheduled scans still bootstrap without prior state when necessary.
+          if test "${REQUIRE_PRIOR_MAIN}" = "true"; then
+            if ! test -s r23-previous.json; then
+              echo "::error::R2.7 MAIN continuity smoke requires prior MAIN state; refusing fresh baseline."
+              exit 3
+            fi
+            node --input-type=module <<'JS'
+            import fs from 'node:fs';
+            const s=JSON.parse(fs.readFileSync('r23-previous.json','utf8'));
+            if(s.schema_version!==23 || s.platform!=='jd' ||
+              !Array.isArray(s.checks) || s.checks.length<7 ||
+              !Array.isArray(s.events) || !s.last_processed_run ||
+              Object.keys(s.rooms||{}).length<7 ||
+              !Number.isFinite(Date.parse(s.last_checked_at))) {
+              throw Error('MAIN_PREVIOUS_STATE_INSUFFICIENT');
+            }
+            console.log('R27_MAIN_CONTINUITY_RESTORED',
+              JSON.stringify({previous_run_id:s.last_processed_run,
+                previous_check_count:s.checks.length,
+                previous_event_count:s.events.length,
+                previous_room_count:Object.keys(s.rooms).length}));
+            JS
           fi
       - name: One authorized TCL OPS source scan (no retries)
         id: source
@@ -130,9 +156,17 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import fs from 'node:fs';
-          let summary = null;
+          let summary = null, currentState = null, previousState = null;
           try { summary = JSON.parse(fs.readFileSync('r23-summary.json','utf8')); }
           catch { /* No data: provenance stays unknown. */ }
+          try { currentState = JSON.parse(fs.readFileSync('r23-state.json','utf8')); }
+          catch { /* No data: provenance stays unknown. */ }
+          try { previousState = JSON.parse(fs.readFileSync('r23-previous.json','utf8')); }
+          catch { /* No prior baseline on first scan. */ }
+          const oldChecks = previousState?.checks?.length ?? null;
+          const newChecks = currentState?.checks?.length ?? null;
+          const continuity = summary?.source_evidence_accepted === true &&
+            oldChecks !== null && newChecks !== null && newChecks>oldChecks;
           const lines = [
             '## JD R2.6 main-chain execution proof',
             '- Event: `' + process.env.GITHUB_EVENT_NAME + '`',
@@ -140,6 +174,9 @@ jobs:
             '- Run: `' + process.env.GITHUB_RUN_ID + '.' + process.env.GITHUB_RUN_ATTEMPT + '`',
             '- Previous state: ' + (fs.existsSync('r23-previous.json') ? 'restored' : 'no eligible main artifact (fresh baseline)'),
             '- Source evidence accepted: ' + (summary?.source_evidence_accepted === true ? 'true' : 'false/unknown'),
+            '- Previous stored check count: ' + (oldChecks === null ? 'NONE' : oldChecks),
+            '- Current stored check count: ' + (newChecks === null ? 'NONE' : newChecks),
+            '- Verified same-state continuity: ' + (continuity ? 'true' : 'false/not applicable'),
             '- Sanitized state artifact: `r24-jd-main-state` (check upload step result)',
             '- Exact broadcast starts, ends and formal opening rate: NOT VERIFIED',
             '- The next automatic cron run must be verified separately; a push smoke run does not prove cron.'
