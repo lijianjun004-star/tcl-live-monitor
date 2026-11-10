@@ -1,6 +1,6 @@
 name: R2.3 JD unattended stateful monitoring (experimental)
 # GitHub scheduled events run ONLY from the repository default branch.
-# On this experimental branch, one push smoke test is permitted, then dormant.
+# On this experimental branch, two bounded push tests verify artifact restore; scheduled trigger stays dormant.
 on:
   push:
     branches:
