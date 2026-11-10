@@ -47,12 +47,12 @@ export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRES
  if(!['API_DECLARED_COMPLETE','API_RESPONSE_NOT_PROVEN_EXHAUSTIVE'].includes(scan.roomListScope))
    return {...empty,checked_at:scan.checkedAt,reason:'ROOM_CATALOG_SCOPE_UNVERIFIED'};
  const warnings=Array.isArray(scan.warnings)?scan.warnings.map(x=>String(x).slice(0,100)).slice(0,20):[];
- const integrityBlocked=warnings.some(x=>/CONFLICT|DUPLICATE|NOT_PROVEN_COMPLETE|UNVERIFIED|API_UNAVAILABLE|SCHEMA/i.test(x));
+ const integrityBlocked=scan.catalogStatus!=='RECEIVED'||scan.roomListScope!=='API_DECLARED_COMPLETE'||warnings.length>0;
  return {...empty,readiness:integrityBlocked?'PARTIAL':'OBSERVED',
   checked_at:scan.checkedAt,age_seconds:Math.round(age/1000),
   live:sums.LIVE,offline:0,unknown:sums.UNKNOWN,room_count:sanitized.length,
   rooms:sanitized,warnings,
-  current_source_state:sums.UNKNOWN===sanitized.length?'UNKNOWN':'MIXED_OBSERVED',
+  current_source_state:sums.UNKNOWN===sanitized.length?'UNKNOWN':'OBSERVED_LIVE_PRESENT',
   reason:integrityBlocked?'INTEGRITY_WARNINGS':'READ_ONLY_CURRENT_DAY_OBSERVATION',
   catalog_complete_attested:scan.roomListScope==='API_DECLARED_COMPLETE',
   formal_opening_rate_percent:null,formal_attendance_ready:false};
