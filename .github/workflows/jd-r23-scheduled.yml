@@ -89,20 +89,7 @@ jobs:
           if test -n "$artifact_id"; then
             gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > prior-state.zip
             unzip -p prior-state.zip r23-state.json > r23-previous.json
-            node --input-type=module <<'JS'
-            import fs from 'node:fs';
-            import {validateState} from './probes/r23/jd-history.mjs';
-            const state=validateState(JSON.parse(fs.readFileSync('r23-previous.json','utf8')));
-            if (!state.last_processed_run || !state.last_checked_at) throw Error('MAIN_PRIOR_STATE_HAS_NO_RUN');
-            console.log(JSON.stringify({
-              restored: true, origin: 'MAIN_ONLY_ARTIFACT',
-              last_processed_run: state.last_processed_run,
-              last_checked_at: state.last_checked_at,
-              room_count: Object.keys(state.rooms).length,
-              stored_checks: state.checks.length,
-              stored_events: state.events.length
-            }));
-            JS
+            node --input-type=module -e "import fs from 'node:fs';import {validateState} from './probes/r23/jd-history.mjs';const s=validateState(JSON.parse(fs.readFileSync('r23-previous.json','utf8')));if(!s.last_processed_run||!s.last_checked_at)throw Error('MAIN_PRIOR_STATE_HAS_NO_RUN');console.log(JSON.stringify({restored:true,origin:'MAIN_ONLY_ARTIFACT',last_processed_run:s.last_processed_run,last_checked_at:s.last_checked_at,room_count:Object.keys(s.rooms).length,stored_checks:s.checks.length,stored_events:s.events.length}));"
           else
             echo "No eligible MAIN-branch state artifact; experimental artifacts were not imported."
           fi
