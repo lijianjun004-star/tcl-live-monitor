@@ -31,10 +31,20 @@
 
 这些 room/shop 编号**只属于 TCL 内部运营源**。它们不是京东外部主播 ID，也不是单场直播 `liveId`。房间 1 的品类与旧配置有冲突，暂以源站本次展示为准，并标记待复核；旧配置不能当作正确事实。
 
+### 账号身份台账已同步到 7 房间（质量复验修正）
+
+在当日最终质量复核时发现：旧 R2.0 映射表仍为 6 行，无法覆盖本次真实新发现的 room 19。为避免“巡检 7 房间、对账仅 6 房间”，已新增 `config/r21-jd-crosswalk-review.json`，把 7 个内部房间全部纳入；所有外部京东账号身份依然标 `PENDING`，核验通过数为 0，正式排班数为 0。本次展示的正式开播率始终为 `null`。CI 的 `r21-formal-readiness.json` 现必须包含 `internal_rooms=7`，否则失败。
+
+真实扫描附带的**两条明确警告**：
+
+- `CATEGORY_MAPPING_CONFLICT:1`：内部 room 1 的历史冰箱品类与本次源站空调不同，需要运营复核。
+- `SHOP_CATALOG_NOT_PROVEN_COMPLETE`：店铺目录尚未证明完整；不能称“全公司只有 7 个京东直播间”。
+
 ## 第二部分：本轮新增可交付代码
 
 | 文件 | 作用 | 运行验证 |
 |---|---|---|
+| `config/r21-jd-crosswalk-review.json` | 7 房间身份对账台账，公开京东主播账号仍全部 PENDING | CI 必须识别 7 行、正式通过 0 行 |
 | `probes/r21/accept-jd-ops-scan.mjs` | 真实源 15 分钟有效期、完整性警告、7 房间去重、三态安全准入 | 单测通过后可试用 |
 | `probes/r21/accept-cli.mjs` | 将去敏扫源结果转成 `r21-accepted.json`，失败安全停止 | Actions 已实际运行成功 |
 | `preview/jd/index.html` | 手机优先的独立网页：查看快照、导入 JSON、状态筛选、搜索、导出 CSV | 静态代码测试；手机真机尚未验收 |
@@ -64,7 +74,7 @@ node --test tests/*.test.mjs
 node probes/r21/accept-cli.mjs r21-source-safe.json r21-accepted.json
 
 # 正式开播率准入（当前必然保持 null）
-node probes/r20/jd-opening-rate-cli.mjs --as-of 2026-11-10T12:00:00Z --out r21-formal-readiness.json
+node probes/r20/jd-opening-rate-cli.mjs --as-of 2026-11-10T12:00:00Z --crosswalk config/r21-jd-crosswalk-review.json --out r21-formal-readiness.json
 ```
 
 ## 第四部分：质量门禁
