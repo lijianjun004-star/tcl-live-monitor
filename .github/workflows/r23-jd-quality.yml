@@ -1,0 +1,45 @@
+name: R2.3 JD stateful monitor offline regression
+on:
+  push:
+    branches:
+      - experiment/r23-jd-unattended-monitor
+    paths:
+      - 'probes/r23/**'
+      - 'tests/r23-*.test.mjs'
+      - '.github/workflows/r23-jd-unattended.yml'
+      - '.github/workflows/r23-jd-quality.yml'
+      - 'docs/r23/**'
+  pull_request:
+    paths:
+      - 'probes/r23/**'
+      - 'tests/r23-*.test.mjs'
+      - '.github/workflows/r23-jd-*.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: All existing tests and R2.3 state machine/cron safety regressions
+        run: node --test tests/*.test.mjs
+      - name: Check current formal JD opening rate still safely blocked
+        run: |
+          node probes/r20/jd-opening-rate-cli.mjs --crosswalk config/r21-jd-crosswalk-review.json --as-of 2026-11-10T12:00:00Z --out r23-rate-gate.json
+          node --input-type=module -e "import fs from 'node:fs';const x=JSON.parse(fs.readFileSync('r23-rate-gate.json','utf8'));if(x.formal_report_ready!==false||x.opening_rate_percent!==null||x.readiness.verified_public_jd_accounts!==0||x.readiness.internal_rooms!==7)process.exit(2);console.log('JD R2.3 formal rate BLOCKED, source identities remain pending');"
+      - name: Package complete source for independent QA
+        run: git archive --format=zip --output=r23-full-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r23-jd-stateful-monitor-full-source
+          path: |
+            r23-full-source.zip
+            r23-rate-gate.json
+            docs/r23/*.md
+          retention-days: 14
+          if-no-files-found: error

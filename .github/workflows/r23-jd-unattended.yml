@@ -1,0 +1,99 @@
+name: R2.3 JD unattended stateful monitoring (experimental)
+# GitHub scheduled events run ONLY from the repository default branch.
+# On this experimental branch, two bounded push tests verify artifact restore; scheduled trigger stays dormant.
+on:
+  push:
+    branches:
+      - experiment/r23-jd-unattended-monitor
+    paths:
+      - '.github/workflows/r23-jd-unattended.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '0,5,10,15,30,45,55 * * * *'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r23-jd-stateful-monitor
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      TCL_OPS_BASE_URL: ${{ secrets.TCL_OPS_BASE_URL || 'http://101.96.215.251' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enforce Beijing 06:30 to 02:00 window
+        id: window
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {isOperatingTime,plannedSample} from './probes/r23/jd-window.mjs';
+          const scheduled=process.env.GITHUB_EVENT_NAME==='schedule';
+          const due=!scheduled||isOperatingTime(new Date());
+          const slot=plannedSample(new Date());
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'should_run='+String(due)+'\n');
+          console.log(JSON.stringify({scheduled,should_run:due,slot:slot.reason,beijing_hour:slot.beijing_hour,
+            timetable:'06:30-02:00 BJT, GitHub cron best effort'}));
+          JS
+      - name: Restore latest 7-day rolling state from Actions artifact
+        id: restore
+        if: steps.window.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=r23-jd-state&per_page=100" --jq '.artifacts | map(select(.expired == false)) | sort_by(.created_at) | last | .id // empty')
+          if test -n "$artifact_id"; then
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > prior-state.zip
+            unzip -p prior-state.zip r23-state.json > r23-previous.json
+            node --input-type=module -e "import fs from 'node:fs';const s=JSON.parse(fs.readFileSync('r23-previous.json','utf8'));if(s.schema_version!==23||!s.rooms||!Array.isArray(s.events))process.exit(2);console.log('Restored previous run state; no reset');"
+          else
+            echo "First run: no prior state artifact. Bootstrapping UNKNOWN baseline only."
+          fi
+      - name: One authorized TCL OPS source scan (no retries)
+        id: source
+        if: steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success'
+        continue-on-error: true
+        run: node probes/tcl-jd-all.mjs --shard-index 0 --shard-total 1 --output r23-source-safe.json
+      - name: Validate one scan (partial directory stays partial)
+        id: accepted
+        if: steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success'
+        continue-on-error: true
+        run: |
+          if test -f r23-source-safe.json; then
+            node probes/r21/accept-cli.mjs r23-source-safe.json r23-accepted.json
+          else
+            echo '{"schema_version":21,"readiness":"BLOCKED","reason":"SOURCE_REPORT_MISSING","rooms":[],"formal_opening_rate_percent":null}' > r23-accepted.json
+            exit 3
+          fi
+      - name: Carry state forward; mark failed/unknown signals UNKNOWN
+        id: state
+        if: steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success'
+        run: |
+          node probes/r23/run-history.mjs --report r23-accepted.json --previous r23-previous.json --state-output r23-state.json --summary-output r23-summary.json --run-id "${{ github.run_id }}.${{ github.run_attempt }}"
+      - name: Upload rolling history and sanitized snapshot
+        if: always() && steps.window.outputs.should_run == 'true' && steps.state.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: r23-jd-state
+          path: |
+            r23-state.json
+            r23-summary.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Gate true source/persistence success after evidence upload
+        if: always() && steps.window.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          echo "Restore: ${{ steps.restore.outcome }}; source: ${{ steps.source.outcome }}; accept: ${{ steps.accepted.outcome }}; state: ${{ steps.state.outcome }}"
+          if test "${{ steps.restore.outcome }}" != success || test "${{ steps.source.outcome }}" != success || test "${{ steps.accepted.outcome }}" != success || test "${{ steps.state.outcome }}" != success; then
+            echo "::error::JD source, validation, or persistence failed. UNKNOWN retained; NOT OFFLINE."
+            exit 1
+          fi
+          echo "R2.3: read-only JD source accepted, state saved; formal opening rate remains NULL"
