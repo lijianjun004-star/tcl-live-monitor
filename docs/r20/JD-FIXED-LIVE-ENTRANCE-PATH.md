@@ -86,3 +86,23 @@ ops_room_id（内部房间）
 - 生产定时巡检：**未启用**。
 
 正式接入前，仍需要真实京东 App 主播主页链接、关联证据、经确认的分店排班和有效的 OFFLINE 反例。未经验收不得覆盖 \`main\`、合并 PR #31 或部署。
+
+## 2026-11-10 新增实证：从历史官方活动链接发现京东直播路由
+
+京东超级品牌日官方 2026-05-23 微博介绍过「5月24日 16:00，TCL 京东自营旗舰店」历史活动，附有短链 \`https://t.cn/AX6U24yU\`。正常浏览器对该公开短链进行**一次**只读核验后，最终实际打开：
+
+\`\`\`text
+https://lives.jd.com/#/45583477?origin=3&appid=jdzb&id=45583477&abGroup=control
+\`\`\`
+
+随后网页被重定向到 \`plogin.m.jd.com\` 登录页面，页面标题为「京东登录注册」，未获取主播身份、实时直播状态或动态场次证据。没有执行登录或验证码处理。
+
+- 经核实的**URL 路由编号候选**：\`45583477\`。
+- 来自官方历史推广的链接，不等于「京东公开主播账号 ID」，也不能与内部 \`ops_room_id\` 按数值合并。
+- 访问状态：\`AUTH_REQUIRED\`；直播状态：\`UNKNOWN\`。
+- 浏览器证据：[历史活动链接跳转核验](https://agent.tinyfish.ai/runs/46b02dfa-c446-4f63-bc98-e9cb8e494af8)。
+- 结构化记录：\`docs/r20/evidence/jd-tcl-official-may2026-live-shortlink-redirect.json\`。
+
+因此，已经确认京东公开直播至少存在 \`lives.jd.com/#/<route>\` 这一种入口结构，但**无法凭 2026 年 5 月历史路由直接推定 2026 年 11 月的实际直播**。
+
+\`probes/r20/jd-mobile-share-intake.mjs\` 现可对该结构提取 \`jd_live_url_route_id_candidate\`，严格保留 \`VERIFIED=false\` 和 \`UNKNOWN\`；并拒绝片段里 \`id\` 与路由号冲突或含签名、登录令牌的链接。**这只是 URL 结构解析测试，不代表已登录或能自动访问平台。**
