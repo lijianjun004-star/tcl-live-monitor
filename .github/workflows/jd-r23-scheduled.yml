@@ -167,6 +167,7 @@ jobs:
             '- Branch: `' + process.env.GITHUB_REF + '`',
             '- Run: `' + process.env.GITHUB_RUN_ID + '.' + process.env.GITHUB_RUN_ATTEMPT + '`',
             '- Previous state: ' + (fs.existsSync('r23-previous.json') ? 'restored' : 'no eligible main artifact (fresh baseline)'),
+            '- Previous run ID: `' + (()=>{try{return JSON.parse(fs.readFileSync('r23-previous.json','utf8')).last_processed_run||'none'}catch{return 'none'}})() + '`',
             '- Source evidence accepted: ' + (summary?.source_evidence_accepted === true ? 'true' : 'false/unknown'),
             '- Sanitized state artifact: `r24-jd-main-state` (check upload step result)',
             '- Daily checkpoint status: ' + (process.env.GITHUB_REF === 'refs/heads/main' ? 'see dailycheck/dailyupload steps' : 'not-main'),
