@@ -1,5 +1,5 @@
-name: R2.3 JD scheduled background monitor (default-branch launcher)
-# This is the ONLY workflow on main; runtime implementation is SHA-pinned.
+name: R2.4 JD scheduled background monitor (default-branch launcher)
+# MAIN-branch state isolation; scan implementation is SHA-pinned and read-only.
 # No Pages/site files altered. No repository write permissions.
 on:
   push:
@@ -34,6 +34,19 @@ jobs:
           node-version: '22'
       - name: Verify pinned-source state machine and safety guards
         run: node --test tests/*.test.mjs
+  verify-restore-isolation:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify MAIN-only artifact selection with adversarial fixtures
+        run: node --test tests/r24-main-artifact-restore.test.mjs
   inspect:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
@@ -69,13 +82,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          artifact_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=r23-jd-state&per_page=100" --jq '.artifacts | map(select(.expired == false)) | sort_by(.created_at) | last | .id // empty')
+          artifact_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=r24-jd-main-state&per_page=100" --jq '.artifacts | map(select(.expired == false and .workflow_run.head_branch == "main" and .workflow_run.repository_id != null and .workflow_run.repository_id == .workflow_run.head_repository_id)) | sort_by(.created_at) | last | .id // empty')
           if test -n "$artifact_id"; then
             gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > prior-state.zip
             unzip -p prior-state.zip r23-state.json > r23-previous.json
             node --input-type=module -e "import fs from 'node:fs';const s=JSON.parse(fs.readFileSync('r23-previous.json','utf8'));if(s.schema_version!==23||!s.rooms||!Array.isArray(s.events))process.exit(2);console.log('Restored previous run state; no reset');"
           else
-            echo "First run: no prior state artifact. Bootstrapping UNKNOWN baseline only."
+            echo "No eligible MAIN-branch state artifact; experimental artifacts were not imported."
           fi
       - name: One authorized TCL OPS source scan (no retries)
         id: source
@@ -102,7 +115,7 @@ jobs:
         if: always() && steps.window.outputs.should_run == 'true' && steps.state.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: r23-jd-state
+          name: r24-jd-main-state
           path: |
             r23-state.json
             r23-summary.json
