@@ -86,7 +86,7 @@ test('all traffic and write permissions remain restricted; Pages not changed by 
  assert.doesNotMatch(s,/deploy-pages|upload-pages-artifact|gh-pages\/|contents:\s*write|actions:\s*write/);
 });
 test('archive date and state are based on successful state output only',()=>{
- assert.match(s,/id: dailycheck\s*\n\s+if: steps\.window\.outputs\.should_run == 'true' && steps\.state\.outcome == 'success' && github\.ref == 'refs\/heads\/main'/);
+ assert.match(s,/id: dailycheck\s*\n\s+if: steps\.window\.outputs\.should_run == 'true' && steps\.state\.outcome == 'success' && steps\.source\.outcome == 'success' && steps\.accepted\.outcome == 'success' && github\.ref == 'refs\/heads\/main'/);
  assert.match(s,/if-no-files-found: error/);
 });
 test('jq daily-archive match ignores fork/experiment/expired artifacts',()=>{
