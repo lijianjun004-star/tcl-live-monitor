@@ -38,6 +38,15 @@ jobs:
           if grep -qi 'schedule:' .github/workflows/r21-jd-real-source-one-shot.yml; then
             echo "No production cron permitted"; exit 2
           fi
+      - name: Build complete versioned source ZIP from tracked project files
+        run: git archive --format=zip --output=r21-jd-full-source.zip HEAD
+      - name: Upload complete source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: r21-jd-full-source
+          path: r21-jd-full-source.zip
+          retention-days: 21
+          if-no-files-found: error
       - name: Upload deployable standalone preview and MD handoff
         uses: actions/upload-artifact@v4
         with:
