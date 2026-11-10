@@ -43,7 +43,7 @@ export function parseJdConsumerLink(raw){
    next_action:'VERIFY_ROOM_PUBLIC_PAGE_AND_FIND_STABLE_ANCHOR_PROFILE'};
  }
  if(hostname==='lives.jd.com'){
-  const match=/^\/([1-9][0-9]{4,19})(?:\/(?:live|notice|closed|replay))?\/?$/.exec(u.hash.slice(1));
+  const match=/^\/([1-9][0-9]{4,19})(?:\/(?:live|notice|closed|replay))?\/?$/.exec(u.hash.slice(1).split('?')[0]);
   if(path!=='/'||!match)throw Error('UNKNOWN_JD_LIVES_LINK_FORMAT');
   return {...base,kind:'DYNAMIC_JD_LIVE_SESSION_ONLY',dynamic_live_id:match[1],
    clean_url:'https://lives.jd.com/#/'+match[1],
