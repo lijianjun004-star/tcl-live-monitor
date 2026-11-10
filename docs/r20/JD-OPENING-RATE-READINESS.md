@@ -142,3 +142,14 @@ node --test tests/*.test.mjs
 用户既有个人资料库《2026年11月排班优化版.xlsx》中出现「东」平台，但源文件说明包含优化建议、候选确认、待审批班位；未证明该「东」对应本项目全部六个 TCL 京东房间，缺少每班 ops_room_id 身份关联。
 
 因此仅标记为待审的排班来源候选；不得把人员姓名同步到公开 GitHub，不覆盖原表，不假定优化排班已正式生效，不转换为已经验收通过的京东开播率分母。只有核实文件业务归属、正式排班版本及逐班身份映射后才能导入。
+
+## 2026-11-10 继续执行证据：京东真实直播 URL 路由、移动端入口和访问阻断
+
+- **TCL冰箱洗衣机旗舰店主页**：普通浏览器成功打开，全部分类、冰箱和洗衣机导航中未发现本店直播入口；不因此判 OFFLINE。实际记录：\`docs/r20/evidence/jd-tcl-fridge-washer-store-visible-check-2026-11-10.json\`。
+- **京东超级品牌日历史 TCL 直播入口**：2026-05-23 官方微博活动短链 \`t.cn/AX6U24yU\` 在正常浏览器中跳到 \`https://lives.jd.com/#/45583477?origin=3&appid=jdzb&id=45583477&abGroup=control\`，随后跳到京东登录页；仅证明历史 JD Live URL 的一个可见路由结构，不证明当前 LIVE，也没有确认主播或六房间关系。实际记录：\`docs/r20/evidence/jd-tcl-official-may2026-live-shortlink-redirect.json\`。
+- **旧运营巡检历史页面**：只读访问一次 \`shop_id=17\` 历史筛选时超时，未读取到任何店铺/直播身份；证据：\`docs/r20/evidence/jd-internal-ops-shop17-reference-timeout.json\`。避免公开泄露原始内部系统地址。
+- **京东手机端查找路径**：按公开 [阿里云直播巡检教程](https://help.aliyun.com/zh/document_detail/3019613.html)，从京东 App 直播间进入店铺/主播主页，通过分享复制链接，再用正常浏览器核验。此路径尚未取得本项目六房间实际分享链接，不得表述为 LIVE 验收通过。
+- **新实现代码**：\`probes/r20/jd-mobile-share-intake.mjs\` + \`probes/r20/jd-mobile-share-cli.mjs\` + \`tests/r20-jd-mobile-share-intake.test.mjs\`。从私有原始分享文字中提取京东域名类别和历史直播路由候选，输出时剔除原始链接、查询参数值、路径中的可能令牌；零平台请求，不能自动证实账号身份。
+- **固定 SOP**：\`docs/r20/JD-FIXED-LIVE-ENTRANCE-PATH.md\`，当前仅用于候选链接识别和身份查找，不能冒充京东直播已经持续监控。
+
+截止本阶段：公开京东主播身份对照 **0/6 VERIFIED**，真实排班分母 **缺失**，开播率仍为 **null**。此处的离线回归通过仅说明数据安全和公式门禁可用，不等于真实商家开播率测量通过。
