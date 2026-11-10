@@ -47,7 +47,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify MAIN-only artifact selection with adversarial fixtures
-        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs
   inspect:
     # A main-branch smoke scan is allowed only for a labelled one-time release commit.
     # Normal main pushes and all pull requests cannot access source or persist state.
@@ -89,7 +89,20 @@ jobs:
           if test -n "$artifact_id"; then
             gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > prior-state.zip
             unzip -p prior-state.zip r23-state.json > r23-previous.json
-            node --input-type=module -e "import fs from 'node:fs';const s=JSON.parse(fs.readFileSync('r23-previous.json','utf8'));if(s.schema_version!==23||!s.rooms||!Array.isArray(s.events))process.exit(2);console.log('Restored previous run state; no reset');"
+            node --input-type=module <<'JS'
+            import fs from 'node:fs';
+            import {validateState} from './probes/r23/jd-history.mjs';
+            const state=validateState(JSON.parse(fs.readFileSync('r23-previous.json','utf8')));
+            if (!state.last_processed_run || !state.last_checked_at) throw Error('MAIN_PRIOR_STATE_HAS_NO_RUN');
+            console.log(JSON.stringify({
+              restored: true, origin: 'MAIN_ONLY_ARTIFACT',
+              last_processed_run: state.last_processed_run,
+              last_checked_at: state.last_checked_at,
+              room_count: Object.keys(state.rooms).length,
+              stored_checks: state.checks.length,
+              stored_events: state.events.length
+            }));
+            JS
           else
             echo "No eligible MAIN-branch state artifact; experimental artifacts were not imported."
           fi
@@ -139,6 +152,7 @@ jobs:
             '- Branch: `' + process.env.GITHUB_REF + '`',
             '- Run: `' + process.env.GITHUB_RUN_ID + '.' + process.env.GITHUB_RUN_ATTEMPT + '`',
             '- Previous state: ' + (fs.existsSync('r23-previous.json') ? 'restored' : 'no eligible main artifact (fresh baseline)'),
+            '- Previous run ID: `' + (()=>{try{return JSON.parse(fs.readFileSync('r23-previous.json','utf8')).last_processed_run||'none'}catch{return 'none'}})() + '`',
             '- Source evidence accepted: ' + (summary?.source_evidence_accepted === true ? 'true' : 'false/unknown'),
             '- Sanitized state artifact: `r24-jd-main-state` (check upload step result)',
             '- Exact broadcast starts, ends and formal opening rate: NOT VERIFIED',
