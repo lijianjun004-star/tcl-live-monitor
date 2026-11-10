@@ -17,7 +17,7 @@ test('source still cannot run when previous state restoration fails',()=>{
 });
 
 test('previous run identity and events are logged without raw credentials',()=>{
- assert.match(w,/origin: 'MAIN_ONLY_ARTIFACT'/);
+ assert.match(w,/origin:'MAIN_ONLY_ARTIFACT'/);
  assert.match(w,/last_processed_run:s\.last_processed_run/);
  assert.match(w,/stored_checks:s\.checks\.length/);
  assert.match(w,/stored_events:s\.events\.length/);
