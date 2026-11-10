@@ -84,14 +84,14 @@ footer{max-width:1050px;margin:0 auto;padding:0 20px 25px;color:#60718b;font-siz
 "use strict";
 const historical={
  schema_version:21,readiness:"PARTIAL",reason:"INTEGRITY_WARNINGS",
- checked_at:"2026-11-10T12:23:55.000Z",room_count:7,live:7,unknown:0,offline:0,
+ checked_at:"2026-11-10T12:23:50.475Z",room_count:7,live:7,unknown:0,offline:0,
  formal_opening_rate_percent:null,
  catalog_complete_attested:false,
  warnings:["源站房间目录尚未证明完整","品类与历史配置存在差异，待复核"],
  rooms:[
- ["1","1","空调"],["14","14","洗衣机"],["15","15","空调"],
- ["16","17","全品类"],["17","18","电视"],["18","19","显示器"],["19","21","电视"]
- ].map(([room_id,shop_id,category])=>({room_id,shop_id,category,state:"LIVE",reason:"FRESH_MINUTE_DATA_STATUS",agent_alive:true}))
+ ["1","1","空调","1"],["14","14","洗衣机","1"],["15","15","空调","ABSENT"],
+ ["16","17","全品类","ABSENT"],["17","18","电视","ABSENT"],["18","19","显示器","ABSENT"],["19","21","电视","1"]
+ ].map(([room_id,shop_id,category,s])=>({room_id,shop_id,category,state:"LIVE",reason:"FRESH_MINUTE_DATA_STATUS_"+s,agent_alive:true}))
 };
 let data=historical,filter="ALL",term="";
 const el=id=>document.getElementById(id);

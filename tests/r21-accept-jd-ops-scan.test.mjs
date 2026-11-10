@@ -134,3 +134,28 @@ test('one OFFLINE among LIVE rooms blocks the whole report and exposes no room a
  const i=base();i.rooms[6].status='OFFLINE';i.summary={LIVE:6,OFFLINE:1,UNKNOWN:0};
  const r=run(i);assert.equal(r.readiness,'BLOCKED');assert.deepEqual(r.rooms,[]);assert.equal(r.live,0);
 });
+
+test('LIVE without the classifier evidence (agent, fresh minute, no offline candidate) blocks the report',()=>{
+ for(const patch of [{agentAlive:false},{latestMinuteAgeMin:9999},{latestMinuteAgeMin:3.1},{latestMinuteAgeMin:-1.1},
+   {latestMinuteAgeMin:null},{offlineCandidate:true}]){
+  const i=base();Object.assign(i.rooms[0],patch);
+  assert.equal(run(i).reason,'LIVE_EVIDENCE_INCONSISTENT',JSON.stringify(patch));
+ }
+ const ok=base();ok.rooms[0].latestMinuteAgeMin=3;assert.equal(run(ok).readiness,'OBSERVED');
+ const u=base();Object.assign(u.rooms[0],{status:'UNKNOWN',reason:'NO_CAPTURE_AGENT',agentAlive:false,latestMinuteAgeMin:null});
+ u.summary={LIVE:6,OFFLINE:0,UNKNOWN:1};assert.equal(run(u).readiness,'OBSERVED');
+});
+test('reason, category and warnings are bounded and stripped of free text and control characters',()=>{
+ const i=base();i.rooms[0].reason='token=SECRET value\n'+'A'.repeat(5000);i.rooms[0].category='空\t调\r\n=1+1';
+ i.warnings=['W\u0000ARN\n1'];
+ const r=run(i);
+ assert.equal(r.rooms[0].reason.length,80);assert.match(r.rooms[0].reason,/^[A-Za-z0-9_:.-]+$/);
+ assert.equal(r.rooms[0].category,'空 调 =1+1');assert.deepEqual(r.warnings,['W ARN 1']);
+ assert.equal(run(base()).rooms[0].reason,'FRESH_MINUTE_DATA_STATUS_1');
+});
+test('nonexistent calendar timestamps are rejected instead of normalised',()=>{
+ for(const checkedAt of ['2026-02-30T12:00:00.000Z','2026-11-31T12:00:00.000Z','2026-11-10T24:00:00.000Z']){
+  const r=acceptJdOpsScan({...base(),checkedAt,date:'2026-03-02'},{now:'2026-03-02T12:00:05.000Z'});
+  assert.equal(r.reason,'INVALID_SCAN_REPORT',checkedAt);
+ }
+});

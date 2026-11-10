@@ -15,7 +15,7 @@ test('client code is valid JavaScript syntax',()=>{
  assert.doesNotThrow(()=>new vm.Script(m[1],{filename:'jd-preview.js'}));
 });
 test('historical snapshot is dated and must expire after 15 minutes',()=>{
- assert.match(html,/2026-11-10T12:23:55\.000Z/);
+ assert.match(html,/2026-11-10T12:23:50\.475Z/);
  assert.match(html,/age<=900000/);
  assert.match(html,/历史快照，已过实时有效期/);
 });
