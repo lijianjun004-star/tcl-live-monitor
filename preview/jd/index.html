@@ -48,7 +48,7 @@ footer{max-width:1050px;margin:0 auto;padding:0 20px 25px;color:#60718b;font-siz
 <main class="wrap">
 <div class="stats" aria-label="状态汇总">
 <div class="stat"><div class="kpi" id="count">—</div><div class="label">发现内部房间</div></div>
-<div class="stat"><div class="kpi" id="live">—</div><div class="label">本次观测 LIVE</div></div>
+<div class="stat"><div class="kpi" id="live">—</div><div class="label" id="liveLabel">历史观测 LIVE</div></div>
 <div class="stat"><div class="kpi" id="unknown">—</div><div class="label">本次 UNKNOWN</div></div>
 <div class="stat"><div class="kpi" id="rate">—</div><div class="label">正式开播率（未核实）</div></div>
 </div>
@@ -60,7 +60,7 @@ footer{max-width:1050px;margin:0 auto;padding:0 20px 25px;color:#60718b;font-siz
 <button type="button" id="download">导出当前可见记录 CSV</button>
 </div>
 <div id="error" role="alert" aria-live="polite"></div>
-<div class="note">导入 GitHub Actions 中 <code>r21-jd-one-shot-sanitized-evidence</code> 的 <code>r21-accepted.json</code>。文件仅在当前浏览器本地解析，不会上传到服务器。超过 15 分钟的快照自动标记为历史数据。</div>
+<div class="note">可导入 GitHub Actions 的 <code>r21-accepted.json</code> 进行本地预览，但浏览器不能核实它是否来自可信的巡检运行；所有导入文件始终标记为“未验证”，不能用作实时 LIVE、准时开播或考核依据。文件不上传服务器。</div>
 <div class="meta" id="timestamp"></div>
 </section>
 <section class="panel">
@@ -93,7 +93,7 @@ const historical={
  ["16","17","全品类","ABSENT"],["17","18","电视","ABSENT"],["18","19","显示器","ABSENT"],["19","21","电视","1"]
  ].map(([room_id,shop_id,category,s])=>({room_id,shop_id,category,state:"LIVE",reason:"FRESH_MINUTE_DATA_STATUS_"+s,agent_alive:true}))
 };
-let data=historical,filter="ALL",term="";
+let data=historical,filter="ALL",term="",importedUnverified=false;
 const el=id=>document.getElementById(id);
 const dateLabel=s=>{const t=Date.parse(s);return Number.isFinite(t)?new Date(t).toLocaleString("zh-CN",{timeZone:"Asia/Shanghai",hour12:false}):"未知时间"};
 const fresh=d=>{const age=Date.now()-Date.parse(d.checked_at);return Number.isFinite(age)&&age>=-60000&&age<=900000;};
@@ -103,16 +103,19 @@ function render(){
  const isFresh=fresh(data),safe=!isBlocked&&Array.isArray(data.rooms)?data.rooms:[];
  const n=isBlocked?0:safe.length;
  el("count").textContent=isBlocked?"—":String(n);
- el("live").textContent=isBlocked?"—":String(safe.filter(x=>x.state==="LIVE").length);
+ // A local file has no cryptographic source authentication, even if its own metadata says VERIFIED.
+ el("live").textContent=isBlocked||importedUnverified?"—":String(safe.filter(x=>x.state==="LIVE").length);
+ el("liveLabel").textContent=importedUnverified?"已核实 LIVE（导入禁用）":isFresh?"本次观测 LIVE":"历史观测 LIVE";
  el("unknown").textContent=isBlocked?"—":String(safe.filter(x=>x.state==="UNKNOWN").length);
  el("rate").textContent="—";
  const banner=isBlocked?"数据源未通过验收："+(data.reason||"未知原因"):
+  importedUnverified?"本地导入文件【未经来源签名验证】，可能被篡改；页面只展示其自报内容，不证明任何房间正在直播。":
   (isFresh?"单次观测可用":"历史快照，已过实时有效期")+
   "。房间目录完整性："+(data.catalog_complete_attested===true?"已证明完整":"未证明完整")+
   "；京东账号身份和排班未全部核实，所以不能发布正式开播率。";
  el("warning").textContent=banner;
- el("timestamp").textContent="观测时间（北京时间）："+dateLabel(data.checked_at)+" · "+
-  (isFresh?"15分钟有效窗口内":"仅作历史复查")+" · 状态："+data.readiness;
+ el("timestamp").textContent="文件所载观测时间（北京时间）："+dateLabel(data.checked_at)+" · "+
+  (importedUnverified?"未核验的本地导入":isFresh?"15分钟有效窗口内":"仅作历史复查")+" · 状态："+data.readiness;
  const host=el("rooms");host.replaceChildren();
  const rows=safe.filter(r=>(filter==="ALL"||r.state===filter)&&
   (String(r.room_id).includes(term)||String(r.category||"").toLowerCase().includes(term)));
@@ -120,22 +123,52 @@ function render(){
  for(const r of rows){
   const card=make("article",undefined,"room");
   const top=make("div",undefined,"room-head");
-  top.append(make("h3","京东内部房间 "+r.room_id));
-  top.append(make("span",r.state==="LIVE"?"LIVE · 当次观测":r.state, "state "+(r.state==="LIVE"?"live":"unknown")));
+  top.append(make("h3",(importedUnverified?"文件自报房间 ":"京东内部房间 ")+r.room_id));
+  const label=importedUnverified?"文件声称 "+r.state+" · 未核验":
+    (!isFresh?"历史 "+r.state+" · 非当前":r.state+" · 当次观测");
+  top.append(make("span",label,"state "+(r.state==="LIVE"&&!importedUnverified&&isFresh?"live":"unknown")));
   card.append(top);
   card.append(make("div","品类："+r.category+"  ·  内部店铺号："+(r.shop_id||"待确认"),"muted"));
   card.append(make("div","京东公开账号映射：待核实","meta"));
   card.append(make("div","判定依据："+(r.reason||"暂无"),"meta"));
-  if(!isFresh)card.append(make("div","历史状态；不可用作当前在播认定","meta"));
+  if(importedUnverified)card.append(make("div","本地文件身份未认证，不构成 LIVE 证据","meta"));
+  else if(!isFresh)card.append(make("div","历史状态；不可用作当前在播认定","meta"));
   host.append(card);
  }
 }
 function isAccepted(x){
- return x&&typeof x==="object"&&x.schema_version===21&&
- ["OBSERVED","PARTIAL","BLOCKED"].includes(x.readiness)&&
- x.formal_opening_rate_percent===null&&Array.isArray(x.rooms)&&x.rooms.length<=100&&
- x.rooms.every(r=>/^\d{1,16}$/.test(String(r.room_id))&&["LIVE","UNKNOWN"].includes(r.state));
+ if(!x||typeof x!=="object"||Array.isArray(x)||
+ x.schema_version!==21||x.platform!=="jd"||x.source!=="TCL_OPS_READ_ONLY"||
+ !["OBSERVED","PARTIAL","BLOCKED"].includes(x.readiness)||
+ x.formal_opening_rate_percent!==null||x.formal_attendance_ready!==false||
+ x.fully_verified_public_accounts!==false||x.fully_verified_schedule!==false||
+ !Array.isArray(x.rooms)||x.rooms.length>100||!Array.isArray(x.warnings)||x.warnings.length>25||
+ !Number.isInteger(x.room_count)||x.room_count<0||x.room_count>100||
+ ![x.live,x.unknown,x.offline].every(v=>Number.isInteger(v)&&v>=0&&v<=100)||
+ !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(String(x.checked_at||"")))return false;
+ const t=Date.parse(x.checked_at);
+ if(!Number.isFinite(t)||new Date(t).toISOString().slice(0,19)!==x.checked_at.slice(0,19))return false;
+ if(x.readiness==="BLOCKED")return x.rooms.length===0&&x.room_count===0&&x.live===0&&x.unknown===0&&x.offline===0;
+ if(x.rooms.length===0||x.room_count!==x.rooms.length||x.live+x.unknown!==x.room_count||x.offline!==0||
+ typeof x.catalog_complete_attested!=="boolean"||
+ (x.readiness==="OBSERVED"&&(!x.catalog_complete_attested||x.warnings.length>0)))return false;
+ const keys=new Set();let live=0,unknown=0;
+ for(const r of x.rooms){
+  if(!r||typeof r!=="object"||!/^\d{1,16}$/.test(String(r.room_id))||
+   keys.has(String(r.room_id))||(r.shop_id!==null&&!/^\d{1,16}$/.test(String(r.shop_id)))||
+   !["LIVE","UNKNOWN"].includes(r.state)||typeof r.category!=="string"||r.category.length>50||
+   typeof r.reason!=="string"||r.reason.length>80||!/^[A-Za-z0-9_:.-]+$/.test(r.reason)||
+   typeof r.agent_alive!=="boolean"||typeof r.offline_candidate!=="boolean")return false;
+  if(r.state==="LIVE"){
+   live++;
+   if(!r.agent_alive||r.offline_candidate||!Number.isFinite(r.minute_age_min)||
+      r.minute_age_min< -1||r.minute_age_min>3)return false;
+  }else unknown++;
+  keys.add(String(r.room_id));
+ }
+ return live===x.live&&unknown===x.unknown;
 }
+
 el("report").addEventListener("change",async e=>{
  el("error").textContent="";
  const f=e.target.files&&e.target.files[0];if(!f)return;
@@ -143,7 +176,7 @@ el("report").addEventListener("change",async e=>{
  try{
   const result=JSON.parse(await f.text());
   if(!isAccepted(result))throw new Error("格式或验收门禁不匹配");
-  data=result;render();
+  data=result;importedUnverified=true;render();
  }catch(err){el("error").textContent="导入失败："+(err.message||"JSON不可用");}
 });
 document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{
@@ -151,10 +184,10 @@ document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click"
 }));
 el("search").addEventListener("input",e=>{term=e.target.value.trim().toLowerCase();render()});
 el("download").addEventListener("click",()=>{
- const header=["checked_at","internal_room_id","internal_shop_id","category","observed_state","current_state","formal_opening_rate"];
+ const header=["checked_at","internal_room_id","internal_shop_id","category","observed_state","current_state","formal_opening_rate","provenance"];
  const rows=(data.readiness==="BLOCKED"?[]:(data.rooms||[])).filter(r=>(filter==="ALL"||r.state===filter)&&(String(r.room_id).includes(term)||String(r.category||"").toLowerCase().includes(term)));
  const cell=v=>{let s=String(v??"").replace(/[\u0000-\u001f\u007f]+/g," ");if(/^\s*[=+\-@＝＋－＠]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};
- const table=[header,...rows.map(r=>[data.checked_at,r.room_id,r.shop_id,r.category,r.state,fresh(data)?r.state:"UNKNOWN","NOT_VERIFIED"])];
+ const table=[header,...rows.map(r=>[data.checked_at,r.room_id,r.shop_id,r.category,r.state,(!importedUnverified&&fresh(data))?r.state:"UNKNOWN","NOT_VERIFIED",importedUnverified?"UNVERIFIED_LOCAL_FILE":"BUILT_IN_HISTORICAL_SAMPLE"])];
  const text=table.map(row=>row.map(cell).join(",")).join("\r\n");
  const blob=new Blob(["\uFEFF",text],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");
  const url=URL.createObjectURL(blob);a.href=url;a.download="TCL-JD-r21-observations.csv";a.click();
