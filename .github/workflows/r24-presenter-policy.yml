@@ -1,0 +1,29 @@
+name: R2.4 presenter segments (offline verification only)
+on:
+  push:
+    branches:
+      - experiment/r24-human-digital-session-20261110
+    paths:
+      - 'probes/r24/**'
+      - 'tests/r24-presenter-segmentation.test.mjs'
+      - '.github/workflows/r24-presenter-policy.yml'
+  pull_request:
+    paths:
+      - 'probes/r24/**'
+      - 'tests/r24-presenter-segmentation.test.mjs'
+      - '.github/workflows/r24-presenter-policy.yml'
+permissions:
+  contents: read
+jobs:
+  offline-verification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run R2.3 regression plus new presenter-segment tests
+        run: node --test tests/*.test.mjs
