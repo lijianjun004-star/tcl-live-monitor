@@ -31,10 +31,10 @@ jobs:
       - name: Full existing and R2.1 regression
         run: node --test tests/*.test.mjs
       - name: Make formal JD readiness evidence
-        run: node probes/r20/jd-opening-rate-cli.mjs --as-of 2026-11-10T12:00:00Z --out r21-formal-readiness.json
+        run: node probes/r20/jd-opening-rate-cli.mjs --as-of 2026-11-10T12:00:00Z --crosswalk config/r21-jd-crosswalk-review.json --out r21-formal-readiness.json
       - name: Reject fabricated rate and auto-scheduled deployment
         run: |
-          node --input-type=module -e "import fs from 'node:fs';const x=JSON.parse(fs.readFileSync('r21-formal-readiness.json','utf8'));if(x.formal_report_ready!==false||x.observed_real_jd_opening_rate!==null||x.opening_rate_percent!==null||x.readiness.verified_public_jd_accounts!==0||x.readiness.imported_schedule_shifts!==0)process.exit(2);console.log('PASS: no fabricated formal JD opening rate');"
+          node --input-type=module -e "import fs from 'node:fs';const x=JSON.parse(fs.readFileSync('r21-formal-readiness.json','utf8'));if(x.formal_report_ready!==false||x.observed_real_jd_opening_rate!==null||x.opening_rate_percent!==null||x.readiness.verified_public_jd_accounts!==0||x.readiness.imported_schedule_shifts!==0||x.readiness.internal_rooms!==7)process.exit(2);console.log('PASS: no fabricated formal JD opening rate');"
           if grep -qi 'schedule:' .github/workflows/r21-jd-real-source-one-shot.yml; then
             echo "No production cron permitted"; exit 2
           fi
