@@ -154,3 +154,15 @@ test('we never provide non-100 opening rate with unresolved shifts',()=>{
  assert.equal(r.on_time_rate_percent,null);
  assert.equal(r.confirmed_within_grace,1);
 });
+
+test('no opening rate while any crosswalk room identity is still unverified, even if every due shift opened',()=>{
+ const cv=crosswalk();
+ cv.entries.push({ops_room_id:'19',ops_shop_id:'21',public_jd_account_id:null,identity_status:'PENDING',evidence_ref:null});
+ const r=run([shift('s1','17')],[obs('17','2026-11-10T10:02:00Z')],cv);
+ assert.equal(r.observed_opened_shifts,1);
+ assert.equal(r.opening_rate_percent,null);
+ assert.equal(r.on_time_rate_percent,null);
+ assert.equal(r.opening_rate_status,'NOT_READY_CROSSWALK_IDENTITIES_INCOMPLETE');
+ assert.equal(r.crosswalk_identities_complete,false);
+ assert.equal(run([shift('s1','17')],[obs('17','2026-11-10T10:02:00Z')]).crosswalk_identities_complete,true);
+});
