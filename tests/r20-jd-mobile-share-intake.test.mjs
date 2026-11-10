@@ -94,3 +94,32 @@ test('JS file never guesses that path numeric part is public account id or room 
  assert.equal(p.ops_room_id,null);
  assert.equal(p.ops_shop_id,null);
 });
+
+test('historical TCL promotion short link resolves to unverified JD Live hash route candidate',()=>{
+ const p=classifyJdShareLink('https://lives.jd.com/#/45583477?origin=3&appid=jdzb&id=45583477&abGroup=control');
+ assert.equal(p.result,'JD_LIVE_ROUTE_CANDIDATE_UNVERIFIED');
+ assert.equal(p.jd_live_url_route_id_candidate,'45583477');
+ assert.equal(p.route_candidate_source,'VISIBLE_JD_LIVE_URL_FRAGMENT_ONLY');
+ assert.equal(p.current_room_id_verified,false);
+ assert.equal(p.public_jd_account_id,null);
+ assert.equal(p.current_live_state,'UNKNOWN');
+ assert.equal(p.fragment_removed,true);
+});
+test('JD Live hash route and id query contradiction is rejected',()=>{
+ const p=classifyJdShareLink('https://lives.jd.com/#/45583477?id=45583478');
+ assert.equal(p.result,'LIVE_ROUTE_QUERY_ID_CONFLICT');
+ assert.equal(p.verified,false);
+});
+test('signed or credential-bearing JD hash parameters are rejected without leakage',()=>{
+ const p=classifyJdShareLink('https://lives.jd.com/#/45583477?id=45583477&token=PRIVATE');
+ assert.equal(p.result,'SECRET_BEARING_URL_REJECTED');
+ assert.equal(JSON.stringify(p).includes('PRIVATE'),false);
+});
+test('unverified JD Live route ID does not establish a public account or ops mapping',()=>{
+ const p=intakeJdAppShareText('TCL历史活动 https://lives.jd.com/#/45583477?id=45583477');
+ assert.equal(p.candidates[0].ops_room_id,null);
+ assert.equal(p.candidates[0].public_jd_account_id,null);
+ assert.equal(p.candidates[0].live_session_id,null);
+ assert.equal(p.account_to_ops_mapping_proven,false);
+ assert.equal(p.opening_rate_contribution,null);
+});
