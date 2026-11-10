@@ -48,7 +48,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify MAIN-only artifact selection with adversarial fixtures
-        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs tests/r27-schedule-daily-archive.test.mjs
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs tests/r27-schedule-daily-archive.test.mjs tests/r30-jd-archive-source-gate.test.mjs
   inspect:
     # A main-branch smoke scan is allowed only for a labelled one-time release commit.
     # Normal main pushes and all pull requests cannot access source or persist state.
@@ -127,7 +127,7 @@ jobs:
           if-no-files-found: error
       - name: Check if today's 90-day history checkpoint already exists
         id: dailycheck
-        if: steps.window.outputs.should_run == 'true' && steps.state.outcome == 'success' && github.ref == 'refs/heads/main'
+        if: steps.window.outputs.should_run == 'true' && steps.state.outcome == 'success' && steps.source.outcome == 'success' && steps.accepted.outcome == 'success' && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail
