@@ -17,7 +17,8 @@ export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRES
  if(!scan||scan.schemaVersion!==2||scan.source!=='TCL_OPS_READ_ONLY'||
     !ISO.test(String(scan.checkedAt||'')))return empty;
  const t=Date.parse(scan.checkedAt),n=Date.parse(now),age=n-t;
- if(!Number.isFinite(t)||!Number.isFinite(n)||age>maxAgeMs||age< -60000)
+ // A non-finite or negative window (NaN compares false) must never disable the staleness gate.
+ if(!Number.isFinite(t)||!Number.isFinite(n)||!Number.isFinite(maxAgeMs)||maxAgeMs<0||age>maxAgeMs||age< -60000)
    return {...empty,checked_at:scan.checkedAt,reason:'STALE_OR_FUTURE_SCAN'};
  if(scan.shard?.index!==0||scan.shard?.total!==1||scan.summaryScope!=='ALL_SOURCE_ROOMS')
    return {...empty,checked_at:scan.checkedAt,reason:'INCOMPLETE_SHARDED_SCAN'};
@@ -40,6 +41,8 @@ export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRES
    return {...empty,checked_at:scan.checkedAt,reason:'INVALID_SHOP_ID'};
   sanitized.push(room);seen.add(room.room_id);sums[room.state]++;
  }
+ // Zero JD rooms is indistinguishable from an upstream filter/schema drift: not an observation.
+ if(sanitized.length===0)return {...empty,checked_at:scan.checkedAt,reason:'EMPTY_ROOM_CATALOG'};
  if(!scan.summary||['LIVE','UNKNOWN','OFFLINE'].some(k=>scan.summary[k]!==sums[k]))
    return {...empty,checked_at:scan.checkedAt,reason:'SUMMARY_COUNT_CONFLICT'};
  if(sanitized.length!==scan.discoveredRoomCount)

@@ -99,8 +99,8 @@ const dateLabel=s=>{const t=Date.parse(s);return Number.isFinite(t)?new Date(t).
 const fresh=d=>{const age=Date.now()-Date.parse(d.checked_at);return Number.isFinite(age)&&age>=-60000&&age<=900000;};
 const make=(tag,text,className)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(className)e.className=className;return e;};
 function render(){
- const isFresh=fresh(data),safe=Array.isArray(data.rooms)?data.rooms:[];
  const isBlocked=data.readiness==="BLOCKED";
+ const isFresh=fresh(data),safe=!isBlocked&&Array.isArray(data.rooms)?data.rooms:[];
  const n=isBlocked?0:safe.length;
  el("count").textContent=isBlocked?"—":String(n);
  el("live").textContent=isBlocked?"—":String(safe.filter(x=>x.state==="LIVE").length);
@@ -152,8 +152,8 @@ document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click"
 el("search").addEventListener("input",e=>{term=e.target.value.trim().toLowerCase();render()});
 el("download").addEventListener("click",()=>{
  const header=["checked_at","internal_room_id","internal_shop_id","category","observed_state","current_state","formal_opening_rate"];
- const rows=(data.rooms||[]).filter(r=>(filter==="ALL"||r.state===filter)&&(String(r.room_id).includes(term)||String(r.category||"").toLowerCase().includes(term)));
- const cell=v=>'"'+String(v??"").replaceAll('"','""').replace(/^[=+\-@]/,"'$&")+'"';
+ const rows=(data.readiness==="BLOCKED"?[]:(data.rooms||[])).filter(r=>(filter==="ALL"||r.state===filter)&&(String(r.room_id).includes(term)||String(r.category||"").toLowerCase().includes(term)));
+ const cell=v=>{let s=String(v??"").replace(/[\u0000-\u001f\u007f]+/g," ");if(/^\s*[=+\-@＝＋－＠]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};
  const table=[header,...rows.map(r=>[data.checked_at,r.room_id,r.shop_id,r.category,r.state,fresh(data)?r.state:"UNKNOWN","NOT_VERIFIED"])];
  const text=table.map(row=>row.map(cell).join(",")).join("\r\n");
  const blob=new Blob(["\uFEFF",text],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");
@@ -161,6 +161,9 @@ el("download").addEventListener("click",()=>{
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 render();
+// Re-evaluate the 15-minute window while the page stays open, so an idle tab cannot keep showing a stale snapshot as current.
+setInterval(render,30000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)render();});
 </script>
 </body>
 </html>

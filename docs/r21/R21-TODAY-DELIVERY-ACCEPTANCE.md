@@ -14,6 +14,7 @@
 - 运行时间：2026-11-10T12:23:55Z（北京时间 20:23）
 - **GitHub Workflow SUCCESS**；**源目录完整性 PARTIAL**，两者严格区分。
 - 运行证据：该 Actions 的 artifact `r21-jd-one-shot-sanitized-evidence`，保留 7 天，包括 `r21-source-safe.json`（去敏报告）和 `r21-accepted.json`（严格验收后的展示报告）。
+- **证据版本说明**：该 artifact 中的 `r21-accepted.json` 由提交 `50d75df`（20:22）的验收器生成，字段 `current_source_state` 为旧枚举 `MIXED_OBSERVED`；`27a31ed`（20:28）起改为 `OBSERVED_LIVE_PRESENT`。用当前源码对同一份 `r21-source-safe.json` 在原时刻重算，仅此一个字段不同，其余逐字段一致。下游不得对旧枚举做断言；现行枚举由 `tests/r21-accept-jd-ops-scan.test.mjs` 固定。
 - 读取来源：沿用 `probes/tcl-jd-all.mjs` 的 **TCL_OPS_READ_ONLY**，仅对项目先前明确允许的 GET 接口进行读取，未登录、更改源站数据或购买。
 - 本次没有调用依赖用户 Cookie 的京东第三方接口，也没有宣布 OSS 京东爬虫端到端通过。
 

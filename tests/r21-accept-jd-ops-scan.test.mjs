@@ -104,3 +104,33 @@ test('new JD internal room19/shop21 is never hardcoded as a public JD anchor',()
  assert.equal(r.public_live_session_id,null);
  assert.equal(r.evidence_ref,null);
 });
+
+test('current_source_state enum is pinned: OBSERVED_LIVE_PRESENT, UNKNOWN, never legacy MIXED_OBSERVED',()=>{
+ assert.equal(run(base()).current_source_state,'OBSERVED_LIVE_PRESENT');
+ const i=base();for(const r of i.rooms){r.status='UNKNOWN';r.reason='OFFLINE_CANDIDATE';}
+ i.summary={LIVE:0,OFFLINE:0,UNKNOWN:7};
+ assert.equal(run(i).current_source_state,'UNKNOWN');
+ assert.equal(run({...base(),checkedAt:'2026-11-10T12:00:00.000Z'}).current_source_state,'UNKNOWN');
+ const src=fs.readFileSync(new URL('../probes/r21/accept-jd-ops-scan.mjs',import.meta.url),'utf8');
+ assert.ok(!src.includes('MIXED_OBSERVED'));
+});
+test('freshness boundaries: 15 min inclusive, +1ms stale; 60s future skew inclusive, beyond blocked',()=>{
+ const t=Date.parse(base().checkedAt),at=ms=>acceptJdOpsScan(base(),{now:new Date(t+ms).toISOString()});
+ assert.equal(at(900000).readiness,'OBSERVED');
+ assert.equal(at(900001).reason,'STALE_OR_FUTURE_SCAN');
+ assert.equal(at(-60000).readiness,'OBSERVED');
+ assert.equal(at(-60001).reason,'STALE_OR_FUTURE_SCAN');
+});
+test('non-finite or negative maxAgeMs cannot disable the staleness gate',()=>{
+ const old='2026-11-20T12:23:55.000Z';
+ for(const maxAgeMs of [NaN,Infinity,-1,null,'900000'])
+  assert.equal(acceptJdOpsScan(base(),{now:old,maxAgeMs}).reason,'STALE_OR_FUTURE_SCAN');
+});
+test('zero JD rooms with a clean catalog is BLOCKED, not an OBSERVED empty census',()=>{
+ const i=base();i.rooms=[];i.summary={LIVE:0,OFFLINE:0,UNKNOWN:0};i.discoveredRoomCount=0;
+ const r=run(i);assert.equal(r.readiness,'BLOCKED');assert.equal(r.reason,'EMPTY_ROOM_CATALOG');
+});
+test('one OFFLINE among LIVE rooms blocks the whole report and exposes no room as LIVE',()=>{
+ const i=base();i.rooms[6].status='OFFLINE';i.summary={LIVE:6,OFFLINE:1,UNKNOWN:0};
+ const r=run(i);assert.equal(r.readiness,'BLOCKED');assert.deepEqual(r.rooms,[]);assert.equal(r.live,0);
+});

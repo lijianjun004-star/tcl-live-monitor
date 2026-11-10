@@ -42,3 +42,24 @@ test('CSV contains effective current_state and excludes current LIVE when histor
  assert.match(html,/fresh\(data\)\?r\.state:"UNKNOWN"/);
  assert.match(html,/NOT_VERIFIED/);
 });
+const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+test('CSV cells neutralise formulas hidden behind whitespace, control characters or full-width signs',()=>{
+ const m=script.match(/const cell=v=>\{[^\n]*\};/);
+ assert.ok(m,'cell() not found');
+ const cell=vm.runInNewContext(m[0]+'cell');
+ for(const bad of ['=1+1',' =1+1','\t=cmd|x','\r\n=HYPERLINK("http://e","x")','  @SUM(1)','-2+3','+1','＝1+1','\u0000=1']){
+  const out=cell(bad);
+  assert.match(out,/^"\s*'/,JSON.stringify(bad)+' -> '+out);
+  assert.doesNotMatch(out,/[\u0000-\u001f]/);
+ }
+ assert.equal(cell('空调'),'"空调"');assert.equal(cell('2026-11-10T12:23:50.475Z'),'"2026-11-10T12:23:50.475Z"');
+ assert.equal(cell('a"b'),'"a""b"');assert.equal(cell(null),'""');
+});
+test('freshness is re-evaluated while the page stays open',()=>{
+ assert.match(script,/setInterval\(render,30000\)/);
+ assert.match(script,/visibilitychange/);
+});
+test('BLOCKED reports never render or export room rows',()=>{
+ assert.match(script,/safe=!isBlocked&&Array\.isArray\(data\.rooms\)\?data\.rooms:\[\]/);
+ assert.match(script,/data\.readiness==="BLOCKED"\?\[\]:\(data\.rooms\|\|\[\]\)/);
+});
