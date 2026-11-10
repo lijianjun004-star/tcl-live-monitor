@@ -39,7 +39,7 @@ test('safe text rendering avoids injecting untrusted imported report strings as 
  assert.doesNotMatch(html,/innerHTML\s*=/);
 });
 test('CSV contains effective current_state and excludes current LIVE when historical',()=>{
- assert.match(html,/fresh\(data\)\?r\.state:"UNKNOWN"/);
+ assert.match(html,/\(!importedUnverified&&fresh\(data\)\)\?r\.state:"UNKNOWN"/);
  assert.match(html,/NOT_VERIFIED/);
 });
 const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
