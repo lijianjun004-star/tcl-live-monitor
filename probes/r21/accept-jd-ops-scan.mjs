@@ -68,6 +68,9 @@ export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRES
   rooms:sanitized,warnings,
   current_source_state:sums.UNKNOWN===sanitized.length?'UNKNOWN':'OBSERVED_LIVE_PRESENT',
   reason:integrityBlocked?'INTEGRITY_WARNINGS':'READ_ONLY_CURRENT_DAY_OBSERVATION',
-  catalog_complete_attested:scan.roomListScope==='API_DECLARED_COMPLETE',
+  // A declared total alone is not proof: dropped/duplicate room records (catalogStatus not RECEIVED,
+  // or the scanner's own roomCatalogComplete=false) mean the room catalog is not attested complete.
+  catalog_complete_attested:scan.roomListScope==='API_DECLARED_COMPLETE'&&scan.catalogStatus==='RECEIVED'&&
+    scan.monitoringCoverage?.roomCatalogComplete!==false,
   formal_opening_rate_percent:null,formal_attendance_ready:false};
 }

@@ -159,3 +159,13 @@ test('nonexistent calendar timestamps are rejected instead of normalised',()=>{
   assert.equal(r.reason,'INVALID_SCAN_REPORT',checkedAt);
  }
 });
+
+test('declared total does not attest a complete room catalog when upstream dropped or flagged room records',()=>{
+ assert.equal(run(base()).catalog_complete_attested,true);
+ const i=base();i.catalogStatus='PARTIAL_WITH_INTEGRITY_WARNINGS';i.warnings=['JD_ROOM_ID_INVALID'];
+ const r=run(i);assert.equal(r.readiness,'PARTIAL');assert.equal(r.catalog_complete_attested,false);
+ const j=base();j.monitoringCoverage={roomCatalogComplete:false};
+ assert.equal(run(j).catalog_complete_attested,false);
+ const k=base();k.warnings=['SHOP_CATALOG_NOT_PROVEN_COMPLETE'];k.monitoringCoverage={roomCatalogComplete:true};
+ const rk=run(k);assert.equal(rk.readiness,'PARTIAL');assert.equal(rk.catalog_complete_attested,true);
+});
