@@ -1,0 +1,29 @@
+name: R2.5 JD session evidence (offline-only)
+on:
+  push:
+    branches:
+      - experiment/r25-jd-session-evidence-20261110
+    paths:
+      - 'probes/r25/**'
+      - 'tests/r25-jd-session-evidence.test.mjs'
+      - '.github/workflows/r25-jd-session-evidence.yml'
+  pull_request:
+    paths:
+      - 'probes/r25/**'
+      - 'tests/r25-jd-session-evidence.test.mjs'
+      - '.github/workflows/r25-jd-session-evidence.yml'
+permissions:
+  contents: read
+jobs:
+  strict-offline-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify full historical regression and JD end-of-session gates
+        run: node --test tests/*.test.mjs
