@@ -1,4 +1,4 @@
-name: R2.9 JD scheduled background monitor (90d daily archive)
+name: R3.1 JD scheduled background monitor (7-day rolling only)
 # MAIN-branch state isolation; scan implementation is SHA-pinned and read-only.
 # No Pages/site files altered. No repository write permissions.
 on:
@@ -48,7 +48,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify MAIN-only artifact selection with adversarial fixtures
-        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs tests/r27-schedule-daily-archive.test.mjs tests/r30-jd-archive-source-gate.test.mjs
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs tests/r31-jd-seven-day-only.test.mjs
   inspect:
     # A main-branch smoke scan is allowed only for a labelled one-time release commit.
     # Normal main pushes and all pull requests cannot access source or persist state.
@@ -125,33 +125,6 @@ jobs:
             r23-summary.json
           retention-days: 7
           if-no-files-found: error
-      - name: Check if today's 90-day history checkpoint already exists
-        id: dailycheck
-        if: steps.window.outputs.should_run == 'true' && steps.state.outcome == 'success' && steps.source.outcome == 'success' && steps.accepted.outcome == 'success' && github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          set -euo pipefail
-          checkpoint_name="r27-jd-daily-$(TZ=Asia/Shanghai date +%Y-%m-%d)"
-          count=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${checkpoint_name}&per_page=100" --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main" and .workflow_run.repository_id != null and .workflow_run.repository_id == .workflow_run.head_repository_id)] | length')
-          echo "name=${checkpoint_name}" >> "${GITHUB_OUTPUT}"
-          if test "${count}" = 0; then
-            echo "should_upload=true" >> "${GITHUB_OUTPUT}"
-            echo "New Beijing-day checkpoint: ${checkpoint_name}"
-          else
-            echo "should_upload=false" >> "${GITHUB_OUTPUT}"
-            echo "Existing Beijing-day checkpoint: ${checkpoint_name}; avoiding duplicate archive"
-          fi
-      - name: Upload one daily 90-day immutable checkpoint
-        id: dailyupload
-        if: steps.dailycheck.outputs.should_upload == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.dailycheck.outputs.name }}
-          path: |
-            r23-state.json
-            r23-summary.json
-          retention-days: 90
-          if-no-files-found: error
       - name: Write safe run proof to Actions job summary
         if: always() && steps.window.outputs.should_run == 'true'
         shell: bash
@@ -170,7 +143,6 @@ jobs:
             '- Previous run ID: `' + (()=>{try{return JSON.parse(fs.readFileSync('r23-previous.json','utf8')).last_processed_run||'none'}catch{return 'none'}})() + '`',
             '- Source evidence accepted: ' + (summary?.source_evidence_accepted === true ? 'true' : 'false/unknown'),
             '- Sanitized state artifact: `r24-jd-main-state` (check upload step result)',
-            '- Daily archive: see dailycheck/dailyupload steps; not a guarantee of continuous 90-day coverage',
             '- Exact broadcast starts, ends and formal opening rate: NOT VERIFIED',
             '- The next automatic cron run must be verified separately; a push smoke run does not prove cron.'
           ];
@@ -181,8 +153,8 @@ jobs:
         shell: bash
         run: |
           echo "Restore: ${{ steps.restore.outcome }}; source: ${{ steps.source.outcome }}; accept: ${{ steps.accepted.outcome }}; state: ${{ steps.state.outcome }}"
-          if test "${{ steps.restore.outcome }}" != success || test "${{ steps.source.outcome }}" != success || test "${{ steps.accepted.outcome }}" != success || test "${{ steps.state.outcome }}" != success || test "${{ steps.dailycheck.outcome }}" != success || { test "${{ steps.dailycheck.outputs.should_upload }}" = true && test "${{ steps.dailyupload.outcome }}" != success; }; then
+          if test "${{ steps.restore.outcome }}" != success || test "${{ steps.source.outcome }}" != success || test "${{ steps.accepted.outcome }}" != success || test "${{ steps.state.outcome }}" != success; then
             echo "::error::JD source, validation, or persistence failed. UNKNOWN retained; NOT OFFLINE."
             exit 1
           fi
-          echo "R2.9: JD source, main restore, and daily archive checked; formal opening rate remains NULL"
+          echo "R3.1: JD source accepted, MAIN state restored and 7-day rolling history uploaded; formal opening rate remains NULL"

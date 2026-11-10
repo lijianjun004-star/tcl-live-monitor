@@ -31,14 +31,11 @@ test('state restore is main-only and cannot load experiment artifacts',()=>{
  assert.match(w,/\.workflow_run\.repository_id == \.workflow_run\.head_repository_id/);
 });
 
-test('90-day retention applies only to the daily checkpoint, never the rolling scan',()=>{
+test('7-day rolling only: no daily archive is published',()=>{
  const rolling=w.match(/name: Upload rolling history and sanitized snapshot[\s\S]*?(?=\n\s+- name:)/)?.[0]??'';
- const daily=w.match(/name: Upload one daily 90-day immutable checkpoint[\s\S]*?(?=\n\s+- name:)/)?.[0]??'';
  assert.match(rolling,/name: r24-jd-main-state/);
  assert.match(rolling,/retention-days: 7/);
- assert.doesNotMatch(rolling,/retention-days: 90/);
- assert.match(daily,/name: \$\{\{ steps\.dailycheck\.outputs\.name \}\}/);
- assert.match(daily,/retention-days: 90/);
+ assert.doesNotMatch(w,/retention-days: 90|r27-jd-daily-|dailycheck|dailyupload/);
 });
 
 test('the one-shot opt in still requires a main HEAD commit label',()=>{
