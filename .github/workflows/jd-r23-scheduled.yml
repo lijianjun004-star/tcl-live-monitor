@@ -2,6 +2,11 @@ name: R2.3 JD scheduled background monitor (default-branch launcher)
 # This is the ONLY workflow on main; runtime implementation is SHA-pinned.
 # No Pages/site files altered. No repository write permissions.
 on:
+  push:
+    branches:
+      - release/r23-jd-scheduler-only
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
   pull_request:
     paths:
       - '.github/workflows/jd-r23-scheduled.yml'
@@ -16,7 +21,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify-launcher:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -30,7 +35,7 @@ jobs:
       - name: Verify pinned-source state machine and safety guards
         run: node --test tests/*.test.mjs
   inspect:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
