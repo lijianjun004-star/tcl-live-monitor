@@ -1,0 +1,29 @@
+name: R2.7 JD main state restoration safety (offline-only)
+on:
+  push:
+    branches:
+      - fix/r27-jd-main-restore-proof-20261111
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - '.github/workflows/r27-main-restore-quality.yml'
+      - 'tests/r27-jd-main-restore.test.mjs'
+  pull_request:
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - '.github/workflows/r27-main-restore-quality.yml'
+      - 'tests/r27-jd-main-restore.test.mjs'
+permissions:
+  contents: read
+jobs:
+  verify-offline-restoration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify cross-run restore and full MAIN scheduler regression
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs
