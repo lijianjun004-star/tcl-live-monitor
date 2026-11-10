@@ -18,6 +18,7 @@ function assertAllowedURL(value){
 export function parseJdConsumerLink(raw){
  if(typeof raw!=='string'||raw.length>5000)throw Error('INVALID_INPUT');
  const input=raw.trim();
+ if(/\bhttp:\/\//i.test(input))throw Error('NOT_HTTPS_ALLOWED_JD_HOST');
  // Clipboard can contain a JD marketing sentence; only use exactly one HTTPS URL.
  const found=input.match(/https:\/\/[^\s<>，。；、"'“”‘’]+/g)||[];
  if(found.length!==1)throw Error('EXPECTED_EXACTLY_ONE_HTTPS_LINK');
