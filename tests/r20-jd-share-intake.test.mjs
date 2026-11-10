@@ -70,7 +70,7 @@ test('invalid or missing liveId cannot create a session',()=>{
 });
 test('invalid 3.cn shortlink path does not get followed',()=>{
  assert.throws(()=>parseJdConsumerLink('https://3.cn/'),/INVALID_JD_SHORTLINK/);
- assert.throws(()=>parseJdConsumerLink('https://3.cn/short?to=http://evil.example'),/INVALID_JD_SHORTLINK/);
+ assert.throws(()=>parseJdConsumerLink('https://3.cn/short?to=http://evil.example'),/NOT_HTTPS_ALLOWED_JD_HOST/);
 });
 test('post-review candidate always requires actual independent source inspection',()=>{
  const c=parseJdConsumerLink(item);
