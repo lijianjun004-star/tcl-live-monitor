@@ -58,3 +58,10 @@ jobs:
             r21-accepted.json
           retention-days: 7
           if-no-files-found: warn
+      - name: Fail closed after retaining diagnostics
+        if: always()
+        run: |
+          if test "${{ steps.source.outcome }}" != "success" || test "${{ steps.validate.outcome }}" != "success"; then
+            echo "::error::JD source scan or acceptance failed; report must remain UNKNOWN"
+            exit 1
+          fi

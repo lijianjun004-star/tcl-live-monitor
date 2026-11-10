@@ -1,0 +1,44 @@
+name: R2.2 JD unsigned-import and source-readiness audit (offline)
+on:
+  push:
+    branches:
+      - fix/r22-jd-independent-trust-audit
+  pull_request:
+    paths:
+      - 'probes/r21/**'
+      - 'preview/jd/**'
+      - 'tests/r21-*.test.mjs'
+      - 'tests/r22-*.test.mjs'
+      - 'docs/r22/**'
+      - '.github/workflows/r21-jd-real-source-one-shot.yml'
+      - '.github/workflows/r22-jd-audit-offline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  independent-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run ALL existing and independent regression cases
+        run: node --test tests/*.test.mjs
+      - name: Verify opening-rate remains unreportable without identity and schedule
+        run: |
+          node probes/r20/jd-opening-rate-cli.mjs --crosswalk config/r21-jd-crosswalk-review.json --as-of 2026-11-10T12:00:00Z --out r22-rate-gate.json
+          node --input-type=module -e "import fs from 'node:fs';const x=JSON.parse(fs.readFileSync('r22-rate-gate.json','utf8'));if(x.formal_report_ready!==false||x.opening_rate_percent!==null||x.readiness.verified_public_jd_accounts!==0||x.readiness.internal_rooms!==7)process.exit(2);console.log('PASS: zero verified JD public accounts, formal rate null');"
+      - name: Package fully tracked sources without touching production
+        run: git archive --format=zip --output=r22-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r22-independent-qa-full-source-and-preview
+          path: |
+            r22-source.zip
+            preview/jd/index.html
+            docs/r22/R22-INDEPENDENT-FIX-ACCEPTANCE.md
+            r22-rate-gate.json
+          retention-days: 21
+          if-no-files-found: error

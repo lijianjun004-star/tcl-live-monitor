@@ -61,7 +61,12 @@ export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRES
  if(!['API_DECLARED_COMPLETE','API_RESPONSE_NOT_PROVEN_EXHAUSTIVE'].includes(scan.roomListScope))
    return {...empty,checked_at:scan.checkedAt,reason:'ROOM_CATALOG_SCOPE_UNVERIFIED'};
  const warnings=Array.isArray(scan.warnings)?scan.warnings.map(x=>text(x,100)).slice(0,20):[];
- const integrityBlocked=scan.catalogStatus!=='RECEIVED'||scan.roomListScope!=='API_DECLARED_COMPLETE'||warnings.length>0;
+ // A missing/dropped room record is a first-class readiness blocker, not just a UI annotation.
+ const catalogComplete=scan.roomListScope==='API_DECLARED_COMPLETE'&&
+   scan.catalogStatus==='RECEIVED'&&scan.monitoringCoverage?.roomCatalogComplete!==false;
+ if(scan.monitoringCoverage?.roomCatalogComplete===false)
+   warnings.push('ROOM_CATALOG_INCOMPLETE_SOURCE');
+ const integrityBlocked=!catalogComplete||warnings.length>0;
  return {...empty,readiness:integrityBlocked?'PARTIAL':'OBSERVED',
   checked_at:scan.checkedAt,age_seconds:Math.round(age/1000),
   live:sums.LIVE,offline:0,unknown:sums.UNKNOWN,room_count:sanitized.length,
@@ -70,7 +75,6 @@ export function acceptJdOpsScan(scan,{now=new Date().toISOString(),maxAgeMs=FRES
   reason:integrityBlocked?'INTEGRITY_WARNINGS':'READ_ONLY_CURRENT_DAY_OBSERVATION',
   // A declared total alone is not proof: dropped/duplicate room records (catalogStatus not RECEIVED,
   // or the scanner's own roomCatalogComplete=false) mean the room catalog is not attested complete.
-  catalog_complete_attested:scan.roomListScope==='API_DECLARED_COMPLETE'&&scan.catalogStatus==='RECEIVED'&&
-    scan.monitoringCoverage?.roomCatalogComplete!==false,
+  catalog_complete_attested:catalogComplete,
   formal_opening_rate_percent:null,formal_attendance_ready:false};
 }
