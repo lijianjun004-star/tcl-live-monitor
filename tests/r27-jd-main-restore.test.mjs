@@ -32,7 +32,7 @@ test('state restore is main-only and cannot load experiment artifacts',()=>{
 });
 
 test('7-day rolling only: no daily archive is published',()=>{
- const rolling=w.match(/name: Upload rolling history and sanitized snapshot[\\s\\S]*?(?=\\n\\s+- name:)/)?.[0]??'';
+ const rolling=w.match(/name: Upload rolling history and sanitized snapshot[\s\S]*?(?=\n\s+- name:)/)?.[0]??'';
  assert.match(rolling,/name: r24-jd-main-state/);
  assert.match(rolling,/retention-days: 7/);
  assert.doesNotMatch(w,/retention-days: 90|r27-jd-daily-|dailycheck|dailyupload/);
