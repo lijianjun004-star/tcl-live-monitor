@@ -29,4 +29,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verify main restore, seven-day policy, schedule and Bash safety
-        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r31-jd-seven-day-only.test.mjs
+        run: node --test tests/*.test.mjs
