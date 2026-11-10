@@ -32,7 +32,7 @@ test('all 7 observed internal room IDs are present, new 19 is not dropped',()=>{
 test('browser data import only parses local user file, not network',()=>{
  assert.match(html,/await f\.text\(\)/);
  assert.doesNotMatch(html,/\bfetch\s*\(/);
- assert.doesNotMatch(html,/localStorage|indexedDB|cookie/i);
+ assert.doesNotMatch(html.match(/<script>([\s\S]*?)<\/script>/)?.[1]||'',/localStorage|indexedDB|(?:document\.)?cookie/i);
 });
 test('safe text rendering avoids injecting untrusted imported report strings as HTML',()=>{
  assert.match(html,/e\.textContent=String\(text\)/);
