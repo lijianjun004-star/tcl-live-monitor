@@ -4,6 +4,7 @@ name: R2.4 JD scheduled background monitor (default-branch launcher)
 on:
   push:
     branches:
+      - main
       - release/r23-jd-scheduler-only
     paths:
       - '.github/workflows/jd-r23-scheduled.yml'
@@ -48,7 +49,9 @@ jobs:
       - name: Verify MAIN-only artifact selection with adversarial fixtures
         run: node --test tests/r24-main-artifact-restore.test.mjs
   inspect:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # A main-branch smoke scan is allowed only for a labelled one-time release commit.
+    # Normal main pushes and all pull requests cannot access source or persist state.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[jd-main-smoke]'))
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
@@ -121,6 +124,28 @@ jobs:
             r23-summary.json
           retention-days: 7
           if-no-files-found: error
+      - name: Write safe run proof to Actions job summary
+        if: always() && steps.window.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          let summary = null;
+          try { summary = JSON.parse(fs.readFileSync('r23-summary.json','utf8')); }
+          catch { /* No data: provenance stays unknown. */ }
+          const lines = [
+            '## JD R2.6 main-chain execution proof',
+            '- Event: `' + process.env.GITHUB_EVENT_NAME + '`',
+            '- Branch: `' + process.env.GITHUB_REF + '`',
+            '- Run: `' + process.env.GITHUB_RUN_ID + '.' + process.env.GITHUB_RUN_ATTEMPT + '`',
+            '- Previous state: ' + (fs.existsSync('r23-previous.json') ? 'restored' : 'no eligible main artifact (fresh baseline)'),
+            '- Source evidence accepted: ' + (summary?.source_evidence_accepted === true ? 'true' : 'false/unknown'),
+            '- Sanitized state artifact: `r24-jd-main-state` (check upload step result)',
+            '- Exact broadcast starts, ends and formal opening rate: NOT VERIFIED',
+            '- The next automatic cron run must be verified separately; a push smoke run does not prove cron.'
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
+          JS
       - name: Gate true source/persistence success after evidence upload
         if: always() && steps.window.outputs.should_run == 'true'
         shell: bash
