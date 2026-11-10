@@ -4,8 +4,8 @@ import fs from 'node:fs';
 const w=fs.readFileSync(new URL('../.github/workflows/jd-r23-scheduled.yml',import.meta.url),'utf8');
 
 test('previous MAIN state is validated using production history state guard',()=>{
- assert.match(w,/import \{validateState\} from '\.\/probes\/r23\/jd-history\.mjs'/);
- assert.match(w,/validateState\(JSON\.parse\(fs\.readFileSync\('r23-previous\.json','utf8'\)\)\)/);
+ assert.match(w,/import \{validateState\} from ['"]\.\/probes\/r23\/jd-history\.mjs['"]/);
+ assert.match(w,/validateState\(JSON\.parse\(fs\.readFileSync\(['"]r23-previous\.json['"],['"]utf8['"]\)\)\)/);
  assert.match(w,/MAIN_PRIOR_STATE_HAS_NO_RUN/);
 });
 
@@ -16,10 +16,10 @@ test('source still cannot run when previous state restoration fails',()=>{
 });
 
 test('previous run identity and events are logged without raw credentials',()=>{
- assert.match(w,/origin: 'MAIN_ONLY_ARTIFACT'/);
- assert.match(w,/last_processed_run: state\.last_processed_run/);
- assert.match(w,/stored_checks: state\.checks\.length/);
- assert.match(w,/stored_events: state\.events\.length/);
+ assert.match(w,/origin:\s*['"]MAIN_ONLY_ARTIFACT['"]/);
+ assert.match(w,/last_processed_run:\s*(?:s|state)\.last_processed_run/);
+ assert.match(w,/stored_checks:\s*(?:s|state)\.checks\.length/);
+ assert.match(w,/stored_events:\s*(?:s|state)\.events\.length/);
  assert.match(w,/Previous run ID:/);
  assert.doesNotMatch(w,/console\.log\(process\.env\.GH_TOKEN\)/);
 });
