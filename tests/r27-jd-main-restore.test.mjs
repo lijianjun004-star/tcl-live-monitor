@@ -32,12 +32,12 @@ test('state restore is main-only and cannot load experiment artifacts',()=>{
 });
 
 test('90-day retention applies only to the daily checkpoint, never the rolling scan',()=>{
- const rolling=w.match(/name: Upload rolling history and sanitized snapshot[\\s\\S]*?(?=\\n\\s+- name:)/)?.[0]??'';
- const daily=w.match(/name: Upload one daily 90-day immutable checkpoint[\\s\\S]*?(?=\\n\\s+- name:)/)?.[0]??'';
+ const rolling=w.match(/name: Upload rolling history and sanitized snapshot[\s\S]*?(?=\n\s+- name:)/)?.[0]??'';
+ const daily=w.match(/name: Upload one daily 90-day immutable checkpoint[\s\S]*?(?=\n\s+- name:)/)?.[0]??'';
  assert.match(rolling,/name: r24-jd-main-state/);
  assert.match(rolling,/retention-days: 7/);
  assert.doesNotMatch(rolling,/retention-days: 90/);
- assert.match(daily,/name: \\$\\{\\{ steps\\.dailycheck\\.outputs\\.name \\}\\}/);
+ assert.match(daily,/name: \$\{\{ steps\.dailycheck\.outputs\.name \}\}/);
  assert.match(daily,/retention-days: 90/);
 });
 
