@@ -1,0 +1,29 @@
+name: R2.6 main smoke safety (offline-only)
+on:
+  push:
+    branches:
+      - fix/r26-jd-main-first-run-smoke-20261111
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - '.github/workflows/r26-main-smoke-quality.yml'
+      - 'tests/r26-jd-main-smoke.test.mjs'
+  pull_request:
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - '.github/workflows/r26-main-smoke-quality.yml'
+      - 'tests/r26-jd-main-smoke.test.mjs'
+permissions:
+  contents: read
+jobs:
+  verify-offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify R2.4 main artifacts and R2.6 smoke trigger policy
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs
