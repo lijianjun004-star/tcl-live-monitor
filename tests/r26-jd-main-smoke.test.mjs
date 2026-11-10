@@ -33,7 +33,7 @@ test('scan source code remains SHA pinned and read only',()=>{
 });
 
 test('state restored only from main, writes the isolated seven-day namespace',()=>{
-  assert.match(workflow,/\.workflow_run\.head_branch == \\"main\\"/);
+  assert.match(workflow,/\.workflow_run\.head_branch == "main"/);
   assert.match(workflow,/artifacts\?name=r24-jd-main-state&per_page=100/);
   assert.match(workflow,/name: r24-jd-main-state/);
   assert.match(workflow,/retention-days: 7/);
