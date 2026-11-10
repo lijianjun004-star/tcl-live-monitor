@@ -1,3 +1,5 @@
+import {validateJdCrosswalk} from '../probes/r20/jd-opening-rate.mjs';
+import fs from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {acceptJdOpsScan} from '../probes/r21/accept-jd-ops-scan.mjs';
@@ -83,4 +85,22 @@ test('UNKNOWN remains UNKNOWN and not 100 percent opening rate',()=>{
 test('invalid source and object shape cannot get an accepted snapshot',()=>{
  for(const i of [null,{}, {schemaVersion:2,source:'FAKE',checkedAt:now,rooms:[]}])
    assert.equal(run(i).readiness,'BLOCKED');
+});
+
+test('today crosswalk includes all 7 observed internal rooms but zero verified JD public accounts',()=>{
+ const crosswalk=JSON.parse(fs.readFileSync(new URL('../config/r21-jd-crosswalk-review.json',import.meta.url),'utf8'));
+ const x=validateJdCrosswalk(crosswalk);
+ assert.equal(x.mapped_ops_rooms,7);
+ assert.equal(x.verified_accounts,0);
+ assert.equal(x.pending,7);
+ assert.deepEqual(crosswalk.entries.map(e=>e.ops_room_id),['1','14','15','16','17','18','19']);
+ assert.ok(crosswalk.entries.every(e=>e.identity_status==='PENDING'&&e.public_jd_account_id===null));
+});
+test('new JD internal room19/shop21 is never hardcoded as a public JD anchor',()=>{
+ const crosswalk=JSON.parse(fs.readFileSync(new URL('../config/r21-jd-crosswalk-review.json',import.meta.url),'utf8'));
+ const r=crosswalk.entries.find(e=>e.ops_room_id==='19');
+ assert.equal(r.ops_shop_id,'21');
+ assert.equal(r.public_jd_account_id,null);
+ assert.equal(r.public_live_session_id,null);
+ assert.equal(r.evidence_ref,null);
 });
