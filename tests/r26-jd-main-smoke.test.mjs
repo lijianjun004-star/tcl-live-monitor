@@ -21,7 +21,7 @@ test('normal unlabelled push and all pull requests do not pass inspect gate',()=
 
 test('cron and normal manual dispatch stay enabled',()=>{
   assert.match(workflow,/workflow_dispatch:/);
-  assert.match(workflow,/schedule:\s*\n\s+- cron: '0,5,10,15,30,45,55 \* \* \* \*'/);
+  assert.match(workflow,/schedule:[\s\S]*?- cron: '2,7,12,17,32,47,57 \* \* \* \*'/);
   assert.match(workflow,/name: Enforce Beijing 06:30 to 02:00 window/);
 });
 
