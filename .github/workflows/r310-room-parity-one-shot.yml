@@ -1,0 +1,40 @@
+name: R3.10 real Douyin room identity parity - one shot
+on:
+  push:
+    branches:
+      - experiment/r310-real-room-parity-20261111
+    paths:
+      - '.github/workflows/r310-room-parity-one-shot.yml'
+permissions:
+  contents: read
+jobs:
+  single-verified-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full room parity and RPA unit safety tests
+        run: node --test tests/r310-room-identity-parity.test.mjs tests/r39-rpa-dom-signal.test.mjs tests/r37-rpa-safe-douyin.test.mjs
+      - name: Install Playwright JS only, no browser download
+        run: |
+          npm init -y >/dev/null
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.64.1
+      - name: Verify installed Chrome
+        run: node probes/r39/system-chrome-smoke.mjs
+      - name: One real public profile and room check for two approved keys
+        env:
+          R310_SINGLE_SHOT: SAFE_ROOM_PARITY_SYSTEM_CHROME
+        run: node probes/r310/run-room-parity-once.mjs
+      - name: Upload whitelisted boolean room parity only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r310-minimal-room-parity
+          path: out/r310/public-room-parity-safe.json
+          if-no-files-found: ignore
+          retention-days: 2
