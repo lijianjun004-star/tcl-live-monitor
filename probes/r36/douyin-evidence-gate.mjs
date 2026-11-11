@@ -98,19 +98,21 @@ export function buildDouyinSessionEvents({observations, identityReport}) {
     const proofAt=iso(proof?.observedAt);
     const boundary = proof?.kind==='INDEPENDENT_NEW_SESSION' && proof?.confirmed===true && evidenceRef(proof?.ref)!==null &&
       proofAt!==null && Date.parse(proofAt)<=Date.parse(at) && Date.parse(at)-Date.parse(proofAt)<=30*60000;
-    const currentRoomCrossChecked = pRid!==null && (pRid===link.publicLiveRoomId || boundary);
-    const live=o.state==='LIVE'&&o.profileIdentityVerified===true&&o.roomIdentityVerified===true&&currentRoomCrossChecked;
-    accepted.push({opsRoomId:rid,at,state:live?'LIVE':'UNKNOWN',publicLiveRoomId:pRid,
+    const publicDoubleVerified = o.state==='LIVE'&&o.profileIdentityVerified===true&&o.roomIdentityVerified===true&&pRid!==null;
+    accepted.push({opsRoomId:rid,at,state:publicDoubleVerified?'LIVE':'UNKNOWN',publicLiveRoomId:pRid,
       candidate:o.offlineCandidate===true,boundary:boundary===true,boundaryRef:boundary?proof.ref:null});
   }
   accepted.sort((a,b)=>a.opsRoomId.localeCompare(b.opsRoomId,'en',{numeric:true})||Date.parse(a.at)-Date.parse(b.at));
-  const seen = new Map();
+  const seen = new Map(), trustedRoomByOps = new Map();
   for(const s of accepted){
     const link=verified.get(s.opsRoomId), p=seen.get(s.opsRoomId);
     if(p&&s.at===p.at){skipped.push({opsRoomId:s.opsRoomId,reason:'DUPLICATE_TIMESTAMP'});continue}
+    const trustedRoom=trustedRoomByOps.get(s.opsRoomId)??link.publicLiveRoomId;
+    const live=s.state==='LIVE'&&(s.publicLiveRoomId===trustedRoom||s.boundary);
+    if(live&&s.boundary)trustedRoomByOps.set(s.opsRoomId,s.publicLiveRoomId);
     const evt={opsRoomId:s.opsRoomId,accountKey:link.accountKey,observedAt:s.at,
       previousObservedAt:p?.at??null,exactStartAt:null,exactEndAt:null,formalFullDurationRatePercent:null};
-    if(s.state==='LIVE'){
+    if(live){
       if(!p?.everLive){events.push({...evt,type:'FIRST_SEEN_LIVE',possibleStartAfter:p?.at??null});}
       else if(s.boundary&&(!p.lastBoundaryRef||p.lastBoundaryRef!==s.boundaryRef)) {
         events.push({...evt,type:'NEXT_SESSION_DETECTED',possibleStartAfter:p.at,boundaryEvidenceRef:s.boundaryRef});
@@ -119,8 +121,8 @@ export function buildDouyinSessionEvents({observations, identityReport}) {
       if(!p.unknownActive)events.push({...evt,type:'UNKNOWN_GAP'});
       if(s.candidate&&!p.candidateActive)events.push({...evt,type:'OFFLINE_CANDIDATE'});
     }
-    seen.set(s.opsRoomId,{at:s.at,everLive:(p?.everLive||false)||s.state==='LIVE',
-      unknownActive:s.state==='UNKNOWN',candidateActive:s.state==='UNKNOWN'&&s.candidate,
+    seen.set(s.opsRoomId,{at:s.at,everLive:(p?.everLive||false)||live,
+      unknownActive:!live,candidateActive:!live&&s.candidate,
       lastBoundaryRef:s.boundary?(s.boundaryRef):p?.lastBoundaryRef??null});
   }
   return {schemaVersion:36,platform:'douyin',events,skipped,
