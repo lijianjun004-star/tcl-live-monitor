@@ -14,6 +14,7 @@ export function roomIdentityParity(room,target){
   return Object.freeze({
     roomHttp200:room?.httpStatus===200,
     roomPageHostVerified:room?.finalHost==='live.douyin.com',
+    roomDomResampled:room?.domDiagnostics?.delayedDomResample===true,
     expectedExactTitle:!!name&&title===expectedTitle,
     expectedNormalizedTitle:!!name&&norm(title)===norm(expectedTitle),
     titleContainsExpectedName:!!name&&title.includes(name),
@@ -30,6 +31,7 @@ export function roomIdentityParity(room,target){
 export function classifyRoomIdentityGap(d){
   if(!d?.roomHttp200)return 'ROOM_ACCESS_NOT_200';
   if(!d?.roomPageHostVerified)return 'ROOM_HOST_NOT_VERIFIED';
+  if(d.pageTitleLength===0&&!d.descriptionPresent)return 'ROOM_PUBLIC_METADATA_EMPTY';
   if(d.expectedExactTitle&&d.descExpectedPrefix)return 'STRICT_ROOM_IDENTITY_MATCHED';
   if(!d.titleContainsExpectedName&&!d.descContainsExpectedName)return 'ROOM_ACCOUNT_NAME_MISMATCH_OR_MISSING';
   if(d.titleContainsExpectedName&&!d.descExpectedPrefix)return d.descriptionPresent?'ROOM_DESCRIPTION_PREFIX_CHANGED':'ROOM_DESCRIPTION_MISSING';
