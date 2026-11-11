@@ -1,0 +1,28 @@
+name: R3.6 Douyin OPS read-only contract (offline only)
+on:
+  push:
+    branches:
+      - experiment/r36-douyin-ops-rea-readonly-20261111
+    paths:
+      - 'probes/r36/**'
+      - 'tests/r36-douyin-ops-qa.test.mjs'
+      - '.github/workflows/r36-douyin-offline-quality.yml'
+  pull_request:
+    paths:
+      - 'probes/r36/**'
+      - 'tests/r36-douyin-ops-qa.test.mjs'
+permissions:
+  contents: read
+jobs:
+  offline-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run all existing monitor regression and new Douyin contract tests
+        run: node --test tests/*.test.mjs

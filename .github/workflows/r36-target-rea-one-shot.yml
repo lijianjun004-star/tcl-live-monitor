@@ -1,0 +1,47 @@
+name: R3.6 REA target JS read-only experiment (one-shot; no raw artifact)
+on:
+  push:
+    branches:
+      - experiment/r36-douyin-ops-rea-readonly-20261111
+    paths:
+      - '.github/workflows/r36-target-rea-one-shot.yml'
+permissions:
+  contents: read
+jobs:
+  inspect-static-assets:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r36-douyin-ops-rea-readonly-20261111' && contains(github.event.head_commit.message, '[r36-rea-target-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check target-research JavaScript syntax before any GET
+        run: node --check probes/r36/frontend-asset-readonly.mjs
+      - name: Passive HTML + at most two same-origin public JS files
+        run: node probes/r36/frontend-asset-readonly.mjs
+      - name: Run official REA only if real static assets were obtained
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find r36-private-js -maxdepth 1 -type f -name 'bundle-*.js' | grep -q .; then
+            timeout 240s npx -y rea-agents@latest analyze-javascript-application "$GITHUB_WORKSPACE/r36-private-js" --json > r36-rea-private-result.json
+            node --input-type=module -e "import fs from 'node:fs'; const s=fs.readFileSync('r36-rea-private-result.json','utf8');JSON.parse(s);console.log('R36_REA_REAL_ASSETS_PASS bytes='+Buffer.byteLength(s));"
+          else
+            echo 'R36_REA_TARGET_BLOCKED: no freely accessible static JS; no reverse engineering result claimed'
+          fi
+      - name: Destroy local target JS and full REA result, keep aggregate evidence only
+        if: always()
+        shell: bash
+        run: rm -rf r36-private-js r36-rea-private-result.json
+      - name: Upload only safe aggregate proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r36-target-js-rea-aggregate
+          path: r36-frontend-safe.json
+          if-no-files-found: warn
+          retention-days: 7
