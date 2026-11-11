@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {roomIdentityParity,classifyRoomIdentityGap} from '../probes/r310/room-identity-parity.mjs';
-import {runDouyinRpaReadOnly} from '../probes/r37/rpa-safe-douyin.mjs';
+import {runDouyinRpaReadOnly,inspectPublicPage} from '../probes/r37/rpa-safe-douyin.mjs';
 const SEC='MS4wLjABAAAAHLgxNf9c59NqJuH9tm5U2L3E1B6bNBehePdI5rKsZ2s';
 const P='https://www.douyin.com/user/'+SEC;
 const R='https://live.douyin.com/988541363148';
@@ -82,4 +82,40 @@ test('no guessed LIVE for room title containing expected account but missing des
  assert.equal(m.expectedExactTitle,true);
  assert.equal(m.descExpectedPrefix,false);
  assert.notEqual(classifyRoomIdentityGap(m),'STRICT_ROOM_IDENTITY_MATCHED');
+});
+
+test('HTTP200 with zero title+description is incomplete metadata, not account conflict',()=>{
+ const d=roomIdentityParity({...ok,title:'',metaDescription:'',bodyExcerpt:'loading...'},account);
+ assert.equal(d.pageTitleLength,0);
+ assert.equal(d.descriptionPresent,false);
+ assert.equal(classifyRoomIdentityGap(d),'ROOM_PUBLIC_METADATA_EMPTY');
+});
+test('one same-page delayed DOM read can recover room title and description',async()=>{
+ const initial={title:'',metaDescription:'',bodyExcerpt:'loading...',rawDomSignal:{domTextLength:10}};
+ const recovered={...ok,rawDomSignal:{domTextLength:200,totalAnchors:10}};
+ let calls=0;const waits=[];
+ const page={
+  async goto(){return{status:()=>200}},
+  url:()=>R,
+  async waitForTimeout(t){waits.push(t)},
+  async evaluate(){return (calls++===0)?initial:recovered},
+ };
+ const r=await inspectPublicPage(page,R,'room',{holdMs:0});
+ const d=roomIdentityParity(r,account);
+ assert.equal(calls,2);
+ assert.deepEqual(waits,[1200]);
+ assert.equal(d.roomDomResampled,true);
+ assert.equal(classifyRoomIdentityGap(d),'STRICT_ROOM_IDENTITY_MATCHED');
+});
+test('blank room metadata remains UNKNOWN after resample, not false LIVE',async()=>{
+ const page={
+  async goto(){return{status:()=>200}},
+  url:()=>R,async waitForTimeout(){},
+  async evaluate(){return {title:'',metaDescription:'',bodyExcerpt:'loading',rawDomSignal:{domTextLength:7}}}
+ };
+ const r=await inspectPublicPage(page,R,'room',{holdMs:0});
+ const d=roomIdentityParity(r,account);
+ assert.equal(d.roomDomResampled,true);
+ assert.equal(classifyRoomIdentityGap(d),'ROOM_PUBLIC_METADATA_EMPTY');
+ assert.equal(d.expectedExactTitle,false);
 });
