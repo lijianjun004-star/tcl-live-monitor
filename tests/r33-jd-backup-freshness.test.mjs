@@ -89,10 +89,15 @@ test('PR/push only run offline tests; scheduled or manual backup is the only sou
  assert.match(canonical,/if: github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'/);
 });
 test('backup preflight command scripts are Bash parsable',()=>{
- const entries=[...backup.matchAll(/^\s{6}- name: ([^\n]+)\n[\s\S]*?^\s{8}run: \|\n((?:^\s{10}.*(?:\n|$))*)/gm)];
- const scripts=entries.filter(x=>/Read only latest|Decide whether/.test(x[1]));
- assert.equal(scripts.length,2,'expected both inline preflight shell scripts');
- for(const [_,name,body] of scripts){
+ const names=['Read only latest unexpired same-repository MAIN state','Decide whether backup scan is necessary'];
+ for(const name of names){
+  const start=backup.indexOf('      - name: '+name+'\n');
+  assert.ok(start>=0,'missing step '+name);
+  const marker='        run: |\n';
+  const begin=backup.indexOf(marker,start);
+  assert.ok(begin>start,'missing run block '+name);
+  const next=backup.indexOf('      - name:',begin+marker.length);
+  const body=backup.slice(begin+marker.length,next<0?backup.length:next);
   const script=body.split('\n').map(l=>l.startsWith('          ')?l.slice(10):l).join('\n');
   const result=spawnSync('bash',['-n'],{input:script,encoding:'utf8'});
   assert.equal(result.status,0,name+' '+result.stderr);
