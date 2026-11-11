@@ -1,0 +1,30 @@
+name: QA R3.5 Cloudflare Workers Wrangler dry-run - NO deployment
+on:
+  push:
+    branches:
+      - qa/r35-cloudflare-wrangler-dryrun-20261111
+    paths:
+      - '.github/workflows/r35-wrangler-dryrun-qa.yml'
+permissions:
+  contents: read
+jobs:
+  validate-real-wrangler:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install scoped Wrangler dev dependency without Cloudflare auth
+        working-directory: external/cloudflare-jd-clock
+        run: npm install --no-audit --no-fund
+      - name: Build Worker with actual Wrangler dry-run (NEVER deploy)
+        working-directory: external/cloudflare-jd-clock
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --dry-run --outdir out
+          test -d out
+          echo "WRANGLER_DRY_RUN_PASS; zero credentials; no live Cloudflare deployment"
