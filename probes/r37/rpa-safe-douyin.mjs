@@ -94,14 +94,14 @@ export async function inspectPublicPage(page,url,role,{holdMs=800}={}){
     let anchors=normalizedPublicLiveAnchors(snap?.liveRoomCandidates??snap?.liveRoomAnchors);
     let delayed=false;
     // One extra DOM-only sampling pass, no second navigation or API request.
-    if(role==='profile' && !anchors.length && !isRpaAccessBlocked({...out,...snap})){
+    if(role==='profile' && !anchors.length && !isRpaAccessBlocked({...output,...snap})){
       await page.waitForTimeout(1200);
       snap=await readDOM();
       anchors=normalizedPublicLiveAnchors(snap?.liveRoomCandidates??snap?.liveRoomAnchors);
       delayed=true;
     }
     const diagnostics=safePublicDomDiagnostics(snap?.rawDomSignal,anchors.length,delayed);
-    return {...out,
+    return {...output,
       title:String(snap?.title||'').slice(0,150),bodyExcerpt:String(snap?.bodyExcerpt||'').slice(0,700),
       metaDescription:String(snap?.metaDescription||'').slice(0,180),
       douyinIdsInPage:Array.isArray(snap?.douyinIdsInPage)?snap.douyinIdsInPage.slice(0,5):[],
