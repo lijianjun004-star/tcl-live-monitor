@@ -70,7 +70,9 @@ test('staggered backup is separate from canonical schedule, never claims guarant
 test('source is reused exactly through workflow_call, not duplicated or rewritten',()=>{
  assert.match(canonical,/^\s+workflow_call:\s*$/m);
  assert.match(backup,/uses: \.\/\.github\/workflows\/jd-r23-scheduled\.yml/);
- assert.match(backup,/secrets: inherit/);
+ assert.match(canonical,/workflow_call:\s*\n\s+secrets:\s*\n\s+TCL_OPS_BASE_URL:/);
+ assert.match(backup,/secrets:\s*\n\s+TCL_OPS_BASE_URL: \$\{\{ secrets\.TCL_OPS_BASE_URL \}\}/);
+ assert.doesNotMatch(backup,/secrets: inherit/);
  assert.match(canonical,/concurrency:\s*\n\s+group: r23-jd-stateful-monitor/);
  assert.match(canonical,/ref: 267b6709a8563ef779cda6b11c97b9684c4e1c16/);
 });
