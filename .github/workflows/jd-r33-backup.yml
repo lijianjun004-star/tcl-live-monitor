@@ -77,6 +77,8 @@ jobs:
     needs: check-recent-main-scan
     if: needs.check-recent-main-scan.outputs.should_run == 'true'
     uses: ./.github/workflows/jd-r23-scheduled.yml
+    with:
+      backup_mode: true
     permissions:
       contents: read
       actions: read
