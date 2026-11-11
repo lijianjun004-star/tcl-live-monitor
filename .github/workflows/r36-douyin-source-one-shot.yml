@@ -2,14 +2,14 @@ name: R3.6 Douyin TCL OPS source schema (one-shot read-only)
 on:
   push:
     branches:
-      - experiment/r36-douyin-ops-rea-readonly-20261111
+      - qa/r36-douyin-ops-source-once-20261111
     paths:
       - '.github/workflows/r36-douyin-source-one-shot.yml'
 permissions:
   contents: read
 jobs:
   read-douyin-source-once:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r36-douyin-ops-rea-readonly-20261111' && contains(github.event.head_commit.message, '[r36-source-qa-once]')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/qa/r36-douyin-ops-source-once-20261111' && contains(github.event.head_commit.message, '[r36-source-qa-once]')
     runs-on: ubuntu-24.04
     timeout-minutes: 6
     env:
