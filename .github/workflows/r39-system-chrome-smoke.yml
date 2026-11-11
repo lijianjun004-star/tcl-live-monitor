@@ -1,0 +1,26 @@
+name: R3.9 system Chrome boot feasibility - OFFLINE
+on:
+  push:
+    branches:
+      - experiment/r39-rpa-dom-signal-fix-20261111
+    paths:
+      - '.github/workflows/r39-system-chrome-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  chrome-startup-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install only Playwright JS library, not a browser
+        run: |
+          npm init -y >/dev/null
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.64.1
+      - name: Start installed Google Chrome with no navigation, then close
+        run: node probes/r39/system-chrome-smoke.mjs

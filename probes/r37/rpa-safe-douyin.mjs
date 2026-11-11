@@ -8,6 +8,7 @@
  * validate TCL OPS room/shop -> public account ownership or exact session times.
  */
 import {decideDouyin, profileIdentity, liveAnchorRoomIds} from '../lib/douyin.mjs';
+import {normalizedPublicLiveAnchors,safePublicDomDiagnostics,identifyDomGap} from '../r39/rpa-dom-signal-utils.mjs';
 
 const MAX_TARGETS=2;
 const WALL=/(验证码|安全验证|滑块|captcha|请先登录|登录后观看|扫码登录|登录抖音|人机验证|verify you are human)/i;
@@ -56,22 +57,56 @@ export async function inspectPublicPage(page,url,role,{holdMs=800}={}){
     output.finalHost=final.hostname;
     if(!safeDouyinPageURL(final.href,role)||output.httpStatus!==200)return {...output,accessBlocked:true};
     if(holdMs>0)await page.waitForTimeout(Math.min(holdMs,1800));
-    const dom=await page.evaluate(()=>({
-      title:String(document.title||'').slice(0,150),
-      bodyExcerpt:String(document.body?.innerText||'').replace(/\s+/g,' ').slice(0,700),
-      metaDescription:String(document.querySelector('meta[name="description"]')?.content||'').slice(0,180),
-      douyinIdsInPage:[...String(document.body?.innerText||'').matchAll(/抖音号[:：]\s*([A-Za-z0-9._-]{3,32})/g)]
-        .slice(0,5).map(m=>m[1]),
-      liveRoomAnchors:[...document.querySelectorAll('a[href]')]
-        .map(a=>({href:String(a.href||''),text:String(a.textContent||'').replace(/\s+/g,' ').slice(0,40)}))
-        .filter(a=>/^https:\/\/live\.douyin\.com\/\d{5,24}$/.test(a.href)).slice(0,10),
-    }));
-    const snap={...output,title:String(dom?.title||'').slice(0,150),
-      bodyExcerpt:String(dom?.bodyExcerpt||'').slice(0,700),
-      metaDescription:String(dom?.metaDescription||'').slice(0,180),
-      douyinIdsInPage:Array.isArray(dom?.douyinIdsInPage)?dom.douyinIdsInPage.slice(0,5):[],
-      liveRoomAnchors:Array.isArray(dom?.liveRoomAnchors)?dom.liveRoomAnchors.slice(0,10):[]};
-    return isRpaAccessBlocked(snap)?{...snap,accessBlocked:true}:snap;
+    const readDOM=()=>page.evaluate(()=>{
+      const fullText=String(document.body?.innerText||'').replace(/\s+/g,' ');
+      const elements=[...document.querySelectorAll('a[href]')].slice(0,2000);
+      const candidates=[];let liveHostAnchorCount=0,liveLabeledAnchorCount=0;
+      for(const element of elements){
+        let u;try{u=new URL(String(element.href||''))}catch{continue}
+        if(u.protocol!=='https:'||u.hostname!=='live.douyin.com'||
+           !/^\/\d{5,24}\/?$/.test(u.pathname))continue;
+        liveHostAnchorCount++;
+        const text=String(element.textContent||'').slice(0,64);
+        const ariaLabel=String(element.getAttribute('aria-label')||'').slice(0,64);
+        const title=String(element.getAttribute('title')||'').slice(0,64);
+        const childLabel=String(element.querySelector('[aria-label]')?.getAttribute('aria-label')||'').slice(0,64);
+        if(/直播中|正在直播|开播中/.test([text,ariaLabel,title,childLabel].join(' ')))liveLabeledAnchorCount++;
+        if(candidates.length<100)candidates.push({href:u.href,text,ariaLabel,title,childLabel});
+      }
+      const buttons=[...document.querySelectorAll('button,[role="button"]')].slice(0,400);
+      return {
+        title:String(document.title||'').slice(0,150),
+        bodyExcerpt:fullText.slice(0,700),
+        metaDescription:String(document.querySelector('meta[name="description"]')?.content||'').slice(0,180),
+        douyinIdsInPage:[...fullText.matchAll(/抖音号[:：]\s*([A-Za-z0-9._-]{3,32})/g)].slice(0,5).map(m=>m[1]),
+        liveRoomCandidates:candidates,
+        rawDomSignal:{
+          totalAnchors:elements.length,
+          liveHostAnchorCount,
+          liveLabeledAnchorCount,
+          visibleLiveTextMentions:(fullText.slice(0,20000).match(/直播中|正在直播|开播中/g)||[]).length,
+          liveRelatedButtons:buttons.filter(b=>/直播中|正在直播|开播中/.test(String(b.textContent||'').slice(0,80)+' '+String(b.getAttribute('aria-label')||'').slice(0,80))).length,
+          domTextLength:fullText.length,
+        },
+      };
+    });
+    let snap=await readDOM();
+    let anchors=normalizedPublicLiveAnchors(snap?.liveRoomCandidates??snap?.liveRoomAnchors);
+    let delayed=false;
+    // One extra DOM-only sampling pass, no second navigation or API request.
+    if(role==='profile' && !anchors.length && !isRpaAccessBlocked({...output,...snap})){
+      await page.waitForTimeout(1200);
+      snap=await readDOM();
+      anchors=normalizedPublicLiveAnchors(snap?.liveRoomCandidates??snap?.liveRoomAnchors);
+      delayed=true;
+    }
+    const diagnostics=safePublicDomDiagnostics(snap?.rawDomSignal,anchors.length,delayed);
+    return {...output,
+      title:String(snap?.title||'').slice(0,150),bodyExcerpt:String(snap?.bodyExcerpt||'').slice(0,700),
+      metaDescription:String(snap?.metaDescription||'').slice(0,180),
+      douyinIdsInPage:Array.isArray(snap?.douyinIdsInPage)?snap.douyinIdsInPage.slice(0,5):[],
+      liveRoomAnchors:anchors,domDiagnostics:diagnostics,domGap:identifyDomGap(diagnostics)};
+
   }catch{
     return {...output,accessBlocked:true}; // No exception content or URLs in reports.
   }
@@ -125,7 +160,7 @@ export async function runDouyinRpaReadOnly({
         const anchors=pid?liveAnchorRoomIds(p):[];
         if(!anchors.length){
           report.observations.push({...UNKNOWN(target.key,checkedAt,pid?'PROFILE_NO_VERIFIED_LIVE_ANCHOR':'PROFILE_IDENTITY_NOT_VERIFIED',p.httpStatus),
-            profileIdentityVerified:pid});
+            profileIdentityVerified:pid,profileDomDiagnostics:p.domDiagnostics??null,profileDomGap:p.domGap??null});
           continue;
         }
         const observed=anchors[0];
@@ -135,7 +170,7 @@ export async function runDouyinRpaReadOnly({
         const r=await inspectPublicPage(roomPage,roomUrl,'room',{holdMs});
         if(isRpaAccessBlocked(r)){
           report.observations.push({...UNKNOWN(target.key,checkedAt,'ROOM_ACCESS_BLOCKED_OR_CHALLENGED',p.httpStatus,r.httpStatus),
-            profileIdentityVerified:pid});
+            profileIdentityVerified:pid,profileDomDiagnostics:p.domDiagnostics??null,profileDomGap:p.domGap??null});
           report.stoppedForChallenge=true;break;
         }
         const d=decideDouyin(p,r,{...target,roomId:target.configuredRoomId},{offlineRuleValidated:false});
@@ -145,7 +180,8 @@ export async function runDouyinRpaReadOnly({
           profileIdentityVerified:d.profileIdentityVerified===true,
           roomIdentityVerified:d.roomPageIdentityVerified===true,
           observedRoomId:d.observedRoomId||null,roomIdChanged:d.roomIdChanged===true,
-          offlineCandidate:false,opsBridgeVerified:false,exactStartAt:null,exactEndAt:null});
+          offlineCandidate:false,opsBridgeVerified:false,exactStartAt:null,exactEndAt:null,
+          profileDomDiagnostics:p.domDiagnostics??null,profileDomGap:p.domGap??null});
       }catch{
         report.observations.push(UNKNOWN(target.key,checkedAt,'RPA_NAVIGATION_OR_RUNTIME_FAILURE'));
         report.stoppedForChallenge=true;break;
