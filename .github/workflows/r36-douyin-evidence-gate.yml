@@ -1,0 +1,26 @@
+name: R3.6 Douyin four-layer evidence and event gate - OFFLINE ONLY
+on:
+  pull_request:
+    paths:
+      - 'probes/r36/douyin-evidence-gate.mjs'
+      - 'tests/r36-douyin-evidence-gate.test.mjs'
+      - 'docs/r36/DOUYIN-FOUR-LAYER-AND-SESSION-GATE.md'
+      - '.github/workflows/r36-douyin-evidence-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-evidence-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run adversarial identity and source tests
+        run: node --test tests/r36-douyin-evidence-gate.test.mjs tests/r36-douyin-ops-parity.test.mjs
+      - name: Run full offline regression (no target network access)
+        run: node --test tests/*.test.mjs
