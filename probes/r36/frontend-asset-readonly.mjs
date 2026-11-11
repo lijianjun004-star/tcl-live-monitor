@@ -25,7 +25,7 @@ try{
  // Scripts are extracted ONLY from passive HTML. No guessed private endpoint paths.
  audit.sourceHtmlHasPlatformLabel=/抖音|douyin/i.test(html);
  audit.sourceHtmlHasShopManagementLabel=/店铺管理/.test(html);
- const candidates=[...html.matchAll(/<script[^>]+src=["']([^"']+\\.js(?:\\?[^"']*)?)["']/gi)].map(x=>x[1]);
+ const candidates=[...html.matchAll(/<script[^>]+src=["']([^"']+\.js(?:\?[^"']*)?)["']/gi)].map(x=>x[1]);
  const paths=[...new Set(candidates.map(p=>{try{
   const u=new URL(p,origin);
   if(u.origin!==origin||!/^\/assets\/[A-Za-z0-9_.-]+\.js$/.test(u.pathname)||u.search)return null;
@@ -46,7 +46,7 @@ try{
    audit.uiLabelsObserved=[...new Set([...(audit.uiLabelsObserved||[]),...allowedUiLabels.filter(x=>s.includes(x))])];
    audit.fieldNamesObserved=[...new Set([...(audit.fieldNamesObserved||[]),...allowedFields.filter(x=>s.includes(x))])];
    audit.existingKnownRoutesInJs=[...new Set([...(audit.existingKnownRoutesInJs||[]),...knownRoutes.filter(x=>s.includes(x))])];
-   audit.hasPotentialPollingClock ||= /setInterval\\(|setTimeout\\(/.test(s);
+   audit.hasPotentialPollingClock ||= /setInterval\(|setTimeout\(/.test(s);
 
    audit.assetsSha256.push(createHash('sha256').update(bytes).digest('hex'));
    // Ephemeral workspace only, NEVER uploaded, never printed.
