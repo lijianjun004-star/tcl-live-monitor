@@ -1,0 +1,11 @@
+{
+  "name": "tcl-jd-independent-clock-r35",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-11-11",
+  "workers_dev": false,
+  "triggers": {
+    "crons": [
+      "4,9,14,19,34,49,59 * * * *"
+    ]
+  }
+}
