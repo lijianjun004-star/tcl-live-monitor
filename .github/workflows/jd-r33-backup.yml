@@ -79,4 +79,5 @@ jobs:
     permissions:
       contents: read
       actions: read
-    secrets: inherit
+    secrets:
+      TCL_OPS_BASE_URL: ${{ secrets.TCL_OPS_BASE_URL }}
