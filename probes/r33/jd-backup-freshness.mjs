@@ -39,7 +39,12 @@ export function decideJdBackup({now, priorState = null, priorSummary = null} = {
     throw new Error('INVALID_MAIN_STATE');
   }
   if (!priorSummary || typeof priorSummary !== 'object') throw new Error('INVALID_MAIN_SUMMARY');
-  if (priorSummary.source_accepted !== true) {
+  // The production pinned R2.3 collector writes source_evidence_accepted.
+  // Reject ambiguous/synthetic flags instead of silently scanning again.
+  if (typeof priorSummary.source_evidence_accepted !== 'boolean') {
+    throw new Error('INVALID_SOURCE_EVIDENCE_FLAG');
+  }
+  if (priorSummary.source_evidence_accepted !== true) {
     return {should_run:true,reason:'PREVIOUS_SOURCE_UNVERIFIED',elapsed_minutes:null};
   }
   const iso = priorState.last_checked_at;
