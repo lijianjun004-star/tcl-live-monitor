@@ -98,7 +98,7 @@ export function buildDouyinSessionEvents({observations, identityReport}) {
     const proofAt=iso(proof?.observedAt);
     const boundary = proof?.kind==='INDEPENDENT_NEW_SESSION' && proof?.confirmed===true && evidenceRef(proof?.ref)!==null &&
       proofAt!==null && Date.parse(proofAt)<=Date.parse(at) && Date.parse(at)-Date.parse(proofAt)<=30*60000;
-    const publicDoubleVerified = o.state==='LIVE'&&o.profileIdentityVerified===true&&o.roomIdentityVerified===true&&pRid!==null;
+    const publicDoubleVerified = o.accountKey===link.accountKey&&o.state==='LIVE'&&o.profileIdentityVerified===true&&o.roomIdentityVerified===true&&pRid!==null;
     accepted.push({opsRoomId:rid,at,state:publicDoubleVerified?'LIVE':'UNKNOWN',publicLiveRoomId:pRid,
       candidate:o.offlineCandidate===true,boundary:boundary===true,boundaryRef:boundary?proof.ref:null});
   }
