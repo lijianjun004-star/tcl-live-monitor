@@ -1,0 +1,31 @@
+name: R3.2 JD automatic schedule observability (offline verification)
+on:
+  push:
+    branches:
+      - fix/r32-jd-scheduled-gap-audit-20261111
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - '.github/workflows/r32-jd-gap-quality.yml'
+      - 'tests/r32-jd-schedule-gap.test.mjs'
+      - 'docs/r32/**'
+  pull_request:
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - '.github/workflows/r32-jd-gap-quality.yml'
+      - 'tests/r32-jd-schedule-gap.test.mjs'
+      - 'docs/r32/**'
+permissions:
+  contents: read
+jobs:
+  offline-full-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run full MAIN regression including sampling-gap calculations
+        run: node --test tests/*.test.mjs
