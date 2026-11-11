@@ -1,0 +1,26 @@
+name: R3.9 Douyin RPA DOM signal regression - OFFLINE ONLY
+on:
+  pull_request:
+    paths:
+      - 'probes/r37/rpa-safe-douyin.mjs'
+      - 'probes/r39/**'
+      - 'tests/r39-*.test.mjs'
+      - 'docs/r39/**'
+      - '.github/workflows/r39-dom-signal-quality.yml'
+permissions:
+  contents: read
+jobs:
+  r39-offline-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify public DOM normalizer against false LIVE and access walls
+        run: node --test tests/r39-rpa-dom-signal.test.mjs tests/r37-rpa-safe-douyin.test.mjs
+      - name: Run all existing offline regression tests
+        run: node --test tests/*.test.mjs
