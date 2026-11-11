@@ -26,11 +26,11 @@ test('no MAIN state bootstraps only in operating time',()=>{
  assert.equal(decide(null,null,new Date('2026-11-10T18:01:00.000Z')).should_run,false);
 });
 test('verified recent MAIN scan suppresses duplicate backup request',()=>{
- assert.equal(BACKUP_FRESHNESS_MS,8*60000);
- const r=decide(state('2026-11-11T08:32:00.000Z'),summary);
+ assert.equal(BACKUP_FRESHNESS_MS,4*60000);
+ const r=decide(state('2026-11-11T08:34:00.000Z'),summary);
  assert.equal(r.should_run,false);
  assert.equal(r.reason,'RECENT_SUCCESSFUL_MAIN_SCAN');
- assert.equal(r.elapsed_minutes,5);
+ assert.equal(r.elapsed_minutes,3);
 });
 test('stale MAIN scan authorizes a backup attempt, not verified historical live duration',()=>{
  const r=decide(state('2026-11-11T08:27:00.000Z'),summary);
@@ -38,8 +38,11 @@ test('stale MAIN scan authorizes a backup attempt, not verified historical live 
  assert.equal(r.reason,'MAIN_SCAN_STALE');
  assert.equal(r.elapsed_minutes,10);
 });
-test('exactly 8 minutes since last scan allows a backup',()=>{
- assert.equal(decide(state('2026-11-11T08:29:00.000Z'),summary).should_run,true);
+test('exactly 4 minutes since last successful scan allows a backup',()=>{
+ assert.equal(decide(state('2026-11-11T08:33:00.000Z'),summary).should_run,true);
+});
+test('five-minute high-priority cadence is not suppressed by old eight-minute threshold',()=>{
+ assert.equal(decide(state('2026-11-11T08:32:00.000Z'),summary).should_run,true);
 });
 test('failed/unverified prior source does not block the backup, but never converts to OFFLINE',()=>{
  const r=decide(state('2026-11-11T08:36:00.000Z'),{source_evidence_accepted:false});
