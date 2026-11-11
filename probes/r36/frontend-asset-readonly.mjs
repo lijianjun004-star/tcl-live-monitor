@@ -23,7 +23,9 @@ try{
  const html=(await safeGet(target)).toString('utf8');
  audit.htmlAvailable=true;
  // Scripts are extracted ONLY from passive HTML. No guessed private endpoint paths.
- const candidates=[...html.matchAll(/<script[^>]+src=["']([^"']+\.js(?:\?[^"']*)?)["']/gi)].map(x=>x[1]);
+ audit.sourceHtmlHasPlatformLabel=/抖音|douyin/i.test(html);
+ audit.sourceHtmlHasShopManagementLabel=/店铺管理/.test(html);
+ const candidates=[...html.matchAll(/<script[^>]+src=["']([^"']+\\.js(?:\\?[^"']*)?)["']/gi)].map(x=>x[1]);
  const paths=[...new Set(candidates.map(p=>{try{
   const u=new URL(p,origin);
   if(u.origin!==origin||!/^\/assets\/[A-Za-z0-9_.-]+\.js$/.test(u.pathname)||u.search)return null;
@@ -38,6 +40,14 @@ try{
    audit.hasDouyinLiteral ||= /douyin|抖音/.test(s);
    audit.hasShopsLiteral ||= /\/api\/shops|店铺管理/.test(s);
    audit.hasCaptureDailyLiteral ||= /\/api\/capture\/room-overview\/daily/.test(s);
+   const allowedUiLabels=['抖音','京东','天猫','店铺管理','画面巡检','直播间','场次','排班','开播','下播','日期','品类'];
+   const allowedFields=['live_room_id','shop_id','platform','category','start_date','end_date','session_count','minute_count','latest_minute_ts','last_heartbeat_at'];
+   const knownRoutes=['/api/shops','/api/capture/rooms','/api/assistant/active-rooms','/api/capture/room-overview/daily','/api/capture/schedules'];
+   audit.uiLabelsObserved=[...new Set([...(audit.uiLabelsObserved||[]),...allowedUiLabels.filter(x=>s.includes(x))])];
+   audit.fieldNamesObserved=[...new Set([...(audit.fieldNamesObserved||[]),...allowedFields.filter(x=>s.includes(x))])];
+   audit.existingKnownRoutesInJs=[...new Set([...(audit.existingKnownRoutesInJs||[]),...knownRoutes.filter(x=>s.includes(x))])];
+   audit.hasPotentialPollingClock ||= /setInterval\\(|setTimeout\\(/.test(s);
+
    audit.assetsSha256.push(createHash('sha256').update(bytes).digest('hex'));
    // Ephemeral workspace only, NEVER uploaded, never printed.
    await fs.writeFile('r36-private-js/bundle-'+i+'.js',bytes);
