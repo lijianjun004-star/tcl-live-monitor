@@ -28,6 +28,8 @@ export function classifyTmall(payload, target) {
     return { state: 'UNKNOWN', reason: 'IDENTITY_MISMATCH', observed };
   if (target.roomNumber && String(target.roomNumber) !== roomNumber) return { state: 'UNKNOWN', reason: 'ROOM_MISMATCH', observed };
   if (String(d.roomNum ?? '') !== roomNumber) return { state: 'UNKNOWN', reason: 'CONFLICTING_ROOM_NUMBERS', observed };
+  const validStatus=v=>(typeof v==='number'&&Number.isInteger(v))||(typeof v==='string'&&/^[012]$/.test(v));
+  if(!validStatus(d.roomStatus)||!validStatus(d.streamStatus))return {state:'UNKNOWN',reason:'UNRECOGNIZED_STATUS',observed};
   const room = Number(d.roomStatus), stream = Number(d.streamStatus);
   if (![0, 1, 2].includes(room) || ![0, 1].includes(stream))
     return { state: 'UNKNOWN', reason: 'UNRECOGNIZED_STATUS', observed, roomStatus: d.roomStatus, streamStatus: d.streamStatus };
@@ -43,6 +45,8 @@ export function classifyTmall(payload, target) {
 
 /** Pick the most informative sample from all live-detail responses seen during one page load. */
 export function pickBest(samples) {
+  const definitive=new Set(samples.filter(x=>x.state==='LIVE'||x.state==='OFFLINE').map(x=>x.state));
+  if(definitive.size>1)return {state:'UNKNOWN',reason:'CONFLICTING_LIVE_DETAIL_RESPONSES'};
   return samples.find(x => x.state === 'LIVE' || x.state === 'OFFLINE')
     || samples.find(x => x.reason === 'IDENTITY_MISMATCH') || samples.at(-1) || null;
 }

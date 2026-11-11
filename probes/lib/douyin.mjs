@@ -71,7 +71,7 @@ export function decideDouyin(profile, room, t, { offlineRuleValidated = false } 
   // Webcast room payloads commonly use status 4 for "ended" (unverified convention; candidate only).
   const passiveEnded = fields.some(f => /\.data.*\.status$/i.test(f.field) && Number(f.value) === 4);
   out.signals = { endedText, passiveEnded, roomHttp: room?.httpStatus ?? null, statusFields: fields.slice(0, 12) };
-  if (room?.httpStatus === 200 && endedText && passiveEnded) {
+  if (rid && endedText && passiveEnded) {
     if (offlineRuleValidated) return { ...out, state: 'OFFLINE', offlineEvidence: true, reason: 'NO_BADGE_ENDED_TEXT_AND_STATUS_4' };
     return { ...out, offlineCandidate: true, reason: 'OFFLINE_CANDIDATE_RULE_NOT_VALIDATED' };
   }

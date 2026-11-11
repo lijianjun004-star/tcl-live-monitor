@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 // Independent adversarial regressions. These tests must fail against unpatched R0.4.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -98,7 +99,7 @@ test('R05: previous evidence file must survive a failed catalog request',async(t
  const initial=JSON.stringify({date,at:at-300000,rooms:[{roomId:'100',date,at:at-300000,minuteCount:99}]},null,2)+'\n';
  await writeFile(prev,initial);
  const result=await new Promise((resolve,reject)=>{
-  const proc=spawn(process.execPath,['probes/tcl-jd-all.mjs','--previous',prev,'--output',out],{cwd:new URL('..',import.meta.url).pathname,env:{...process.env,TCL_OPS_BASE_URL:`http://127.0.0.1:${server.address().port}`},stdio:['ignore','pipe','pipe']});
+  const proc=spawn(process.execPath,['probes/tcl-jd-all.mjs','--previous',prev,'--output',out],{cwd:fileURLToPath(new URL('..',import.meta.url)),env:{...process.env,TCL_OPS_BASE_URL:`http://127.0.0.1:${server.address().port}`},stdio:['ignore','pipe','pipe']});
   let stdout='',stderr='';proc.stdout.on('data',x=>stdout+=x);proc.stderr.on('data',x=>stderr+=x);proc.on('close',code=>resolve({code,stdout,stderr}));proc.on('error',reject);
  });
  assert.equal(result.code,2);

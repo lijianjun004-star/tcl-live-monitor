@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "historical": true,
+  "notRealtime": true,
+  "sampledBeijingDate": "2026-11-05",
+  "notes": "Sanitized counts independently read from two completed GitHub Actions job logs. Status counts are observations, not distinct physical rooms and not KPI scoring.",
+  "jd": {
+    "githubRunId": 42021726185,
+    "rounds": 12,
+    "sourceRooms": 6,
+    "totalObservations": 72,
+    "LIVE": 48,
+    "OFFLINE": 0,
+    "UNKNOWN": 24,
+    "confirmedNewSessionEvents": 0,
+    "byOpsRoomId": {
+      "1": {"LIVE": 9, "OFFLINE": 0, "UNKNOWN": 3, "observedSessionCounts": [1]},
+      "14": {"LIVE": 12, "OFFLINE": 0, "UNKNOWN": 0, "observedSessionCounts": [1]},
+      "15": {"LIVE": 12, "OFFLINE": 0, "UNKNOWN": 0, "observedSessionCounts": [1]},
+      "16": {"LIVE": 0, "OFFLINE": 0, "UNKNOWN": 12, "observedSessionCounts": [], "offlineCandidateNotValidated": true},
+      "17": {"LIVE": 11, "OFFLINE": 0, "UNKNOWN": 1, "observedSessionCounts": [1]},
+      "18": {"LIVE": 4, "OFFLINE": 0, "UNKNOWN": 8, "observedSessionCounts": [1]}
+    }
+  },
+  "public": {
+    "githubRunId": 42021728973,
+    "rounds": 12,
+    "douyinAccounts": 12,
+    "douyinTotals": {"LIVE": 60, "OFFLINE": 0, "UNKNOWN": 84},
+    "tmallAccounts": 1,
+    "tmallApiError": 12,
+    "tmallTotals": {"LIVE": 0, "OFFLINE": 0, "UNKNOWN": 12},
+    "byDouyinConfigKey": {
+      "tcl-douyin-flagship": {"LIVE": 5, "UNKNOWN": 7},
+      "tcl-douyin-air-direct": {"LIVE": 6, "UNKNOWN": 6},
+      "tcl-douyin-tv-official-live": {"LIVE": 5, "UNKNOWN": 7},
+      "tcl-douyin-ac-zhongshan": {"LIVE": 0, "UNKNOWN": 12},
+      "tcl-douyin-tv-brand": {"LIVE": 0, "UNKNOWN": 12},
+      "tcl-douyin-tv-corporate": {"LIVE": 10, "UNKNOWN": 2},
+      "tcl-douyin-flagship-tv-live": {"LIVE": 0, "UNKNOWN": 12},
+      "tcl-douyin-ac-flagship": {"LIVE": 10, "UNKNOWN": 2},
+      "tcl-douyin-dealer-fushixin": {"LIVE": 0, "UNKNOWN": 12},
+      "tcl-douyin-groupbuy": {"LIVE": 12, "UNKNOWN": 0},
+      "rayneo-douyin-official": {"LIVE": 0, "UNKNOWN": 12},
+      "ffalcon-douyin-tv-flagship": {"LIVE": 12, "UNKNOWN": 0}
+    }
+  }
+}
