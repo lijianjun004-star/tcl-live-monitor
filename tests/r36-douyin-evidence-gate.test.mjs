@@ -8,7 +8,7 @@ const checkedAt='2026-11-11T10:00:00Z';
 const row={opsRoomId:'17',opsShopId:'18',publicSecUid:SEC,publicLiveRoomId:'999777',accountKey:ACCT.key,observedAt:checkedAt,reviewApproved:true,
   proofs:[{kind:'OPS_ROOM_SHOP',ref:'RUN43015295953',observedAt:checkedAt},{kind:'PUBLIC_ACCOUNT_ROOM',ref:'RUN43015156078',observedAt:checkedAt},{kind:'CROSS_SYSTEM_BRIDGE',ref:'MANUALREVIEW001',observedAt:checkedAt}]};
 const make=(rows=[])=>reconcileDouyinFourLayers({opsRooms,accounts:[ACCT],evidenceRows:rows});
-const obs=(t, extra={})=>({opsRoomId:'17',checkedAt:'2026-11-11T'+t+'Z',state:'LIVE',publicLiveRoomId:'999777',profileIdentityVerified:true,roomIdentityVerified:true,...extra});
+const obs=(t, extra={})=>({opsRoomId:'17',accountKey:ACCT.key,checkedAt:'2026-11-11T'+t+'Z',state:'LIVE',publicLiveRoomId:'999777',profileIdentityVerified:true,roomIdentityVerified:true,...extra});
 const run=(observations,identityReport=make([row]))=>buildDouyinSessionEvents({observations,identityReport});
 
 test('no bridge evidence => both internal rooms UNVERIFIED, zero scoring',()=>{let r=make();assert.equal(r.verifiedLinks,0);assert.equal(r.links.length,2);assert.equal(r.formalFullDurationRatePercent,null)});
@@ -33,3 +33,6 @@ test('duplicate timestamps rejected and no double event',()=>{const r=run([obs('
 test('no OFFLINE or formal KPI regardless of input claims',()=>{const r=run([obs('10:00:00'),obs('10:05:00',{state:'OFFLINE',offlineCandidate:false})]);assert.equal(r.validatedOfflineCount,0);assert.equal(r.formalFullDurationRatePercent,null)});
 test('bridge expires after seven days and no events are promoted',()=>{const r=run([{...obs('10:00:00'),checkedAt:'2026-11-20T10:00:00Z'}]);assert.equal(r.events.length,0);assert.equal(r.skipped[0].reason,'BRIDGE_EVIDENCE_STALE_OR_NOT_YET_VALID')});
 test('late boundary evidence cannot certify a new session',()=>{const r=run([obs('10:00:00'),obs('10:45:00',{publicLiveRoomId:'999778',sessionBoundaryEvidence:{kind:'INDEPENDENT_NEW_SESSION',confirmed:true,ref:'SOURCEEVENT0001',observedAt:'2026-11-11T10:00:00Z'}})]);assert.equal(r.events.filter(e=>e.type==='NEXT_SESSION_DETECTED').length,0)});
+
+test('cross-account LIVE sample cannot borrow another room identity',()=>{const r=run([obs('10:00:00',{accountKey:'different-public-account'})]);assert.equal(r.events.length,0)});
+test('verified next session allows follow-on LIVE checks on newly proven room ID',()=>{const r=run([obs('10:00:00'),obs('10:05:00',{publicLiveRoomId:'999778',sessionBoundaryEvidence:{kind:'INDEPENDENT_NEW_SESSION',confirmed:true,ref:'SOURCEEVENT0001',observedAt:'2026-11-11T10:04:30Z'}}),obs('10:10:00',{publicLiveRoomId:'999778'})]);assert.deepEqual(r.events.map(x=>x.type),['FIRST_SEEN_LIVE','NEXT_SESSION_DETECTED'])});
