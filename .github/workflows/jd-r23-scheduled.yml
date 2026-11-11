@@ -12,6 +12,8 @@ on:
     paths:
       - '.github/workflows/jd-r23-scheduled.yml'
   workflow_dispatch:
+  # Allow a backup scheduler to invoke this exact vetted read-only monitor.
+  workflow_call:
   schedule:
     # +2 minute offset avoids the top-of-hour schedule load.
     - cron: '2,7,12,17,32,47,57 * * * *'
