@@ -60,7 +60,9 @@ test('preflight never accesses the JD source and only uses read-only GitHub Arti
  assert.match(backup,/\.expired == false/);
  assert.match(backup,/unzip -p previous-main\.zip r23-state\.json/);
  assert.match(backup,/unzip -p previous-main\.zip r23-summary\.json/);
- assert.doesNotMatch(backup,/101\.96\.215\.251|TCL_OPS_BASE_URL|tcl-jd-all\.mjs/);
+ const preflight=backup.match(/check-recent-main-scan:[\\s\\S]*?(?=\\n  use-existing-readonly-monitor:)/)?.[0]||'';
+ assert.ok(preflight.includes('actions/artifacts?name=r24-jd-main-state'));
+ assert.doesNotMatch(preflight,/101\\.96\\.215\\.251|TCL_OPS_BASE_URL|tcl-jd-all\\.mjs/);
 });
 test('staggered backup is separate from canonical schedule, never claims guaranteed frequency',()=>{
  assert.match(backup,/cron: '4,9,14,19,34,49,59 \* \* \* \*'/);
