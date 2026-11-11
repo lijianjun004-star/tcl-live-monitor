@@ -1,5 +1,5 @@
 name: QA R3.3 one-shot backup workflow dispatch
-# Single-purpose one-time QA launcher. Does not checkout source or write repo contents.
+# Single-purpose QA launcher. This second explicit opt-in invocation verifies the 8-minute duplicate suppression gate; it never mutates source or Pages.
 on:
   push:
     branches:
