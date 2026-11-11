@@ -1,0 +1,35 @@
+name: R3.11 encrypted internal room detail - ONE SHOT
+on:
+  push:
+    branches:
+      - experiment/r311-encrypted-internal-rooms-export-20261111
+    paths:
+      - '.github/workflows/r311-encrypted-private-rooms-once.yml'
+permissions:
+  contents: read
+jobs:
+  encrypted-source-details:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r311-encrypted-internal-rooms-export-20261111' && contains(github.event.head_commit.message, '[r311-encrypted-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source reconciliation safety tests
+        run: node --test tests/r311-douyin-catalog-reconcile.test.mjs
+      - name: Read only original TCL OPS routes and encrypt full room+shop identifiers in memory
+        env:
+          R311_ENCRYPTED_ONESHOT: ONE_PUBLIC_KEY_PROTECTED_EXPORT
+        run: node probes/r311/encrypted-room-export-once.mjs
+      - name: Upload encrypted artifact only, never plaintext or private key
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r311-encrypted-private-ops-rooms
+          path: out/r311/internal-ops-room-encrypted.json
+          if-no-files-found: warn
+          retention-days: 2
