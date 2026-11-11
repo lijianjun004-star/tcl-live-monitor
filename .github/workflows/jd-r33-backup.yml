@@ -1,0 +1,82 @@
+name: R3.3 JD backup cron (freshness-guarded, 7-day state)
+on:
+  # Backup opportunities are staggered two minutes after the main cron.
+  # These remain GitHub best-effort schedule events, NOT a 5/15-minute SLA.
+  schedule:
+    - cron: '4,9,14,19,34,49,59 * * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/r33-jd-backup-scheduler-20261111
+    paths:
+      - '.github/workflows/jd-r33-backup.yml'
+      - 'probes/r33/**'
+      - 'tests/r33-jd-backup-freshness.test.mjs'
+  pull_request:
+    paths:
+      - '.github/workflows/jd-r33-backup.yml'
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - 'probes/r33/**'
+      - 'tests/r33-jd-backup-freshness.test.mjs'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  offline-quality:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate backup freshness and MAIN schedule regression
+        run: node --test tests/*.test.mjs
+
+  check-recent-main-scan:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    outputs:
+      should_run: ${{ steps.freshness.outputs.should_run }}
+      reason: ${{ steps.freshness.outputs.reason }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read only latest unexpired same-repository MAIN state
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=r24-jd-main-state&per_page=100" --jq '.artifacts | map(select(.expired == false and .workflow_run.head_branch == "main" and .workflow_run.repository_id != null and .workflow_run.repository_id == .workflow_run.head_repository_id)) | sort_by(.created_at) | last | .id // empty')
+          if test -n "$artifact_id"; then
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > previous-main.zip
+            unzip -p previous-main.zip r23-state.json > r23-previous.json
+            unzip -p previous-main.zip r23-summary.json > r23-summary.json
+            echo "Previous same-repository MAIN snapshot downloaded for freshness check"
+          else
+            echo "No unexpired MAIN snapshot; backup can bootstrap if inside operating window"
+          fi
+      - name: Decide whether backup scan is necessary
+        id: freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          node probes/r33/jd-backup-freshness.mjs --state r23-previous.json --summary r23-summary.json --output "$GITHUB_OUTPUT"
+
+  use-existing-readonly-monitor:
+    needs: check-recent-main-scan
+    if: needs.check-recent-main-scan.outputs.should_run == 'true'
+    uses: ./.github/workflows/jd-r23-scheduled.yml
+    permissions:
+      contents: read
+      actions: read
+    secrets: inherit
