@@ -17,6 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ccd69f0298d2892f9ed6e5089fa463a774da2f9f
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -35,8 +36,8 @@ jobs:
           import fs from 'node:fs';
           const s=JSON.parse(fs.readFileSync('r23-previous.json','utf8'));
           const p=JSON.parse(fs.readFileSync('r23-summary.json','utf8'));
-          if(s.schema_version!==23||!s.last_processed_run||!s.last_checked_at||typeof p.source_accepted!=='boolean')throw Error('INVALID_MAIN_STATE_OR_SUMMARY');
-          console.log(JSON.stringify({main_artifact_read:true,prior_run:s.last_processed_run,previous_check_count:s.checks?.length,summary_source_accepted:p.source_accepted,room_count:Object.keys(s.rooms||{}).length}));
+          if(s.schema_version!==23||!s.last_processed_run||!s.last_checked_at||typeof p.source_evidence_accepted!=='boolean')throw Error('INVALID_MAIN_STATE_OR_SUMMARY');
+          console.log(JSON.stringify({main_artifact_read:true,prior_run:s.last_processed_run,previous_check_count:s.checks?.length,summary_source_evidence_accepted:p.source_evidence_accepted,room_count:Object.keys(s.rooms||{}).length}));
           JS
       - name: Run EXACT R3.3 backup freshness program against real MAIN artifact
         id: backup_preflight
