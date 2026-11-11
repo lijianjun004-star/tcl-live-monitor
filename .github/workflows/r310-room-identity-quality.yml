@@ -1,0 +1,26 @@
+name: R3.10 Douyin room identity diagnostic - OFFLINE ONLY
+on:
+  pull_request:
+    paths:
+      - 'probes/r37/rpa-safe-douyin.mjs'
+      - 'probes/r310/**'
+      - 'tests/r310-*.test.mjs'
+      - 'docs/r310/**'
+      - '.github/workflows/r310-room-identity-quality.yml'
+permissions:
+  contents: read
+jobs:
+  r310-room-identity-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify room mismatch safety + public profile RPA compatibility
+        run: node --test tests/r310-room-identity-parity.test.mjs tests/r39-rpa-dom-signal.test.mjs tests/r37-rpa-safe-douyin.test.mjs
+      - name: Full offline regression
+        run: node --test tests/*.test.mjs

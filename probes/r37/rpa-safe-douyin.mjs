@@ -9,6 +9,7 @@
  */
 import {decideDouyin, profileIdentity, liveAnchorRoomIds} from '../lib/douyin.mjs';
 import {normalizedPublicLiveAnchors,safePublicDomDiagnostics,identifyDomGap} from '../r39/rpa-dom-signal-utils.mjs';
+import {roomIdentityParity,classifyRoomIdentityGap} from '../r310/room-identity-parity.mjs';
 
 const MAX_TARGETS=2;
 const WALL=/(验证码|安全验证|滑块|captcha|请先登录|登录后观看|扫码登录|登录抖音|人机验证|verify you are human)/i;
@@ -94,7 +95,10 @@ export async function inspectPublicPage(page,url,role,{holdMs=800}={}){
     let anchors=normalizedPublicLiveAnchors(snap?.liveRoomCandidates??snap?.liveRoomAnchors);
     let delayed=false;
     // One extra DOM-only sampling pass, no second navigation or API request.
-    if(role==='profile' && !anchors.length && !isRpaAccessBlocked({...output,...snap})){
+    const missingProfileAnchor=role==='profile' && !anchors.length;
+    const missingRoomMetadata=role==='room' &&
+      !String(snap?.title||'').trim() && !String(snap?.metaDescription||'').trim();
+    if((missingProfileAnchor||missingRoomMetadata) && !isRpaAccessBlocked({...output,...snap})){
       await page.waitForTimeout(1200);
       snap=await readDOM();
       anchors=normalizedPublicLiveAnchors(snap?.liveRoomCandidates??snap?.liveRoomAnchors);
@@ -174,6 +178,7 @@ export async function runDouyinRpaReadOnly({
           report.stoppedForChallenge=true;break;
         }
         const d=decideDouyin(p,r,{...target,roomId:target.configuredRoomId},{offlineRuleValidated:false});
+        const roomDiagnostics=roomIdentityParity(r,target);
         report.observations.push({accountKey:target.key,checkedAt:clock(),
           publicSource:'PUBLIC_GUEST_RPA',state:d.state==='LIVE'?'LIVE':'UNKNOWN',
           reason:d.reason,profileHttp:p.httpStatus,roomHttp:r.httpStatus,
@@ -181,7 +186,8 @@ export async function runDouyinRpaReadOnly({
           roomIdentityVerified:d.roomPageIdentityVerified===true,
           observedRoomId:d.observedRoomId||null,roomIdChanged:d.roomIdChanged===true,
           offlineCandidate:false,opsBridgeVerified:false,exactStartAt:null,exactEndAt:null,
-          profileDomDiagnostics:p.domDiagnostics??null,profileDomGap:p.domGap??null});
+          profileDomDiagnostics:p.domDiagnostics??null,profileDomGap:p.domGap??null,
+          roomDiagnostics,roomDiagnosticGap:classifyRoomIdentityGap(roomDiagnostics)});
       }catch{
         report.observations.push(UNKNOWN(target.key,checkedAt,'RPA_NAVIGATION_OR_RUNTIME_FAILURE'));
         report.stoppedForChallenge=true;break;
