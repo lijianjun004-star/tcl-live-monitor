@@ -48,7 +48,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify MAIN-only artifact selection with adversarial fixtures
-        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs tests/r31-jd-seven-day-only.test.mjs
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs tests/r31-jd-seven-day-only.test.mjs tests/r32-jd-schedule-gap.test.mjs
   inspect:
     # A main-branch smoke scan is allowed only for a labelled one-time release commit.
     # Normal main pushes and all pull requests cannot access source or persist state.
@@ -134,8 +134,35 @@ jobs:
           let summary = null;
           try { summary = JSON.parse(fs.readFileSync('r23-summary.json','utf8')); }
           catch { /* No data: provenance stays unknown. */ }
+          // Audit expected Beijing-window cron opportunities since the last
+          // persisted MAIN observation. An expected slot is NOT a verified run.
+          let priorAt=null;
+          try {
+            const prior=JSON.parse(fs.readFileSync('r23-previous.json','utf8'));
+            const parsed=Date.parse(prior.last_checked_at);
+            if(Number.isFinite(parsed)) priorAt=parsed;
+          } catch { /* Absence is UNKNOWN; never a negative stream signal. */ }
+          const nowMs=Date.now();
+          const minuteSlots=[2,7,12,17,32,47,57];
+          let expectedOpportunities=null;
+          if(priorAt!==null && nowMs>=priorAt && nowMs-priorAt<=7*86400000){
+            expectedOpportunities=0;
+            const startMinute=Math.floor(priorAt/60000)+1;
+            const endMinute=Math.floor(nowMs/60000);
+            for(let t=startMinute;t<=endMinute;t++){
+              const bj=new Date(t*60000+8*3600000);
+              const localMinute=bj.getUTCHours()*60+bj.getUTCMinutes();
+              if((localMinute>=390||localMinute<=120)&&minuteSlots.includes(bj.getUTCMinutes()))expectedOpportunities++;
+            }
+          }
+          const gapMinutes=priorAt===null?null:Math.max(0,Math.round((nowMs-priorAt)/60000));
+          if(process.env.GITHUB_EVENT_NAME==='schedule' && expectedOpportunities!==null && expectedOpportunities>=3){
+            console.log('::warning::JD SAMPLING_GAP: '+expectedOpportunities+' nominal Beijing operating-window cron opportunities since prior persisted scan; this is missing sampling, NOT evidence of OFFLINE');
+          }
           const lines = [
-            '## JD R2.6 main-chain execution proof',
+            '## JD R3.2 main-chain execution and sampling-gap proof',
+            '- Previous persisted scan gap (elapsed minutes): ' + (gapMinutes===null?'UNKNOWN':String(gapMinutes)),
+            '- Expected Beijing operating-window cron opportunities since prior scan: ' + (expectedOpportunities===null?'UNKNOWN':String(expectedOpportunities)) + ' (GitHub best-effort, not guaranteed runs)',
             '- Event: `' + process.env.GITHUB_EVENT_NAME + '`',
             '- Branch: `' + process.env.GITHUB_REF + '`',
             '- Run: `' + process.env.GITHUB_RUN_ID + '.' + process.env.GITHUB_RUN_ATTEMPT + '`',
