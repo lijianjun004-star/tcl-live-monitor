@@ -168,6 +168,8 @@ jobs:
       - name: Write safe run proof to Actions job summary
         if: always() && steps.window.outputs.should_run == 'true'
         shell: bash
+        env:
+          BACKUP_LOCK_RECHECK_REASON: ${{ steps.lock_recheck.outputs.reason || 'NOT_BACKUP' }}
         run: |
           node --input-type=module <<'JS'
           import fs from 'node:fs';
@@ -209,7 +211,7 @@ jobs:
             '- Previous state: ' + (fs.existsSync('r23-previous.json') ? 'restored' : 'no eligible main artifact (fresh baseline)'),
             '- Previous run ID: `' + (()=>{try{return JSON.parse(fs.readFileSync('r23-previous.json','utf8')).last_processed_run||'none'}catch{return 'none'}})() + '`',
             '- Source evidence accepted: ' + (summary?.source_evidence_accepted === true ? 'true' : 'false/unknown'),
-            '- Backup serialized recheck reason: `${{ steps.lock_recheck.outputs.reason || 'NOT_BACKUP' }}`',
+            '- Backup serialized recheck reason: ' + process.env.BACKUP_LOCK_RECHECK_REASON,
             '- Sanitized state artifact: `r24-jd-main-state` (check upload step result)',
             '- Exact broadcast starts, ends and formal opening rate: NOT VERIFIED',
             '- The next automatic cron run must be verified separately; a push smoke run does not prove cron.'
