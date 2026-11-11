@@ -1,0 +1,62 @@
+name: R3.6 Douyin reference replica (isolated QA; no production deployment)
+on:
+  push:
+    branches:
+      - experiment/r36-douyin-reference-rea-20261111
+    paths:
+      - 'probes/r36/**'
+      - 'tests/r36-douyin-reference-contract.test.mjs'
+      - '.github/workflows/r36-douyin-reference-qa.yml'
+      - 'docs/r36/**'
+  pull_request:
+    paths:
+      - 'probes/r36/**'
+      - 'tests/r36-douyin-reference-contract.test.mjs'
+      - '.github/workflows/r36-douyin-reference-qa.yml'
+permissions:
+  contents: read
+jobs:
+  full-offline-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify full historical guardrails and Douyin reference evidence
+        run: node --test tests/*.test.mjs
+      - name: Check guest probe JavaScript syntax without external requests
+        run: node --check probes/r36/douyin-guest-smoke.mjs
+
+  public-guest-sample:
+    # Single authorized guest sampling attempt: no cookies, captcha bypass or production writes.
+    # Only a labelled experimental branch PUSH can read two approved public
+    # profiles. It cannot be triggered by PR, scheduled or another branch.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r36-douyin-reference-rea-20261111' && contains(github.event.head_commit.message, '[r36-guest-readonly]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      DOUYIN_KEYS: tcl-douyin-flagship,tcl-douyin-tv-official-live
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install existing project's pinned Playwright dependency
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: Read-only public Douyin guest evidence (stop on login/challenge)
+        run: node probes/r36/douyin-guest-smoke.mjs
+      - name: Store MINIMAL QA results (not production state)
+        uses: actions/upload-artifact@v4
+        with:
+          name: r36-douyin-guest-qa
+          path: out/r36/douyin-guest-evidence.json
+          retention-days: 7
+          if-no-files-found: error

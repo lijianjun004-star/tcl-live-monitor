@@ -1,0 +1,35 @@
+name: R3.6 REA offline JavaScript inspection (owned source only)
+on:
+  push:
+    branches:
+      - experiment/r36-douyin-reference-rea-20261111
+    paths:
+      - 'probes/r36/**'
+      - '.github/workflows/r36-rea-code-audit.yml'
+permissions:
+  contents: read
+jobs:
+  rea-static-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run official REA CLI against OUR OWN R3.6 JS only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/r36
+          timeout 240s npx -y rea-agents@latest analyze-javascript-application "$GITHUB_WORKSPACE/probes/r36" --json > out/r36/rea-owned-js.json
+          node --input-type=module -e "import fs from 'node:fs';let s=fs.readFileSync('out/r36/rea-owned-js.json','utf8');if(!s.trim())process.exit(4);JSON.parse(s);console.log('REA_OWNED_JS_STATIC_SCAN_PASS bytes='+Buffer.byteLength(s))"
+      - name: Save evidence (not reverse engineered reference site)
+        uses: actions/upload-artifact@v4
+        with:
+          name: r36-rea-owned-js-audit
+          path: out/r36/rea-owned-js.json
+          retention-days: 7
+          if-no-files-found: error
