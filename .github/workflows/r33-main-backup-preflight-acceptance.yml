@@ -45,6 +45,20 @@ jobs:
         run: |
           set -euo pipefail
           node probes/r33/jd-backup-freshness.mjs --state r23-previous.json --summary r23-summary.json --output "$GITHUB_OUTPUT"
+      - name: Verify duplicate suppression against real MAIN summary with simulated +5m clock
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {decideJdBackup} from './probes/r33/jd-backup-freshness.mjs';
+          const state=JSON.parse(fs.readFileSync('r23-previous.json','utf8'));
+          const summary=JSON.parse(fs.readFileSync('r23-summary.json','utf8'));
+          const now=new Date(Date.parse(state.last_checked_at)+5*60000);
+          const decision=decideJdBackup({now,priorState:state,priorSummary:summary});
+          if(decision.should_run!==false||decision.reason!=='RECENT_SUCCESSFUL_MAIN_SCAN')throw Error('DUPLICATE_GUARD_FAILED_ON_REAL_ARTIFACT');
+          console.log(JSON.stringify({real_artifact_duplicate_guard:true,simulated_minutes_after_prior_scan:5,should_run:decision.should_run,reason:decision.reason}));
+          JS
       - name: Report backup integration proof WITHOUT platform scan
         shell: bash
         env:
@@ -56,3 +70,13 @@ jobs:
           test -n "$REASON"
           echo "R3.3 BACKUP REAL MAIN PREFLIGHT PASS; should_run=$SHOULD_RUN reason=$REASON"
           echo "No JD source requests; no state upload; no Pages modifications."
+
+  validate-reusable-workflow-call-without-source:
+    # A branch push validates the reusable workflow link and safe job gates.
+    # In the called monitor, inspect is SKIPPED for non-main push events.
+    uses: ./.github/workflows/jd-r23-scheduled.yml
+    permissions:
+      contents: read
+      actions: read
+    secrets:
+      TCL_OPS_BASE_URL: ${{ secrets.TCL_OPS_BASE_URL }}
