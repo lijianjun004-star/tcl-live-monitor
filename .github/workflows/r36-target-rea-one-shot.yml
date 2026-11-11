@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check target-research JavaScript syntax before any GET
+        run: node --check probes/r36/frontend-asset-readonly.mjs
       - name: Passive HTML + at most two same-origin public JS files
         run: node probes/r36/frontend-asset-readonly.mjs
       - name: Run official REA only if real static assets were obtained
