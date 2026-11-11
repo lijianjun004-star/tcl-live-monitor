@@ -95,7 +95,10 @@ export async function inspectPublicPage(page,url,role,{holdMs=800}={}){
     let anchors=normalizedPublicLiveAnchors(snap?.liveRoomCandidates??snap?.liveRoomAnchors);
     let delayed=false;
     // One extra DOM-only sampling pass, no second navigation or API request.
-    if(role==='profile' && !anchors.length && !isRpaAccessBlocked({...output,...snap})){
+    const missingProfileAnchor=role==='profile' && !anchors.length;
+    const missingRoomMetadata=role==='room' &&
+      !String(snap?.title||'').trim() && !String(snap?.metaDescription||'').trim();
+    if((missingProfileAnchor||missingRoomMetadata) && !isRpaAccessBlocked({...output,...snap})){
       await page.waitForTimeout(1200);
       snap=await readDOM();
       anchors=normalizedPublicLiveAnchors(snap?.liveRoomCandidates??snap?.liveRoomAnchors);
