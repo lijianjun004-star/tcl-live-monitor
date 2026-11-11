@@ -14,6 +14,12 @@ on:
   workflow_dispatch:
   # Allow a backup scheduler to invoke this exact vetted read-only monitor.
   workflow_call:
+    inputs:
+      backup_mode:
+        description: Recheck MAIN state under the shared serial monitor lock before backup source access
+        type: boolean
+        required: false
+        default: false
     secrets:
       TCL_OPS_BASE_URL:
         required: false
@@ -53,7 +59,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify MAIN-only artifact selection with adversarial fixtures
-        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs tests/r31-jd-seven-day-only.test.mjs tests/r32-jd-schedule-gap.test.mjs
+        run: node --test tests/r24-main-artifact-restore.test.mjs tests/r26-jd-main-smoke.test.mjs tests/r27-jd-main-restore.test.mjs tests/r31-jd-seven-day-only.test.mjs tests/r32-jd-schedule-gap.test.mjs tests/r34-jd-backup-atomic-recheck.test.mjs
   inspect:
     # A main-branch smoke scan is allowed only for a labelled one-time release commit.
     # Normal main pushes and all pull requests cannot access source or persist state.
@@ -95,18 +101,47 @@ jobs:
           if test -n "$artifact_id"; then
             gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > prior-state.zip
             unzip -p prior-state.zip r23-state.json > r23-previous.json
+            unzip -p prior-state.zip r23-summary.json > r23-previous-summary.json
             node --input-type=module -e "import fs from 'node:fs';import {validateState} from './probes/r23/jd-history.mjs';const s=validateState(JSON.parse(fs.readFileSync('r23-previous.json','utf8')));if(!s.last_processed_run||!s.last_checked_at)throw Error('MAIN_PRIOR_STATE_HAS_NO_RUN');console.log(JSON.stringify({restored:true,origin:'MAIN_ONLY_ARTIFACT',last_processed_run:s.last_processed_run,last_checked_at:s.last_checked_at,room_count:Object.keys(s.rooms).length,stored_checks:s.checks.length,stored_events:s.events.length}));"
           else
             echo "No eligible MAIN-branch state artifact; experimental artifacts were not imported."
           fi
+      # The backup preflight occurs outside the source monitor's shared lock.
+      # A primary scan can complete while backup waits. Check AGAIN after
+      # restore and after the serialized workflow has acquired the lock.
+      - name: Confirm reusable backup invocation is MAIN only
+        if: inputs.backup_mode == true && steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test "${GITHUB_REPOSITORY}" = "lijianjun004-star/tcl-live-monitor"
+      - name: Checkout pinned MAIN backup freshness decision only
+        if: inputs.backup_mode == true && steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: .r34-backup-policy
+          sparse-checkout: |
+            probes/r33/jd-backup-freshness.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Recheck backup freshness after shared MAIN state lock
+        id: lock_recheck
+        if: inputs.backup_mode == true && steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .r34-backup-policy/probes/r33/jd-backup-freshness.mjs --state r23-previous.json --summary r23-previous-summary.json --output "$GITHUB_OUTPUT"
+          echo "Backup lock recheck completed. Only an expired/unsuccessful MAIN scan can reach the JD source."
       - name: One authorized TCL OPS source scan (no retries)
         id: source
-        if: steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success'
+        if: steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success' && (inputs.backup_mode != true || steps.lock_recheck.outputs.should_run == 'true')
         continue-on-error: true
         run: node probes/tcl-jd-all.mjs --shard-index 0 --shard-total 1 --output r23-source-safe.json
       - name: Validate one scan (partial directory stays partial)
         id: accepted
-        if: steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success'
+        if: steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success' && (inputs.backup_mode != true || steps.lock_recheck.outputs.should_run == 'true')
         continue-on-error: true
         run: |
           if test -f r23-source-safe.json; then
@@ -117,11 +152,11 @@ jobs:
           fi
       - name: Carry state forward; mark failed/unknown signals UNKNOWN
         id: state
-        if: steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success'
+        if: steps.window.outputs.should_run == 'true' && steps.restore.outcome == 'success' && (inputs.backup_mode != true || steps.lock_recheck.outputs.should_run == 'true')
         run: |
           node probes/r23/run-history.mjs --report r23-accepted.json --previous r23-previous.json --state-output r23-state.json --summary-output r23-summary.json --run-id "${{ github.run_id }}.${{ github.run_attempt }}"
       - name: Upload rolling history and sanitized snapshot
-        if: always() && steps.window.outputs.should_run == 'true' && steps.state.outcome == 'success'
+        if: always() && steps.window.outputs.should_run == 'true' && steps.state.outcome == 'success' && (inputs.backup_mode != true || steps.lock_recheck.outputs.should_run == 'true')
         uses: actions/upload-artifact@v4
         with:
           name: r24-jd-main-state
@@ -133,6 +168,8 @@ jobs:
       - name: Write safe run proof to Actions job summary
         if: always() && steps.window.outputs.should_run == 'true'
         shell: bash
+        env:
+          BACKUP_LOCK_RECHECK_REASON: ${{ steps.lock_recheck.outputs.reason || 'NOT_BACKUP' }}
         run: |
           node --input-type=module <<'JS'
           import fs from 'node:fs';
@@ -174,6 +211,7 @@ jobs:
             '- Previous state: ' + (fs.existsSync('r23-previous.json') ? 'restored' : 'no eligible main artifact (fresh baseline)'),
             '- Previous run ID: `' + (()=>{try{return JSON.parse(fs.readFileSync('r23-previous.json','utf8')).last_processed_run||'none'}catch{return 'none'}})() + '`',
             '- Source evidence accepted: ' + (summary?.source_evidence_accepted === true ? 'true' : 'false/unknown'),
+            '- Backup serialized recheck reason: ' + process.env.BACKUP_LOCK_RECHECK_REASON,
             '- Sanitized state artifact: `r24-jd-main-state` (check upload step result)',
             '- Exact broadcast starts, ends and formal opening rate: NOT VERIFIED',
             '- The next automatic cron run must be verified separately; a push smoke run does not prove cron.'
@@ -181,7 +219,7 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
           JS
       - name: Gate true source/persistence success after evidence upload
-        if: always() && steps.window.outputs.should_run == 'true'
+        if: always() && steps.window.outputs.should_run == 'true' && (inputs.backup_mode != true || steps.lock_recheck.outputs.should_run == 'true')
         shell: bash
         run: |
           echo "Restore: ${{ steps.restore.outcome }}; source: ${{ steps.source.outcome }}; accept: ${{ steps.accepted.outcome }}; state: ${{ steps.state.outcome }}"
