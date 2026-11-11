@@ -1,0 +1,41 @@
+name: R3.8 Douyin public guest RPA - one-shot real browser
+on:
+  push:
+    branches:
+      - experiment/r38-rpa-real-oneshot-20261111
+    paths:
+      - '.github/workflows/r38-public-rpa-one-shot.yml'
+permissions:
+  contents: read
+jobs:
+  public-guest-one-shot:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r38-rpa-real-oneshot-20261111'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify offline public-RPA safety baseline
+        run: node --test tests/r37-rpa-safe-douyin.test.mjs tests/r36-douyin-evidence-gate.test.mjs
+      - name: Install pinned Playwright dependency in ephemeral runner only
+        run: |
+          npm init -y >/dev/null
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.64.1
+      - name: Install Chromium for isolated browser
+        run: npx playwright install --with-deps chromium
+      - name: Run real RPA only once for two approved public accounts
+        env:
+          R38_SINGLE_SHOT: TWO_APPROVED_PUBLIC_ACCOUNTS
+        run: node probes/r38/run-public-rpa-once.mjs
+      - name: Save minimized safe observation only (no HTML, screenshot or cookies)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r38-public-rpa-minimized-observation
+          path: out/r38/real-rpa-safe.json
+          if-no-files-found: ignore
+          retention-days: 2
