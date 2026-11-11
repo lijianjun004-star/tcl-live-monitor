@@ -1,0 +1,32 @@
+name: R3.4 JD serialized backup recheck - offline safety verification
+on:
+  push:
+    branches:
+      - fix/r34-jd-backup-atomic-recheck-20261111
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - '.github/workflows/jd-r33-backup.yml'
+      - '.github/workflows/r34-jd-backup-lock-quality.yml'
+      - 'tests/r34-jd-backup-atomic-recheck.test.mjs'
+      - 'docs/r34/**'
+  pull_request:
+    paths:
+      - '.github/workflows/jd-r23-scheduled.yml'
+      - '.github/workflows/jd-r33-backup.yml'
+      - '.github/workflows/r34-jd-backup-lock-quality.yml'
+      - 'tests/r34-jd-backup-atomic-recheck.test.mjs'
+permissions:
+  contents: read
+jobs:
+  all-main-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full MAIN plus backup lock race regression (no source requests)
+        run: node --test tests/*.test.mjs
