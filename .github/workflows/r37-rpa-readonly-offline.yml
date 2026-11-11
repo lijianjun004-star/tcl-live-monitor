@@ -1,0 +1,25 @@
+name: R3.7 Douyin RPA evidence safe offline gate
+on:
+  pull_request:
+    paths:
+      - 'probes/r37/**'
+      - 'tests/r37-*.test.mjs'
+      - 'docs/r37/**'
+      - '.github/workflows/r37-rpa-readonly-offline.yml'
+permissions:
+  contents: read
+jobs:
+  r37-offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify RPA safety with mocked browser (zero platform requests)
+        run: node --test tests/r37-rpa-safe-douyin.test.mjs tests/r36-douyin-evidence-gate.test.mjs
+      - name: Execute full existing offline test regression
+        run: node --test tests/*.test.mjs
