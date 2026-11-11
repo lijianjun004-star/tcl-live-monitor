@@ -32,6 +32,7 @@ jobs:
         run: node --check probes/r36/douyin-guest-smoke.mjs
 
   public-guest-sample:
+    # Single authorized guest sampling attempt: no cookies, captcha bypass or production writes.
     # Only a labelled experimental branch PUSH can read two approved public
     # profiles. It cannot be triggered by PR, scheduled or another branch.
     if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r36-douyin-reference-rea-20261111' && contains(github.event.head_commit.message, '[r36-guest-readonly]')
