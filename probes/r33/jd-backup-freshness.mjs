@@ -7,7 +7,9 @@
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 
-export const BACKUP_FRESHNESS_MS = 8 * 60 * 1000;
+// Staggered external backup trails the primary by ~2 minutes.
+// A four-minute freshness threshold suppresses duplicates without suppressing 5-minute high-priority samples.
+export const BACKUP_FRESHNESS_MS = 4 * 60 * 1000;
 
 export function beijingOperatingWindow(date) {
   if (!(date instanceof Date) || !Number.isFinite(date.getTime())) {
