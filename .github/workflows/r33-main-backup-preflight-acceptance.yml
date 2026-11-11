@@ -1,0 +1,57 @@
+name: R3.3 backup integration acceptance - real MAIN artifact, NO source scan
+on:
+  push:
+    branches:
+      - qa/r33-main-backup-preflight-20261111
+    paths:
+      - '.github/workflows/r33-main-backup-preflight-acceptance.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read-only-real-artifact-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Retrieve genuine latest MAIN-only seven-day artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=r24-jd-main-state&per_page=100" --jq '.artifacts | map(select(.expired == false and .workflow_run.head_branch == "main" and .workflow_run.repository_id != null and .workflow_run.repository_id == .workflow_run.head_repository_id)) | sort_by(.created_at) | last | .id // empty')
+          test -n "$artifact_id" || { echo "::error::No MAIN state available"; exit 1; }
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > main-state.zip
+          unzip -p main-state.zip r23-state.json > r23-previous.json
+          unzip -p main-state.zip r23-summary.json > r23-summary.json
+          test -s r23-previous.json && test -s r23-summary.json
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const s=JSON.parse(fs.readFileSync('r23-previous.json','utf8'));
+          const p=JSON.parse(fs.readFileSync('r23-summary.json','utf8'));
+          if(s.schema_version!==23||!s.last_processed_run||!s.last_checked_at||typeof p.source_accepted!=='boolean')throw Error('INVALID_MAIN_STATE_OR_SUMMARY');
+          console.log(JSON.stringify({main_artifact_read:true,prior_run:s.last_processed_run,previous_check_count:s.checks?.length,summary_source_accepted:p.source_accepted,room_count:Object.keys(s.rooms||{}).length}));
+          JS
+      - name: Run EXACT R3.3 backup freshness program against real MAIN artifact
+        id: backup_preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          node probes/r33/jd-backup-freshness.mjs --state r23-previous.json --summary r23-summary.json --output "$GITHUB_OUTPUT"
+      - name: Report backup integration proof WITHOUT platform scan
+        shell: bash
+        env:
+          SHOULD_RUN: ${{ steps.backup_preflight.outputs.should_run }}
+          REASON: ${{ steps.backup_preflight.outputs.reason }}
+        run: |
+          set -euo pipefail
+          test "$SHOULD_RUN" = true || test "$SHOULD_RUN" = false
+          test -n "$REASON"
+          echo "R3.3 BACKUP REAL MAIN PREFLIGHT PASS; should_run=$SHOULD_RUN reason=$REASON"
+          echo "No JD source requests; no state upload; no Pages modifications."
