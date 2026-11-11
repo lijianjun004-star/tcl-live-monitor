@@ -10,7 +10,7 @@ const now=new Date('2026-11-11T08:37:00.000Z');
 function state(when='2026-11-11T08:32:00.000Z'){
  return {schema_version:23,rooms:{'jd-1':{status:'LIVE'}},last_processed_run:'42988446429.1',last_checked_at:when};
 }
-const summary={source_accepted:true,run_id:'42988446429.1'};
+const summary={source_evidence_accepted:true,run_id:'42988446429.1'};
 const decide=(priorState,priorSummary,at=now)=>decideJdBackup({now:at,priorState,priorSummary});
 
 test('backup respects Beijing 06:30 to following 02:00, including boundary',()=>{
@@ -42,10 +42,16 @@ test('exactly 8 minutes since last scan allows a backup',()=>{
  assert.equal(decide(state('2026-11-11T08:29:00.000Z'),summary).should_run,true);
 });
 test('failed/unverified prior source does not block the backup, but never converts to OFFLINE',()=>{
- const r=decide(state('2026-11-11T08:36:00.000Z'),{source_accepted:false});
+ const r=decide(state('2026-11-11T08:36:00.000Z'),{source_evidence_accepted:false});
  assert.equal(r.should_run,true);
  assert.equal(r.reason,'PREVIOUS_SOURCE_UNVERIFIED');
  assert.doesNotMatch(backup,/mark (rooms|status) OFFLINE/i);
+});
+test('reject summary schema drift: old source_accepted is NOT the persisted proof field',()=>{
+ assert.throws(()=>decide(state(),{source_accepted:true}),/INVALID_SOURCE_EVIDENCE_FLAG/);
+ assert.throws(()=>decide(state(),{}),/INVALID_SOURCE_EVIDENCE_FLAG/);
+ assert.equal(decide(state('2026-11-11T08:36:00.000Z'),{source_evidence_accepted:true}).should_run,false);
+ assert.equal(decide(state('2026-11-11T08:36:00.000Z'),{source_evidence_accepted:false}).should_run,true);
 });
 test('incomplete, malformed or future artifacts fail closed',()=>{
  assert.throws(()=>decide(state(),null),/INCOMPLETE_ARTIFACT_PAIR/);
