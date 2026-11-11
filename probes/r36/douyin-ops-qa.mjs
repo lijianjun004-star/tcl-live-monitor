@@ -1,7 +1,7 @@
 // R3.6: evidence-only Douyin source contract, no authentication/captcha bypass.
 // This PUBLIC repository must never log raw room/shop payloads or source credentials.
 import fs from 'node:fs/promises';
-export const PATHS=Object.freeze({rooms:'/api/capture/rooms',shops:'/api/shops',daily:'/api/capture/room-overview/daily'});
+export const PATHS=Object.freeze({rooms:'/api/capture/rooms',shops:'/api/shops',daily:'/api/capture/room-overview/daily',active:'/api/assistant/active-rooms'});
 export const isDouyin=p=>['dy','douyin','抖音'].includes(String(p??'').trim().toLowerCase());
 const id=x=>/^\d{1,16}$/.test(String(x??''))?String(x):null;
 function rows(b,kind){
