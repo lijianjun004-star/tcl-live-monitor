@@ -1,0 +1,25 @@
+name: R3.11 Douyin source catalog reconciliation - OFFLINE ONLY
+on:
+  pull_request:
+    paths:
+      - 'probes/r311/**'
+      - 'tests/r311-*.test.mjs'
+      - 'docs/r311/**'
+      - '.github/workflows/r311-catalog-offline-gate.yml'
+permissions:
+  contents: read
+jobs:
+  reconcile-10-12-2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify internal source catalog vs public RPA independent count and safety
+        run: node --test tests/r311-douyin-catalog-reconcile.test.mjs tests/r36-douyin-ops-parity.test.mjs
+      - name: Run complete offline test regression - no network
+        run: node --test tests/*.test.mjs
