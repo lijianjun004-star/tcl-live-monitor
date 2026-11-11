@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - feat/r33-jd-backup-scheduler-20261111
+      - main
     paths:
       - '.github/workflows/jd-r33-backup.yml'
       - 'probes/r33/**'
