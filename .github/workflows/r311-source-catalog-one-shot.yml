@@ -1,0 +1,37 @@
+name: R3.11 Douyin original TCL OPS catalog - ONE SHOT ONLY
+on:
+  push:
+    branches:
+      - experiment/r311-douyin-source-catalog-reconcile-20261111
+    paths:
+      - '.github/workflows/r311-source-catalog-one-shot.yml'
+permissions:
+  contents: read
+jobs:
+  source-10-rooms-proof:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r311-douyin-source-catalog-reconcile-20261111' && contains(github.event.head_commit.message, '[r311-source-one-shot]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline test source-first 10+12+2 census and full regression
+        run: |
+          node --test tests/r311-douyin-catalog-reconcile.test.mjs tests/r36-douyin-ops-parity.test.mjs
+          node --test tests/*.test.mjs
+      - name: One permitted source GET scan, no login or retries
+        env:
+          R311_SOURCE_ONESHOT: READ_FOUR_APPROVED_ROUTES_ONCE
+        run: node probes/r311/source-inventory-one-shot.mjs
+      - name: Save privacy-safe aggregate and ordinal receipts only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r311-original-source-10-room-receipts
+          path: out/r311/source-catalog-public-receipt.json
+          if-no-files-found: warn
+          retention-days: 7
