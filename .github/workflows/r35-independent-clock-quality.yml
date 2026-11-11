@@ -1,0 +1,45 @@
+name: R3.5 JD external clock and 5-minute gate (offline CI only)
+on:
+  push:
+    branches:
+      - feat/r35-jd-independent-clock-20261111
+    paths:
+      - 'external/cloudflare-jd-clock/**'
+      - 'probes/r33/jd-backup-freshness.mjs'
+      - 'tests/r33-jd-backup-freshness.test.mjs'
+      - '.github/workflows/r35-independent-clock-quality.yml'
+  pull_request:
+    paths:
+      - 'external/cloudflare-jd-clock/**'
+      - 'probes/r33/jd-backup-freshness.mjs'
+      - 'tests/r33-jd-backup-freshness.test.mjs'
+      - '.github/workflows/r35-independent-clock-quality.yml'
+permissions:
+  contents: read
+jobs:
+  jd-main-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Existing JD main and lock/dedup safety
+        run: node --test tests/*.test.mjs
+
+  external-clock-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Cloudflare UTC/BJT clock, no-secret logs and GitHub dispatch contract
+        working-directory: external/cloudflare-jd-clock
+        run: node --test tests/*.test.mjs
