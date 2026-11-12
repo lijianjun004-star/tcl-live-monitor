@@ -35,3 +35,12 @@ test('rejects duplicate or noncanonical approved profile URLs', () => {
       /RPA_BATCH_INVALID_OR_DUPLICATE_PROFILE/);
   }
 });
+
+
+test('P3 identical public profile in approved and revoked target is a conflict',()=>{
+ const a=target('a'),revoked={...target('revoked',false),profileUrl:a.profileUrl};
+ assert.throws(()=>planApprovedDouyinBatches({douyin:[a,revoked]}),
+   /RPA_BATCH_INVALID_OR_DUPLICATE_PROFILE/);
+ assert.throws(()=>planApprovedDouyinBatches({douyin:[revoked,a]}),
+   /RPA_BATCH_INVALID_OR_DUPLICATE_PROFILE/);
+});
