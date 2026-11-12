@@ -139,11 +139,11 @@ export function publicDouyinCatalogReceipt(report){
   sourceCatalogComplete:report.sourceCatalogComplete,
   missingPriorRoomCount:report.missingPriorRoomCount,
   conflictCount:report.conflicts.length,warnings:report.warnings,
-  // Ordinals deliberately run-local, not stable identity keys.
-  roomReceipts:report.rooms.map((r,i)=>({runLocalOrdinal:i+1,observedThisRun:r.seenInCurrentResponse,
-   shopJoin:r.seenInCurrentResponse&&r.opsShopIdentityMatched,captureBound:r.seenInCurrentResponse&&r.captureBound,
-   sourceState:r.opsSourceState,publicIdentityVerified:r.identityVerified,
-   publicState:r.publicEvidenceState})),
+  // R3.12.1: suppress run-local ordinals. They were deterministically sorted by
+  // internal room ID, leaking relative private ID order via the PUBLIC artifact.
+  // Per-room evidence belongs ONLY in the separately encrypted private handoff.
+  roomRowsSuppressedForPrivacy:true,
+  aggregateOnly:true,
   formalOpeningRatePercent:null,formalFullDurationRatePercent:null,
   exactStartTimesKnown:0,exactEndTimesKnown:0};
 }

@@ -94,9 +94,9 @@ test('prior LIVE room absent this run must revert to UNKNOWN, not OFFLINE',()=>{
 test('public receipt excludes all private IDs, credentials and account joins',()=>{
  const v=build();v.rooms[0].secret='PRIVATE_COOKIE_DO_NOT_PRINT';
  const receipt=publicDouyinCatalogReceipt(v),s=JSON.stringify(receipt);
- assert.equal(receipt.roomReceipts.length,10);
+ assert.equal(receipt.roomRowsSuppressedForPrivacy,true);assert.equal(receipt.aggregateOnly,true);
  assert.doesNotMatch(s,/PRIVATE_COOKIE_DO_NOT_PRINT|"roomId"|"shopId"|"publicLiveRoomId"|"publicAccountKey"/);
- assert.deepEqual(receipt.roomReceipts.map(x=>x.runLocalOrdinal),[1,2,3,4,5,6,7,8,9,10]);
+ assert.ok(!('roomReceipts' in receipt));assert.equal(receipt.inventoryRows,10);
 });
 test('invalid source rows rejected and unapproved account cannot bridge',()=>{
  assert.throws(()=>build({sourceReport:source([{...rooms[0],roomId:'javascript:'}])}),/INVALID/);
