@@ -12,7 +12,11 @@ test('R3.16 workflows: push on the experiment branch only, token-gated, no sched
   for (const f of wf) {
     const s = read(f);
     if (/offline-gate/.test(f)) { assert.match(s, /pull_request:/); assert.doesNotMatch(s, /101\.96\.215\.251/); continue; }
-    assert.doesNotMatch(s, /\bschedule:/, f); assert.match(s, /branches: \[experiment\/r316-jd-douyin-current-chain-20261112\]/, f);
+    assert.doesNotMatch(s, /\bschedule:/, f);
+    // R3.17 approved one-pass RPA lives on its own bounded experiment branch.
+    const allowed = /branches: \[experiment\/(?:r316-jd-douyin-current-chain-20261112|r317-douyin-approved-rpa-once-20261112)\]/;
+    assert.match(s, allowed, f);
+    assert.doesNotMatch(s, /branches: \[fix\/r318-/, f);
     assert.match(s, /if: contains\(github\.event\.head_commit\.message, '\[r316-[a-z-]+\]'\)/, f);
     assert.match(s, /permissions:\s*\n\s*contents: read/, f); assert.match(s, /timeout-minutes: (?:[1-9]|10)\b/, f);
     assert.doesNotMatch(s, /upload-artifact[\s\S]*private/, f);
