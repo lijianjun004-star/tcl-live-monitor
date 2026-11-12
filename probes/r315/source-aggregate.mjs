@@ -30,10 +30,17 @@ const items = (body, candidates) => {
   for (const part of metadata) {
     if (!part || typeof part !== 'object' || Array.isArray(part)) continue;
     if (part.has_more === true || part.hasMore === true ||
-        part.has_next === true || part.hasNext === true ||
-        [part.next_cursor,part.nextCursor,part.next,part.cursor_next,part.next_page].some(v =>
+        part.has_next === true || part.hasNext === true || part.hasNextPage === true ||
+        [part.next_cursor,part.nextCursor,part.next,part.cursor_next,part.next_page,part.nextPage].some(v =>
           v !== undefined && v !== null && v !== '' && v !== false))
       throw Error('SOURCE_PAGINATED');
+    const page = Number(part.current_page ?? part.currentPage ?? part.page ?? part.page_num ?? part.pageNum);
+    const pages = Number(part.total_pages ?? part.totalPages ?? part.pages);
+    if (Number.isFinite(page) && Number.isFinite(pages) && pages > page)
+      throw Error('SOURCE_PAGINATED');
+    const pageSize = Number(part.page_size ?? part.pageSize ?? part.limit);
+    if (Number.isSafeInteger(pageSize) && pageSize > 0 && array.length >= pageSize)
+      throw Error('SOURCE_PAGE_MAY_BE_TRUNCATED');
     if (part.offset !== undefined && (Number(part.offset) !== 0 || !Number.isInteger(Number(part.offset))))
       throw Error('SOURCE_OFFSET_NONZERO');
     for (const key of ['total','total_count','totalCount']) {
@@ -105,8 +112,8 @@ export async function scanAggregate({ reader, platformValue, knownPlatformValues
     const distinctRooms = new Set();
     for (const row of rawRooms) {
       approvedRow(row);
-      const key = recordId(row);
-      if (distinctRooms.has(key)) throw Error('CROSS_PLATFORM_ROOM_COLLISION');
+      const key = JSON.stringify([row.platform, recordId(row)]);
+      if (distinctRooms.has(key)) throw Error('DUPLICATE_PLATFORM_ROOM_ID');
       distinctRooms.add(key);
     }
     const selected = rawRooms.filter(r => r.platform === platformValue);
@@ -128,23 +135,25 @@ export async function scanAggregate({ reader, platformValue, knownPlatformValues
     const shopBody = await reader(ROUTES.shops);
     const rawShops = items(shopBody, [[], ['shops'], ['data', 'shops'], ['data', 'list'], ['list']]);
     if (rawShops.length > 1000) throw Error();
-    const shops = new Set(), globalShopIds = new Set();
+    const shops = new Set(), globalShopKeys = new Set();
     for (const s of rawShops) {
       approvedRow(s);
       const sid = consistentId(ownValues(s, ['id', 'shop_id', 'shopId']));
-      if (!sid || globalShopIds.has(sid)) throw Error('CROSS_PLATFORM_SHOP_COLLISION');
-      globalShopIds.add(sid);
+      const key = JSON.stringify([s.platform, sid]);
+      if (!sid || globalShopKeys.has(key)) throw Error('DUPLICATE_PLATFORM_SHOP_ID');
+      globalShopKeys.add(key);
       if (s.platform === platformValue) shops.add(sid);
     }
     const heartbeatBody = await reader(ROUTES.heartbeat);
     const rawHeartbeat = items(heartbeatBody, [['rooms'], ['data', 'rooms'], ['data', 'list'], ['list']]);
     if (rawHeartbeat.length > 1000) throw Error();
-    const heartbeatIds = new Set(), globalHeartbeatIds = new Set();
+    const heartbeatIds = new Set(), globalHeartbeatKeys = new Set();
     for (const h of rawHeartbeat) {
       approvedRow(h);
       const rid = recordId(h);
-      if (!rid || globalHeartbeatIds.has(rid)) throw Error('CROSS_PLATFORM_HEARTBEAT_COLLISION');
-      globalHeartbeatIds.add(rid);
+      const key = JSON.stringify([h.platform, rid]);
+      if (!rid || globalHeartbeatKeys.has(key)) throw Error('DUPLICATE_PLATFORM_HEARTBEAT_ID');
+      globalHeartbeatKeys.add(key);
       if (h.platform === platformValue) heartbeatIds.add(rid);
     }
     let dailyDateRows = 0;
