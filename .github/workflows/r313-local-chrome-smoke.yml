@@ -26,4 +26,6 @@ jobs:
           npm init -y >/dev/null
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.64.1
       - name: Simulate phone web UI using synthetic private records on localhost only
+        env:
+          R313_BROWSER_SMOKE: '1'
         run: node --test tests/r313-browser-smoke.test.mjs
