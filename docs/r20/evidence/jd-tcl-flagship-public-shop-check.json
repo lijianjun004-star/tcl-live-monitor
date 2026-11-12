@@ -1,0 +1,43 @@
+{
+  "schema_version": 20,
+  "observed_date_beijing": "2026-11-10",
+  "time_precision": "DATE_ONLY_NO_CONFIRMED_EXACT_BROWSER_TIME",
+  "source": "ORDINARY_BROWSER_PUBLIC_JD_STORE_PAGE",
+  "run_url": "https://agent.tinyfish.ai/runs/d1d93650-daa8-4c36-a057-c6c82dbf941e",
+  "target": {
+    "candidate_store_name": "TCL官方旗舰店",
+    "candidate_url": "https://mall.jd.com/shopLevel-721631.html"
+  },
+  "result": {
+    "page_access_ok": true,
+    "visible_store_name": "TCL官方旗舰店",
+    "visible_page_type": "SHOP_LEVEL_OR_INFORMATION_PAGE",
+    "visible_navigation": [
+      "首页",
+      "品牌简介",
+      "放入收藏夹",
+      "联系客服",
+      "关注店铺"
+    ],
+    "store_live_entrance_found": false,
+    "live_room_url": null,
+    "live_session_id": null,
+    "room_live_state": "UNKNOWN",
+    "shop_identity_to_ops_room_verified": false,
+    "jd_external_account_id_verified": false,
+    "opening_rate_contribution": null,
+    "evidence": [
+      "Normal storefront information page displayed TCL官方旗舰店（五钻店铺）",
+      "Checked shop heading/navigation/content/footer: no clearly attributed live-stream entry found",
+      "This page is not proof the shop is OFFLINE, nor a source of scheduled opening or ops room identity"
+    ]
+  },
+  "safety": {
+    "read_only": true,
+    "no_login": true,
+    "no_purchase": true,
+    "blocked": false,
+    "number_of_live_rooms_verified": 0,
+    "no_inferred_offline": true
+  }
+}

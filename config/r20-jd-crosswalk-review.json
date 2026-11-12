@@ -1,0 +1,69 @@
+{
+  "schema_version": 20,
+  "created_at_beijing": "2026-11-10",
+  "purpose": "JD internal six-room crosswalk review; cannot be used as verified public JD store identities",
+  "source_reference": "https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42356978045",
+  "note": "ops_room_id / ops_shop_id are INTERNAL IDs only. Never fill public_jd_account_id without independent source evidence. No direct production rate calculation.",
+  "entries": [
+    {
+      "ops_room_id": "1",
+      "ops_shop_id": "1",
+      "category_from_history": "冰箱（历史配置；现场曾显示空调）",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "14",
+      "ops_shop_id": "14",
+      "category_from_history": "洗衣机",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "15",
+      "ops_shop_id": "15",
+      "category_from_history": "空调",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "16",
+      "ops_shop_id": "17",
+      "category_from_history": "全品类",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "17",
+      "ops_shop_id": "18",
+      "category_from_history": "电视",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "18",
+      "ops_shop_id": "19",
+      "category_from_history": "显示器",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    }
+  ]
+}

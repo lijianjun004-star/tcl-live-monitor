@@ -1,0 +1,60 @@
+name: R2.1 JD real source one-shot acceptance
+# One bounded read-only source scan on the experimental branch, no cron.
+on:
+  push:
+    branches:
+      - experiment/r21-jd-today-delivery
+    paths:
+      - '.github/workflows/r21-jd-real-source-one-shot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: r21-jd-source-one-shot
+  cancel-in-progress: false
+jobs:
+  real-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      TCL_OPS_BASE_URL: ${{ secrets.TCL_OPS_BASE_URL || 'http://101.96.215.251' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run one bounded read-only six-room source scan
+        id: source
+        continue-on-error: true
+        run: node probes/tcl-jd-all.mjs --shard-index 0 --shard-total 1 --output r21-source-safe.json
+      - name: Validate freshness counts and tri-state evidence
+        id: validate
+        continue-on-error: true
+        run: |
+          if test -f r21-source-safe.json; then
+            node probes/r21/accept-cli.mjs r21-source-safe.json r21-accepted.json
+          else
+            echo '{"schema_version":21,"readiness":"BLOCKED","reason":"SOURCE_DID_NOT_PRODUCE_REPORT","rooms":[],"formal_opening_rate_percent":null}' > r21-accepted.json
+            exit 3
+          fi
+      - name: Report distinct network and evidence outcomes
+        if: always()
+        run: |
+          echo "Source task outcome: ${{ steps.source.outcome }}"
+          echo "Acceptance task outcome: ${{ steps.validate.outcome }}"
+          if test -f r21-accepted.json; then
+            node --input-type=module -e "import fs from 'node:fs';const d=JSON.parse(fs.readFileSync('r21-accepted.json','utf8'));console.log(JSON.stringify({readiness:d.readiness,reason:d.reason,rooms:d.room_count||0,live:d.live||0,unknown:d.unknown||0,formal_opening_rate_percent:d.formal_opening_rate_percent}));"
+          fi
+          if test "${{ steps.source.outcome }}" != "success" || test "${{ steps.validate.outcome }}" != "success"; then
+            echo "::warning::LIVE_SOURCE_NOT_ACCEPTED - do not claim current opening rate"
+          fi
+      - name: Upload only sanitized state reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r21-jd-one-shot-sanitized-evidence
+          path: |
+            r21-source-safe.json
+            r21-accepted.json
+          retention-days: 7
+          if-no-files-found: warn
