@@ -90,11 +90,13 @@ test('timeout: a hanging source ends the run as BLOCKED, not partial success', a
   const r = await run(plan(approved, 'workflow_dispatch', 'run_once', 'jd'), mockFetch(source(), { hang: '/api/capture/room-overview/daily' }), { deadlineMs: 50 });
   assert.equal(r.results[0].status, 'BLOCKED'); assert.equal(r.results[0].reason, 'RUN_DEADLINE_EXCEEDED');
 });
-test('HTTP 500 / schema failure: platform unavailable or UNKNOWN, never OFFLINE', async () => {
+test('HTTP 500 / schema failure immediately stop the source chain and never mark OFFLINE', async () => {
   const a = await run(plan(approved, 'workflow_dispatch', 'run_once', 'jd'), mockFetch(source(), { codes: { '/api/capture/rooms': 500 } }));
-  assert.equal(a.results[0].status, 'SOURCE_UNAVAILABLE');
+  assert.equal(a.results[0].status, 'BLOCKED');
+  assert.equal(a.results[0].reason, 'SOURCE_HTTP_500');
   const b = await run(plan(approved, 'workflow_dispatch', 'run_once', 'jd'), mockFetch(source({ extra: { '/api/capture/rooms': { ok: true, items: [] } } })));
-  assert.equal(b.results[0].status, 'SOURCE_UNAVAILABLE');
+  assert.equal(b.results[0].status, 'BLOCKED');
+  assert.equal(b.results[0].reason, 'SOURCE_READ_OR_SCHEMA_ERROR');
 });
 test('paginated / incomplete catalog is rejected', async () => {
   const s = source(); s['/api/capture/rooms'] = { ...s['/api/capture/rooms'], has_more: true };
