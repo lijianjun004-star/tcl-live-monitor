@@ -14,12 +14,35 @@
 const ROUTES = Object.freeze({ rooms: '/api/capture/rooms', shops: '/api/shops',
   heartbeat: '/api/assistant/active-rooms', daily: '/api/capture/room-overview/daily' });
 const items = (body, candidates) => {
+  // Fail closed on ambiguous containers and any unconsumed pagination. A first
+  // page is NOT an authoritative census, even if it matches our local baseline.
+  const found = [];
   for (const path of candidates) {
     let x = body;
     for (const k of path) x = x?.[k];
-    if (Array.isArray(x)) return x;
+    if (Array.isArray(x)) found.push(x);
   }
-  throw new Error('SOURCE_SHAPE_INVALID');
+  if (!found.length) throw Error('SOURCE_SHAPE_INVALID');
+  const array = found[0];
+  if (found.some(v => JSON.stringify(v) !== JSON.stringify(array)))
+    throw Error('SOURCE_CONTAINER_CONFLICT');
+  const metadata = [body, body?.data, body?.pagination, body?.data?.pagination];
+  for (const part of metadata) {
+    if (!part || typeof part !== 'object' || Array.isArray(part)) continue;
+    if (part.has_more === true || part.hasMore === true ||
+        part.has_next === true || part.hasNext === true ||
+        [part.next_cursor,part.nextCursor,part.next,part.cursor_next,part.next_page].some(v =>
+          v !== undefined && v !== null && v !== '' && v !== false))
+      throw Error('SOURCE_PAGINATED');
+    if (part.offset !== undefined && (Number(part.offset) !== 0 || !Number.isInteger(Number(part.offset))))
+      throw Error('SOURCE_OFFSET_NONZERO');
+    for (const key of ['total','total_count','totalCount']) {
+      const total = part[key];
+      if (total != null && (!Number.isSafeInteger(Number(total)) || Number(total) !== array.length))
+        throw Error('SOURCE_TOTAL_MISMATCH');
+    }
+  }
+  return array;
 };
 const id = x => {
   if (typeof x === 'number' && (!Number.isSafeInteger(x) || x < 0)) return null;
@@ -39,7 +62,7 @@ function consistentId(values, optional = false) {
     if (optional) return null;
     throw Error();
   }
-  if (optional && values.length === 1 && values[0] == null) return null;
+  if (optional && values.every(v => v === null)) return null;
   const normalized = values.map(id);
   if (normalized.some(x => x === null) || normalized.some(x => x !== normalized[0])) throw Error();
   return normalized[0];
@@ -49,7 +72,8 @@ const shopId = r => {
   const values = ownValues(r, ['shop_id', 'shopId']);
   if (r.shop != null) {
     if (typeof r.shop !== 'object' || Array.isArray(r.shop)) throw Error();
-    if (Object.hasOwn(r.shop, 'id')) values.push(r.shop.id);
+    if (!Object.hasOwn(r.shop, 'id')) throw Error('MALFORMED_NESTED_SHOP');
+    values.push(r.shop.id);
   }
   return consistentId(values, true);
 };
@@ -75,7 +99,17 @@ export async function scanAggregate({ reader, platformValue, knownPlatformValues
     const roomBody = await reader(ROUTES.rooms);
     const rawRooms = items(roomBody, [['rooms'], ['data', 'rooms'], ['data', 'list'], ['list']]);
     if (rawRooms.length > 1000) throw Error();
-    const selected = rawRooms.filter(approvedRow);
+    // Cross-platform numeric identifiers cannot be treated as globally unique
+    // without evidence. If a source reuses a numeric key, stop this scan rather
+    // than silently attaching it to the wrong platform.
+    const distinctRooms = new Set();
+    for (const row of rawRooms) {
+      approvedRow(row);
+      const key = recordId(row);
+      if (distinctRooms.has(key)) throw Error('CROSS_PLATFORM_ROOM_COLLISION');
+      distinctRooms.add(key);
+    }
+    const selected = rawRooms.filter(r => r.platform === platformValue);
     // An empty response cannot establish that there are no rooms. Do not
     // proceed with or publish an apparent zero census without more evidence.
     if (selected.length < minimumObservedRooms) throw Error();
@@ -94,20 +128,24 @@ export async function scanAggregate({ reader, platformValue, knownPlatformValues
     const shopBody = await reader(ROUTES.shops);
     const rawShops = items(shopBody, [[], ['shops'], ['data', 'shops'], ['data', 'list'], ['list']]);
     if (rawShops.length > 1000) throw Error();
-    const shops = new Set();
-    for (const s of rawShops.filter(approvedRow)) {
+    const shops = new Set(), globalShopIds = new Set();
+    for (const s of rawShops) {
+      approvedRow(s);
       const sid = consistentId(ownValues(s, ['id', 'shop_id', 'shopId']));
-      if (!sid || shops.has(sid)) throw Error();
-      shops.add(sid);
+      if (!sid || globalShopIds.has(sid)) throw Error('CROSS_PLATFORM_SHOP_COLLISION');
+      globalShopIds.add(sid);
+      if (s.platform === platformValue) shops.add(sid);
     }
     const heartbeatBody = await reader(ROUTES.heartbeat);
     const rawHeartbeat = items(heartbeatBody, [['rooms'], ['data', 'rooms'], ['data', 'list'], ['list']]);
     if (rawHeartbeat.length > 1000) throw Error();
-    const heartbeatIds = new Set();
-    for (const h of rawHeartbeat.filter(approvedRow)) {
+    const heartbeatIds = new Set(), globalHeartbeatIds = new Set();
+    for (const h of rawHeartbeat) {
+      approvedRow(h);
       const rid = recordId(h);
-      if (!rid || heartbeatIds.has(rid)) throw Error();
-      heartbeatIds.add(rid);
+      if (!rid || globalHeartbeatIds.has(rid)) throw Error('CROSS_PLATFORM_HEARTBEAT_COLLISION');
+      globalHeartbeatIds.add(rid);
+      if (h.platform === platformValue) heartbeatIds.add(rid);
     }
     let dailyDateRows = 0;
     for (const room of rooms) {
