@@ -1,0 +1,26 @@
+name: R3.13 private identity preflight - OFFLINE ONLY
+on:
+  pull_request:
+    paths:
+      - 'probes/r313/**'
+      - 'tests/r313-*.test.mjs'
+      - 'tools/r313/**'
+      - 'docs/r313/**'
+      - '.github/workflows/r313-private-bridge-quality.yml'
+permissions:
+  contents: read
+jobs:
+  identity-proof-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline CSV parser and four-layer security checks
+        run: node --test tests/r313-private-bridge-review.test.mjs
+      - name: Complete offline repository regressions (no private artifacts)
+        run: node --test tests/*.test.mjs
