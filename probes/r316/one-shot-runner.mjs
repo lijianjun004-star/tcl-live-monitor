@@ -21,18 +21,33 @@ export const RUNNER_READY = Object.freeze({ jd: true, douyin: true });
 export const JD_REVIEWED_BASELINE = Object.freeze(['1', '14', '15', '16', '17', '18']);
 export const DOUYIN_HISTORICAL_MINIMUM = 10;
 const ACCESS_LIMIT = new Set([401, 403, 429]);
-const safeId = v => /^[1-9]\d{0,15}$/.test(String(v ?? '')) ? String(v) : null;
+const safeId = v => /^[1-9]\\d{0,15}$/.test(String(v ?? '')) ? String(v) : null;
 
-/** fetch wrapper: the first 401/403/429 latches a stop; later calls never touch the network. */
+/** All remote access errors latch a global stop; no further source requests are permitted. */
 export function guardedFetch(fetchFn, guard) {
   if (typeof fetchFn !== 'function' || !guard || typeof guard !== 'object') throw Error('GUARD_INPUT_INVALID');
   guard.requests = 0;
-  return async (url, init) => {
-    if (guard.stopped) throw Error('ACCESS_STOPPED_' + guard.stopped.status);
-    if (String(init?.method || 'GET').toUpperCase() !== 'GET') throw Error('ONLY_GET_ALLOWED');
+  return async (url, init = {}) => {
+    if (guard.stopped) throw Error(guard.stopped.reason || 'ACCESS_STOPPED');
+    if (String(init.method || 'GET').toUpperCase() !== 'GET') throw Error('ONLY_GET_ALLOWED');
+    const path = new URL(String(url)).pathname;
+    const stop = (reason, status = null) => {
+      guard.stopped ||= { reason, status, path };
+      if (guard.controller && !guard.controller.signal.aborted) guard.controller.abort();
+      throw Error(reason);
+    };
     guard.requests++;
-    const r = await fetchFn(url, init);
-    if (ACCESS_LIMIT.has(r?.status)) { guard.stopped = { status: r.status, path: new URL(String(url)).pathname }; throw Error('ACCESS_LIMIT_' + r.status); }
+    let r;
+    try {
+      const signal = guard.controller ? AbortSignal.any([init.signal, guard.controller.signal].filter(Boolean)) : init.signal;
+      r = await fetchFn(url, { ...init, redirect: 'error', signal });
+    } catch (e) {
+      const reason = e?.name === 'TimeoutError' || e?.name === 'AbortError' ? 'SOURCE_TIMEOUT_OR_ABORT' : 'SOURCE_NETWORK_OR_REDIRECT_ERROR';
+      stop(reason);
+    }
+    if (ACCESS_LIMIT.has(r?.status)) stop('ACCESS_LIMIT_' + r.status, r.status);
+    if (r?.status !== 200) stop(r?.status >= 300 && r?.status < 400 ? 'SOURCE_REDIRECT' : 'SOURCE_HTTP_' + (r?.status ?? 'UNKNOWN'), r?.status);
+    if (!/json/i.test(r.headers?.get?.('content-type') || '')) stop('SOURCE_NON_JSON_RESPONSE');
     return r;
   };
 }
@@ -79,7 +94,7 @@ export function sessionEvidence(prev, cur, at) {
 }
 
 // A single bounded deadline (not a poll): cleared as soon as the read settles.
-const deadline = (p, ms) => { let t; return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => rej(Error('RUN_DEADLINE_EXCEEDED')), ms); })]).finally(() => clearTimeout(t)); };
+const deadline = (p, ms, stop) => { let t; return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => { stop(); rej(Error('RUN_DEADLINE_EXCEEDED')); }, ms); })]).finally(() => clearTimeout(t)); };
 
 export async function runJdOnce({ reader, at, date, previous = null, reviewedBaseline = JD_REVIEWED_BASELINE }) {
   const report = await scanJdSource({ reader, at, date, previous: previous?.minuteSnapshot ?? null });
@@ -130,16 +145,30 @@ export async function executePlan({ plan, runKey, origin, fetchFn = globalThis.f
     if (t.status !== 'READY_FOR_SINGLE_SCAN' || RUNNER_READY[t.platform] !== true) { out.results.push({ platform: t.platform, status: t.status || 'BLOCKED', reason: t.reason || 'RUNNER_NOT_READY', sourceAccess: false }); continue; }
     const prev = previous?.[t.platform] ?? null;
     if (prev?.lastRunKey === runKey) { out.results.push({ platform: t.platform, status: 'SKIPPED_DUPLICATE_RUN', reason: 'RUN_KEY_ALREADY_PROCESSED', sourceAccess: false }); continue; }
-    const guard = {};
-    const reader = networkReader(origin, guardedFetch(fetchFn, guard), 15000);
+    const controller = new AbortController();
+    const guard = { controller };
+    const rawReader = networkReader(origin, guardedFetch(fetchFn, guard), 15000);
+    // Network readers can reject malformed JSON after fetch succeeds. Treat that as a
+    // run-level source failure, not as a per-room absence or an OFFLINE signal.
+    const reader = async (...args) => {
+      if (guard.stopped) throw Error(guard.stopped.reason || 'SOURCE_STOPPED');
+      try { return await rawReader(...args); }
+      catch (e) {
+        guard.stopped ||= { reason: 'SOURCE_READ_OR_SCHEMA_ERROR' };
+        if (!controller.signal.aborted) controller.abort();
+        throw e;
+      }
+    };
     try {
       const r = t.platform === 'jd'
-        ? await deadline(runJdOnce({ reader, at, previous: prev, reviewedBaseline: jdReviewedBaseline }), deadlineMs)
-        : await deadline(runDouyinOnce({ reader, config, at, previous: prev }), deadlineMs);
-      if (guard.stopped) { out.results.push({ platform: t.platform, status: 'BLOCKED', reason: 'ACCESS_LIMIT_' + guard.stopped.status, sourceAccess: true, requests: guard.requests, summary: { LIVE: 0, OFFLINE: 0, UNKNOWN: 0 } }); continue; }
+        ? await deadline(runJdOnce({ reader, at, previous: prev, reviewedBaseline: jdReviewedBaseline }), deadlineMs,
+          () => { guard.stopped ||= { reason: 'RUN_DEADLINE_EXCEEDED' }; controller.abort(); })
+        : await deadline(runDouyinOnce({ reader, config, at, previous: prev }), deadlineMs,
+          () => { guard.stopped ||= { reason: 'RUN_DEADLINE_EXCEEDED' }; controller.abort(); });
+      if (guard.stopped) { out.results.push({ platform: t.platform, status: 'BLOCKED', reason: guard.stopped.reason || 'SOURCE_STOPPED', sourceAccess: true, requests: guard.requests, summary: { LIVE: 0, OFFLINE: 0, UNKNOWN: 0 } }); continue; }
       out.results.push({ ...r, sourceAccess: true, requests: guard.requests, lastRunKey: runKey });
     } catch (e) {
-      const reason = guard.stopped ? 'ACCESS_LIMIT_' + guard.stopped.status : String(e?.message || 'RUN_ERROR').slice(0, 60);
+      const reason = String(e?.message) === 'RUN_DEADLINE_EXCEEDED' ? 'RUN_DEADLINE_EXCEEDED' : (guard.stopped?.reason || String(e?.message || 'RUN_ERROR').slice(0, 60));
       out.results.push({ platform: t.platform, status: 'BLOCKED', reason, sourceAccess: true, requests: guard.requests, summary: { LIVE: 0, OFFLINE: 0, UNKNOWN: 0 } });
     }
   }
