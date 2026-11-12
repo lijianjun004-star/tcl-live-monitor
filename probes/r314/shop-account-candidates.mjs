@@ -6,6 +6,13 @@
 const norm=s=>typeof s==='string'?s.normalize('NFKC').toLocaleLowerCase('zh-CN')
   .replace(/[^\p{L}\p{N}]/gu,''): '';
 const brandOnly=s=>norm(s).replace(/tcl|ffalcon|rayneo|雷鸟/g,'');
+const brandFamily=s=>{
+ const n=norm(s);
+ if(/rayneo|雷鸟创新/.test(n))return 'RAYNEO';
+ if(/ffalcon|雷鸟/.test(n))return 'FFALCON';
+ if(/tcl/.test(n))return 'TCL';
+ return 'UNCLASSIFIED';
+};
 const ngrams=(s,n=2)=>{
  const out=new Set();for(let i=0;i<=s.length-n;i++)out.add(s.slice(i,i+n));return out;
 };
@@ -24,6 +31,13 @@ function longestCommon(a,b){
 }
 export function candidateSignals(shopName,accountName,sourceCategory='未核实'){
  const shop=norm(shopName),acc=norm(accountName),coreShop=brandOnly(shopName),coreAcc=brandOnly(accountName);
+ const sBrand=brandFamily(shopName),aBrand=brandFamily(accountName);
+ if(sBrand!=='UNCLASSIFIED'&&aBrand!=='UNCLASSIFIED'&&sBrand!==aBrand)
+  return {score:0,reason:'BRAND_FAMILY_MISMATCH_NAME_ONLY',suggested:false,categoryConflict:false};
+ const dealer=/富世新|经销商|经销|专卖店/.test(acc);
+ const sourceOfficial=/官方|总部|旗舰店/.test(shop);
+ if(dealer&&sourceOfficial&&!/富世新|经销|专卖店/.test(shop))
+  return {score:0,reason:'SOURCE_OFFICIAL_VS_PUBLIC_DEALER',suggested:false,categoryConflict:false};
  if(!shop||!acc||coreShop.length<2||coreAcc.length<2)
   return {score:0,reason:'NO_DISTINCTIVE_NAME_EVIDENCE',suggested:false};
  // Ignore generic brand-only similarities; they cannot distinguish TCL accounts.
@@ -54,7 +68,7 @@ export function buildPrivateShopAccountCandidates({sourceRows,approvedAccounts,m
    throw Error('CANDIDATE_LIMIT_INVALID');
  const names=new Set(),keys=new Set(),shopIds=new Set(),roomIds=new Set();
  const accounts=approvedAccounts.filter(a=>a?.scopeApproved===true).map(a=>{
-  if(typeof a.key!=='string'||!a.key||typeof a.accountName!=='string'||!a.accountName||
+  if(typeof a.key!=='string'||!a.key||typeof a.accountName!=='string'||!a.accountName||a.accountName.length>120||
     typeof a.profileUrl!=='string')throw Error('APPROVED_ACCOUNT_RECORD_INVALID');
   let u;try{u=new URL(a.profileUrl)}catch{throw Error('APPROVED_URL_INVALID')}
   if(u.protocol!=='https:'||u.hostname!=='www.douyin.com'||
