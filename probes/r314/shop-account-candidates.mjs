@@ -103,7 +103,22 @@ export function buildPrivateShopAccountCandidates({sourceRows,approvedAccounts,m
    candidates,candidateStatus:candidates.length?'REVIEW_CANDIDATES_NOT_IDENTITY':'NO_RELIABLE_CANDIDATE',
    verifiedCrossSystemLinks:0});
  }
+ // A public account that appears in leads for multiple DIFFERENT internal shops
+ // is an unresolved many-to-one ambiguity; never silently choose one shop.
+ const candidateUsers=new Map();
+ for(const r of rows)for(const c of r.candidates){
+  if(!candidateUsers.has(c.accountKey))candidateUsers.set(c.accountKey,new Set());
+  candidateUsers.get(c.accountKey).add(r.opsShopId);
+ }
+ const ambiguousAccounts=[...candidateUsers].filter(([,shops])=>shops.size>1).map(([key])=>key);
+ const ambiguousSet=new Set(ambiguousAccounts);
+ for(const r of rows){
+  for(const c of r.candidates)c.crossShopCandidateConflict=ambiguousSet.has(c.accountKey);
+  if(r.candidates.some(c=>c.crossShopCandidateConflict))r.candidateStatus='MULTIPLE_OPS_SHOPS_CLAIM_SAME_PUBLIC_LEAD';
+ }
  return {schemaVersion:314,mode:'PRIVATE_CANDIDATE_TRIAGE_ONLY',
+  ambiguousPublicAccountLeads:ambiguousAccounts.length,
+  ambiguousCandidateRows:rows.reduce((n,r)=>n+r.candidates.filter(c=>c.crossShopCandidateConflict).length,0),
   sourceOpsRooms:rows.length,approvedPublicAccounts:accounts.length,
   shopsWithReviewCandidates:rows.filter(x=>x.candidates.length).length,
   shopsWithoutReviewCandidates:rows.filter(x=>!x.candidates.length).length,
@@ -119,6 +134,8 @@ export function safePublicCandidateCounts(p){
   shopsWithReviewCandidates:p.shopsWithReviewCandidates,
   shopsWithoutReviewCandidates:p.shopsWithoutReviewCandidates,
   suggestedPairs:p.suggestedPairs,
+  ambiguousPublicAccountLeads:p.ambiguousPublicAccountLeads,
+  ambiguousCandidateRows:p.ambiguousCandidateRows,
   verifiedFourLayerBridges:0,formalOpeningRatePercent:null,formalFullDurationRatePercent:null,
   recordsOmittedBecausePrivate:true};
 }
