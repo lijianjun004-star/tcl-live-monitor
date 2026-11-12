@@ -1,0 +1,25 @@
+name: R3.14 private shop-name candidate triage - OFFLINE QUALITY GATE
+on:
+  pull_request:
+    paths:
+      - 'probes/r314/shop-account-candidates.mjs'
+      - 'tests/r314-*.test.mjs'
+      - 'docs/r314/**'
+      - '.github/workflows/r314-candidate-offline.yml'
+permissions:
+  contents: read
+jobs:
+  candidate-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Name leads never create a verified four-layer bridge
+        run: node --test tests/r314-shop-account-candidates.test.mjs
+      - name: All existing offline repository tests
+        run: node --test tests/*.test.mjs
