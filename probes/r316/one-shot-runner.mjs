@@ -113,21 +113,24 @@ export async function runJdOnce({ reader, at, date, previous = null, reviewedBas
     formalOpeningRatePercent: null, formalFullDurationRatePercent: null };
 }
 
-export async function runDouyinOnce({ reader, config, at, previous = null }) {
+export async function runDouyinOnce({ reader, config, at, previous = null, rpaObservations = [], bridgeEvidence = [] }) {
   const source = await scanDouyinOps({ reader, config, at, maxRooms: 60 });
   const inv = reconcileDouyinCatalog({ sourceReport: source, previousInventory: previous?.inventory ?? null,
-    approvedAccounts: config.douyin, rpaObservations: [], bridgeEvidence: [], historicalConfirmedMinimum: DOUYIN_HISTORICAL_MINIMUM, now: at });
+    approvedAccounts: config.douyin, rpaObservations, bridgeEvidence, historicalConfirmedMinimum: DOUYIN_HISTORICAL_MINIMUM, now: at });
   const byId = new Map((source.rooms || []).map(r => [r.roomId, r]));
   const rows = inv.rooms.map(r => ({ roomId: r.roomId, shopId: r.shopId, captureBound: r.captureBound,
     opsShopIdentityMatched: r.opsShopIdentityMatched, seenInCurrentSource: r.seenInCurrentResponse,
     status: 'UNKNOWN', // internal Douyin source never proves public LIVE; four-layer bridge is required
     reason: byId.get(r.roomId)?.reason ?? r.opsSourceReason, internalSourceLiveCandidate: r.opsSourceState === 'LIVE',
-    bridge: r.identityVerified ? 'VERIFIED' : 'NO_EVIDENCE' }));
-  return { platform: 'douyin', status: source.sourceAccess === 'ROOM_CATALOG_RECEIVED' ? 'READ_ONCE' : 'SOURCE_UNAVAILABLE',
-    checkedAt: source.checkedAt, date: source.date, warnings: [...(source.warnings || []), ...inv.warnings], rows,
+    bridge: r.bridgeStatus || 'NO_EVIDENCE' }));
+  const baselineMissing = !previous?.inventory && inv.inventoryRows < DOUYIN_HISTORICAL_MINIMUM;
+  return { platform: 'douyin', status: source.sourceAccess !== 'ROOM_CATALOG_RECEIVED' ? 'SOURCE_UNAVAILABLE' :
+    baselineMissing ? 'BLOCKED_BASELINE_NOT_RESTORED' : 'READ_ONCE',
+    checkedAt: source.checkedAt, date: source.date, warnings: [...(source.warnings || []), ...inv.warnings, ...(baselineMissing ? ['DONT_DROP_HISTORICAL_ROOMS_WITHOUT_ENCRYPTED_BASELINE'] : [])], rows,
     summary: { LIVE: 0, OFFLINE: 0, UNKNOWN: rows.length }, inventory: { platform: 'douyin', rooms: inv.rooms },
     counts: { observed: inv.observedSourceRoomsThisRun, inventoryRows: inv.inventoryRows, shopJoined: inv.sourceShopJoined,
-      captureBound: inv.sourceCaptureBound, verifiedBridges: inv.verifiedFourLayerBridges, missingPrior: inv.missingPriorRoomCount },
+      captureBound: inv.sourceCaptureBound, verifiedBridges: inv.verifiedFourLayerBridges, bridgeStates: inv.bridgeStates,
+      missingPrior: inv.missingPriorRoomCount },
     formalOpeningRatePercent: null, formalFullDurationRatePercent: null };
 }
 
