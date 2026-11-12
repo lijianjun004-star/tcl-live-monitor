@@ -9,7 +9,9 @@
    "accountName": "TCL电视机官方旗舰店",
    "displayDouyinId": "57338966297",
    "scoringEligible": false,
-   "bridgeCandidateFor": "douyin-ops-room (private mapping)"
+   "bridgeCandidateFor": "douyin-ops-room (private mapping)",
+   "roomId": "46352888803",
+   "roomIdSource": "R0.9.9 claimed room id, observed again 2026-11-12 (run 43233269273)"
   },
   {
    "key": "tcl-douyin-flagship",
@@ -17,7 +19,9 @@
    "accountName": "TCL官方旗舰店",
    "displayDouyinId": "79013748820",
    "scoringEligible": false,
-   "bridgeCandidateFor": null
+   "bridgeCandidateFor": null,
+   "roomId": "31878890513",
+   "roomIdSource": "config/probe-targets.json"
   }
  ]
 }

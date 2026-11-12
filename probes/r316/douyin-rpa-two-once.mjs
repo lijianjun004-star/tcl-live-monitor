@@ -51,7 +51,7 @@ try {
     let d;
     if (reasonStop) { stopped = { key: t.key, reason: reasonStop }; d = { state: 'UNKNOWN', reason: 'STOPPED_' + reasonStop }; }
     else if (profile.navigationError) d = { state: 'UNKNOWN', reason: 'PROFILE_NAVIGATION_ERROR' };
-    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId });
+    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined }); // known room id: avoids the LIVE_ROOM_ID_CHANGED mislabel seen in run 43233269273
     if (d.state === 'OFFLINE') d = { ...d, state: 'UNKNOWN', reason: 'OFFLINE_RULE_NOT_VALIDATED' };
     const ids = profile.navigationError ? [] : liveAnchorRoomIds(profile);
     pub.push({ key: t.key, at, profileHttp: profile.httpStatus ?? null, roomHttp: room?.httpStatus ?? null,
