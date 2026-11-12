@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { planRuntimeAction } from './runtime-switch.mjs';
+import { RUNNER_READY } from '../r316/one-shot-runner.mjs';
 
 const statePath = process.argv[2] || 'r315-runtime-switch.json';
 const summaryPath = process.argv[3] || 'r315-run-summary.json';
@@ -15,7 +16,9 @@ const result = planRuntimeAction({
   now: new Date(),
   actor: process.env.GITHUB_ACTOR || 'unknown',
   runId: process.env.GITHUB_RUN_ID || null,
-  runnerReady: false
+  // R3.16: JD and Douyin-internal one-shot runners are wired; the reviewed control-file gates
+  // (sourceAccessApproved / adapterReady, default false) still decide whether any source is read.
+  runnerReady: RUNNER_READY
 });
 
 if (result.decision === 'CONTROL_UPDATE') {

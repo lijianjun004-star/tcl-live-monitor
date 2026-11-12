@@ -128,7 +128,9 @@ export function evaluateRoom({room, day, heartbeatAt, at, date, previous=null, h
   // Delta is capture-minute_count difference, NOT independently proven wall-clock live duration.
   return {...base,status:state,reason,offlineCandidate:Boolean(verdict.offlineCandidate),
     agentAlive:Boolean(verdict.agentAlive), minutesDelta:delta,
-    latestMinuteAgeMin:verdict.minuteAgeMin??null, minuteCount:validCount};
+    latestMinuteAgeMin:verdict.minuteAgeMin??null, minuteCount:validCount,
+    // R3.16: platform's own per-Beijing-day session counter (no liveId exists in the source).
+    sessionCount:Number.isInteger(day.session_count)&&day.session_count>=0?day.session_count:null};
 }
 
 export function scanSummary(observations) {

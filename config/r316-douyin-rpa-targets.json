@@ -1,0 +1,27 @@
+{
+ "schemaVersion": 316,
+ "note": "At most two in-scope public Douyin accounts per run. R099-45: in user-approved TCL-name scope (monitor only, never scored), platform identity verified 2026-11-07 (R0.9.9 B14 run 42354838292). tcl-douyin-flagship: approved account used as control.",
+ "maxPerRun": 2,
+ "targets": [
+  {
+   "key": "R099-45",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAA-teeOY6ZyDaR5eKfxGGxcPufW0wYjdEV2ONRZkWlYpsxknzyMREA_x-V2Dqx_h8K",
+   "accountName": "TCL电视机官方旗舰店",
+   "displayDouyinId": "57338966297",
+   "scoringEligible": false,
+   "bridgeCandidateFor": "douyin-ops-room (private mapping)",
+   "roomId": "46352888803",
+   "roomIdSource": "R0.9.9 claimed room id, observed again 2026-11-12 (run 43233269273)"
+  },
+  {
+   "key": "tcl-douyin-flagship",
+   "profileUrl": "https://www.douyin.com/user/MS4wLjABAAAAVozXF9jRtNt6k62dH8TZXld0RGpvIK8aZxEh3oWcBfM",
+   "accountName": "TCL官方旗舰店",
+   "displayDouyinId": "79013748820",
+   "scoringEligible": false,
+   "bridgeCandidateFor": null,
+   "roomId": "31878890513",
+   "roomIdSource": "config/probe-targets.json"
+  }
+ ]
+}

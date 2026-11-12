@@ -1,0 +1,40 @@
+name: R3.16 offline gate - tests, workflow syntax, privacy scan (no network)
+on:
+  pull_request:
+    paths: ['probes/**', 'tests/**', 'config/**', 'docs/r316/**', '.github/workflows/**']
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: R3.16 dedicated tests
+        run: node --test tests/r316/*.test.mjs
+      - name: Full repository regression
+        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs
+      - name: Workflow YAML syntax (every workflow file)
+        run: |
+          python3 - <<'PY'
+          import glob, yaml, sys
+          bad = []
+          for f in sorted(glob.glob('.github/workflows/*.yml')):
+              try:
+                  d = yaml.safe_load(open(f))
+                  assert isinstance(d, dict) and 'jobs' in d and (True in d or 'on' in d)
+              except Exception as e:
+                  bad.append((f, str(e)[:80]))
+          print('workflows checked:', len(glob.glob('.github/workflows/*.yml')), 'bad:', bad)
+          sys.exit(1 if bad else 0)
+          PY
+      - name: Privacy scan of tracked public files
+        run: |
+          set -euo pipefail
+          ! git grep -nE 'BEGIN (RSA |EC |ENCRYPTED )?PRIVATE KEY' -- . ':!tests/**'
+          ! git grep -nE 'bound_session_key"?\s*:\s*"[A-Za-z0-9]' -- . ':!tests/**'
+          ! git grep -nE 'live_room_id=[0-9]' -- docs
+          echo "privacy scan: no private key, no session key value, no internal ids in docs"
