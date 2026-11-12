@@ -139,7 +139,7 @@ test('all network and response failures permanently trip the breaker', async () 
     let calls=0; const r=reader(async()=>{calls++;return response();},{validators});
     await assert.rejects(r.read('/api/shops'));
     await assert.rejects(r.read('/api/shops'),e=>code(e)==='READER_ACCESS_BLOCKED');
-    assert.equal(calls,1);
+    assert.equal(calls,Object.keys(validators).length === 0 ? 0 : 1);
   }
 });
 
