@@ -40,7 +40,10 @@ export function reconcileDouyinFourLayers({opsRooms, accounts, evidenceRows=[]})
       accountKey:typeof row?.accountKey==='string'?row.accountKey:null,
       status:'UNVERIFIED',bridgeStatus:'CANDIDATE',reason:'INSUFFICIENT_EVIDENCE',verifiedAt:null,scoringEligible:false};
     const ops=rooms.get(rid);
-    if(!ops||ops.shopId!==sid||!acc||acc.secUid!==uid||!pubRoom||!observed){
+    if(ops&&sid&&ops.shopId!==sid){
+      candidates.push({...base,bridgeStatus:'CONFLICT',reason:'EVIDENCE_CONTRADICTS_SOURCE_ROOM_SHOP'});continue;
+    }
+    if(!ops||!acc||acc.secUid!==uid||!pubRoom||!observed){
       candidates.push({...base,reason:'IDENTITY_FIELDS_MISMATCH'});continue;
     }
     const proofs=asArray(row.proofs);
@@ -65,6 +68,20 @@ export function reconcileDouyinFourLayers({opsRooms, accounts, evidenceRows=[]})
     accepted.set(c.opsRoomId,c);
   }
   const links=[];
+  // A conflicting, even preliminary, public account mapping must quarantine ALL involved ops rooms.
+  const roomsPerAccount = new Map();
+  for (const candidate of candidates) if (candidate.opsRoomId && candidate.accountKey) {
+    const linked = roomsPerAccount.get(candidate.accountKey) || new Set();
+    linked.add(candidate.opsRoomId);
+    roomsPerAccount.set(candidate.accountKey,linked);
+  }
+  for (const candidate of candidates) {
+    if (candidate.bridgeStatus === 'CONFLICT' || (candidate.accountKey && roomsPerAccount.get(candidate.accountKey)?.size > 1)) {
+      if (!conflicts.some(c => c.opsRoomId === candidate.opsRoomId))
+        conflicts.push({ opsRoomId:candidate.opsRoomId, reason:candidate.bridgeStatus==='CONFLICT' ? candidate.reason : 'ONE_ACCOUNT_PROPOSED_FOR_MULTIPLE_ROOMS' });
+    }
+  }
+  for (const conflict of conflicts) accepted.delete(conflict.opsRoomId);
   const conflictIds = new Set(conflicts.map(c => c.opsRoomId));
   const candidateIds = new Set(candidates.map(c => c.opsRoomId).filter(Boolean));
   for(const r of rooms.values()) {
