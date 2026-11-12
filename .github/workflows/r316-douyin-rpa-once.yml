@@ -1,0 +1,36 @@
+name: R3.16 Douyin public visitor observation - TWO ACCOUNTS ONE PASS
+on:
+  push:
+    branches: [experiment/r316-jd-douyin-current-chain-20261112]
+    paths: ['.github/workflows/r316-douyin-rpa-once.yml', 'config/r316-douyin-rpa-targets.json']
+permissions:
+  contents: read
+jobs:
+  rpa:
+    if: contains(github.event.head_commit.message, '[r316-rpa-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Playwright Chromium (pinned)
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: One pass, at most two accounts, stop on any access limit
+        env: { R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS }
+        run: node probes/r316/douyin-rpa-two-once.mjs
+      - name: Encrypt private observation detail, emit ciphertext only
+        if: always()
+        run: |
+          set -euo pipefail
+          test -d out/r316-private || exit 0
+          tar czf p.tgz -C out r316-private && rm -rf out/r316-private
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in p.tgz -out p.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey probes/keys/analysis-pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out k.enc
+          rm -f p.tgz k.bin
+          echo "KEY_BEGIN"; base64 -w 0 k.enc; echo; echo "KEY_END"
+          echo "DATA_BEGIN"; base64 -w 0 p.enc; echo; echo "DATA_END"
