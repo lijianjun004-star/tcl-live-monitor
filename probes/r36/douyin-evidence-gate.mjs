@@ -10,7 +10,7 @@ const iso = x => typeof x === 'string' && Number.isFinite(Date.parse(x)) && /^\d
 const evidenceRef = x => typeof x === 'string' && /^[A-Za-z][A-Za-z0-9_-]{5,79}$/.test(x) ? x : null;
 const ALLOWED_KINDS = new Set(['OPS_ROOM_SHOP', 'PUBLIC_ACCOUNT_ROOM', 'CROSS_SYSTEM_BRIDGE']);
 const asArray = a => Array.isArray(a) ? a : [];
-const unknown = (r, reason) => ({opsRoomId:r.roomId,opsShopId:r.shopId??null, publicSecUid:null,publicLiveRoomId:null,accountKey:null,status:'UNVERIFIED',reason,scoringEligible:false,verifiedAt:null});
+const unknown = (r, reason) => ({opsRoomId:r.roomId,opsShopId:r.shopId??null, publicSecUid:null,publicLiveRoomId:null,accountKey:null,status:'UNVERIFIED',bridgeStatus:'NO_EVIDENCE',reason,scoringEligible:false,verifiedAt:null});
 
 export function reconcileDouyinFourLayers({opsRooms, accounts, evidenceRows=[]}) {
   if (!Array.isArray(opsRooms) || !Array.isArray(accounts) || !Array.isArray(evidenceRows)) throw Error('INVALID_EVIDENCE_INPUT');
@@ -38,7 +38,7 @@ export function reconcileDouyinFourLayers({opsRooms, accounts, evidenceRows=[]})
     const observed=iso(row?.observedAt);
     const base={opsRoomId:rid,opsShopId:sid,publicSecUid:uid,publicLiveRoomId:pubRoom,
       accountKey:typeof row?.accountKey==='string'?row.accountKey:null,
-      status:'UNVERIFIED',reason:'INSUFFICIENT_EVIDENCE',verifiedAt:null,scoringEligible:false};
+      status:'UNVERIFIED',bridgeStatus:'CANDIDATE',reason:'INSUFFICIENT_EVIDENCE',verifiedAt:null,scoringEligible:false};
     const ops=rooms.get(rid);
     if(!ops||ops.shopId!==sid||!acc||acc.secUid!==uid||!pubRoom||!observed){
       candidates.push({...base,reason:'IDENTITY_FIELDS_MISMATCH'});continue;
@@ -53,7 +53,7 @@ export function reconcileDouyinFourLayers({opsRooms, accounts, evidenceRows=[]})
     if(!valid||types.size!==3||row?.reviewApproved!==true){
       candidates.push({...base,reason:'THREE_INDEPENDENT_PROOFS_AND_APPROVAL_REQUIRED'});continue;
     }
-    candidates.push({...base,status:'VERIFIED',reason:'EXPLICIT_CROSS_SYSTEM_EVIDENCE',verifiedAt:observed,scoringEligible:acc.scoringEligible});
+    candidates.push({...base,status:'VERIFIED',bridgeStatus:'VERIFIED',reason:'EXPLICIT_CROSS_SYSTEM_EVIDENCE',verifiedAt:observed,scoringEligible:acc.scoringEligible});
     for(const [map,key] of [[roomCounts,rid],[accountCounts,row.accountKey],[secCounts,uid],[liveCounts,pubRoom]])map.set(key,(map.get(key)||0)+1);
   }
   const accepted = new Map(), conflicts=[];
@@ -65,9 +65,14 @@ export function reconcileDouyinFourLayers({opsRooms, accounts, evidenceRows=[]})
     accepted.set(c.opsRoomId,c);
   }
   const links=[];
+  const conflictIds = new Set(conflicts.map(c => c.opsRoomId));
+  const candidateIds = new Set(candidates.map(c => c.opsRoomId).filter(Boolean));
   for(const r of rooms.values()) {
     const x=accepted.get(r.roomId);
-    links.push(x || unknown(r,candidates.some(c=>c.opsRoomId===r.roomId)?'CANDIDATE_REQUIRES_REVIEW_OR_HAS_CONFLICT':'NO_EXPLICIT_BRIDGE'));
+    const fallback=unknown(r, conflictIds.has(r.roomId) ? 'MULTIPLE_COMPETING_EXPLICIT_LINKS' :
+      candidateIds.has(r.roomId) ? 'CANDIDATE_REQUIRES_REVIEW' : 'NO_EXPLICIT_BRIDGE');
+    links.push(x || {...fallback, bridgeStatus:conflictIds.has(r.roomId)?'CONFLICT':
+      candidateIds.has(r.roomId)?'CANDIDATE':'NO_EVIDENCE'});
   }
   links.sort((a,b)=>a.opsRoomId.localeCompare(b.opsRoomId,'en',{numeric:true}));
   return {schemaVersion:36,platform:'douyin',links,verifiedLinks:accepted.size,

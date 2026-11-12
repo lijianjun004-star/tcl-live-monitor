@@ -21,7 +21,7 @@ function safeOps(r, lastSeenAt, observedNow){
   opsSourceReason:observedNow && typeof r.reason==='string'?r.reason.slice(0,72):'NOT_OBSERVED_IN_CURRENT_SOURCE',
   seenInCurrentResponse:observedNow,lastSeenAt,
   publicAccountKey:null,publicLiveRoomId:null,identityVerified:false,publicEvidenceReason:null,
-  verifiedPublicLive:false, publicEvidenceState:'UNVERIFIED',
+  verifiedPublicLive:false, publicEvidenceState:'UNVERIFIED', bridgeStatus:'NO_EVIDENCE',
   formalOpeningRatePercent:null,formalFullDurationRatePercent:null,exactStartAt:null,exactEndAt:null};
 }
 
@@ -81,8 +81,10 @@ export function reconcileDouyinCatalog({sourceReport,previousInventory=null,appr
   opsRooms:rooms.filter(x=>x.shopId&&x.seenInCurrentResponse&&!conflicts.some(c=>c.roomId===x.roomId)),
   accounts:[...approved.values()],evidenceRows:bridgeEvidence,
  });
+ const classifications=new Map(bridge.links.map(x=>[x.opsRoomId,x.bridgeStatus || (x.status==='VERIFIED'?'VERIFIED':'NO_EVIDENCE')]));
  const links=new Map(bridge.links.filter(x=>x.status==='VERIFIED').map(x=>[x.opsRoomId,x]));
  for(const r of rooms){
+  r.bridgeStatus=classifications.get(r.roomId) || 'NO_EVIDENCE';
   const link=links.get(r.roomId);if(!link)continue;
   r.publicAccountKey=link.accountKey;r.publicLiveRoomId=link.publicLiveRoomId;
   r.identityVerified=true;r.publicEvidenceState='UNKNOWN';
@@ -110,7 +112,8 @@ export function reconcileDouyinCatalog({sourceReport,previousInventory=null,appr
   publiclyDoubleVerifiedLiveSamples:publicRpaSamples.filter(RPA_GOOD).length,
   freshDoubleVerifiedLiveSamples:publicRpaSamples.filter(o=>RPA_GOOD(o)&&fresh(o)).length,
   evaluatedAt:new Date(evalAt).toISOString(),maxLiveSampleAgeMs,
-  verifiedFourLayerBridges:bridge.verifiedLinks,verifiedPublicLiveOpsRooms:rooms.filter(r=>r.verifiedPublicLive).length,
+  verifiedFourLayerBridges:bridge.verifiedLinks,bridgeStates:Object.fromEntries(['VERIFIED','CANDIDATE','CONFLICT','NO_EVIDENCE'].map(k=>[k,rooms.filter(r=>r.bridgeStatus===k).length])),
+  verifiedPublicLiveOpsRooms:rooms.filter(r=>r.verifiedPublicLive).length,
   opsSourceLiveCandidates:rooms.filter(r=>r.opsSourceState==='LIVE').length,
   sourceShopJoined:rooms.filter(r=>r.seenInCurrentResponse&&r.opsShopIdentityMatched).length,
   sourceCaptureBound:rooms.filter(r=>r.seenInCurrentResponse&&r.captureBound).length,
