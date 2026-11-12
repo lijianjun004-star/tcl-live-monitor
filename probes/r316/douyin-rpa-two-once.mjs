@@ -7,7 +7,8 @@
  */
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { decideDouyin, liveAnchorRoomIds, CHALLENGE_RE } from '../lib/douyin.mjs';
+import { decideDouyin, profileIdentityEvidence, liveAnchorRoomIds, CHALLENGE_RE } from '../lib/douyin.mjs';
+import { classifyDouyinResource, CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
 
 if (process.env.R316_RPA_ONCE !== 'TWO_ACCOUNTS_ONE_PASS') throw Error('R316_RPA_GUARD_REQUIRED');
 const { targets, maxPerRun } = JSON.parse(await fs.readFile('config/r316-douyin-rpa-targets.json', 'utf8'));
@@ -20,15 +21,17 @@ const selected = targets.map(t => {
 });
 const STOP_PATH = /(login|passport|verify|captcha|sso)/i;
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN' });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN', serviceWorkers: 'block' });
 // Explicit network boundary: only public GET/HEAD on douyin.com; block subresource streams,
 // non-GET verbs, third-party hosts, WebSockets and media. Never send account credentials.
 const blocked = new Map(); // report only hostname/type counts to diagnose missing first-party assets
 await ctx.route('**/*', route => {
   const req = route.request(), u = new URL(req.url());
-  const hostAllowed = u.protocol === 'https:' && (u.hostname === 'douyin.com' || u.hostname.endsWith('.douyin.com'));
-  if (hostAllowed && ['GET', 'HEAD'].includes(req.method()) && !['media', 'eventsource'].includes(req.resourceType())) return route.continue();
-  const k = !hostAllowed ? 'host:' + u.hostname : 'type:' + req.resourceType() + '/' + req.method();
+  // On this branch no CDN permission is granted: policy defaults to false.
+  const verdict = classifyDouyinResource({ url:req.url(), method:req.method(), resourceType:req.resourceType() });
+  if (verdict.allow) return route.continue();
+  const named = [...CORE_STATIC_CANDIDATES, ...UNKNOWN_STATIC_CANDIDATES].includes(u.hostname);
+  const k = (named ? u.hostname : 'OTHER') + ':' + req.resourceType() + ':' + verdict.reason;
   blocked.set(k, (blocked.get(k) || 0) + 1);
   return route.abort('blockedbyclient');
 });
@@ -73,19 +76,24 @@ try {
     if (stopped) { pub.push({ key: t.key, at, state: 'NOT_RUN', reason: 'STOPPED_AFTER_ACCESS_LIMIT' }); continue; }
     const profile = await snap(t.profileUrl);
     let reasonStop = stopped?.reason || stopOf(profile), room = null;
-    if (!reasonStop && !stopped && !profile.navigationError) {
+    // A live badge on an UNVERIFIED profile is not permission to visit its room.
+    const profileEvidence = profileIdentityEvidence(profile, { ...t, profileUrl: t.profileUrl });
+    if (!reasonStop && !stopped && profileEvidence.verified) {
       const ids = liveAnchorRoomIds(profile);
       if (ids[0]) { await new Promise(r => setTimeout(r, 5000)); room = await snap(`https://live.douyin.com/${ids[0]}`); reasonStop = stopped?.reason || stopOf(room); }
     }
     let d;
     if (reasonStop) { stopped ||= { key: t.key, reason: reasonStop }; d = { state: 'UNKNOWN', reason: 'STOPPED_' + reasonStop }; }
     else if (profile.navigationError) d = { state: 'UNKNOWN', reason: 'PROFILE_NAVIGATION_ERROR' };
-    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined }); // registry room id, if previously verified
+    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined, profileUrl: t.profileUrl }); // registry room id, if previously verified
     if (d.state === 'OFFLINE') d = { ...d, state: 'UNKNOWN', reason: 'OFFLINE_RULE_NOT_VALIDATED' };
     const ids = profile.navigationError ? [] : liveAnchorRoomIds(profile);
     pub.push({ key: t.key, at, profileHttp: profile.httpStatus ?? null, roomHttp: room?.httpStatus ?? null,
       profileIdentityVerified: d.profileIdentityVerified === true, liveBadgeSeen: ids.length > 0,
-      roomIdentityVerified: d.roomPageIdentityVerified === true, state: d.state, reason: d.reason, stop: reasonStop });
+      roomIdentityVerified: d.roomPageIdentityVerified === true,
+      profileSignals: { titleExact: profileEvidence.titleExact, idExact: profileEvidence.idExact,
+        finalUrlExact: profileEvidence.finalUrlExact, multipleVisibleIds: profileEvidence.multipleVisibleIds },
+      state: d.state, reason: d.reason, stop: reasonStop });
     priv.push({ key: t.key, at, profileTitle: profile.title, finalHost: profile.finalHost, finalPath: profile.finalPath,
       douyinIdsInPage: profile.douyinIdsInPage, liveRoomIds: ids, roomTitle: room?.title ?? null, roomMeta: room?.metaDescription?.slice(0, 120) ?? null,
       observedRoomId: d.observedRoomId ?? null, decision: d });
