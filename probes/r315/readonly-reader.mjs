@@ -40,6 +40,15 @@ export function createReadonlyReader({ origin, approvedOrigins, approvedPlatform
   // Snapshot the approved scope; changing a caller-owned array cannot widen it.
   const platforms = new Set(approvedPlatforms), dates = new Set(approvedDates);
   const roomsByPlatform = new Map(approvedPlatforms.map(p => [p, new Set(approvedRoomIdsByPlatform[p])]));
+  // Schema validators are part of the authorization boundary. Snapshot once:
+  // no request may occur before its validator is present and reviewed.
+  if (!validators || typeof validators !== 'object' || Array.isArray(validators) ||
+      ![Object.prototype,null].includes(Object.getPrototypeOf(validators))) fail('READER_INVALID_CONFIG');
+  const validatorSnapshot = new Map();
+  for (const [route, validate] of Object.entries(validators)) {
+    if (!PATHS.has(route) || typeof validate !== 'function') fail('READER_INVALID_CONFIG');
+    validatorSnapshot.set(route, validate);
+  }
   let blocked = false, active = false;
   return {
     async read(path, query = {}) {
@@ -54,6 +63,11 @@ export function createReadonlyReader({ origin, approvedOrigins, approvedPlatform
           typeof query.platform !== 'string' || !platforms.has(query.platform) ||
           typeof query.live_room_id !== 'string' || !/^\d{1,16}$/.test(query.live_room_id) ||
           !roomsByPlatform.get(query.platform).has(query.live_room_id))) fail('READER_INVALID_QUERY');
+      if (!validatorSnapshot.has(path)) {
+        blocked = true;
+        fail('READER_SCHEMA_UNVERIFIED');
+      }
+      const validate = validatorSnapshot.get(path);
       const url = new URL(path, base);
       for (const key of QUERY_KEYS) if (Object.hasOwn(query, key)) url.searchParams.set(key, query[key]);
       active = true;
@@ -87,11 +101,13 @@ export function createReadonlyReader({ origin, approvedOrigins, approvedPlatform
         catch { fail('READER_INVALID_UTF8'); }
         if (CHALLENGE.test(text)) fail('READER_ACCESS_BLOCKED');
         if (!response.ok) fail('READER_HTTP_ERROR');
-        if (!/^application\/(?:[a-z0-9.+-]+\+)?json(?:\s*;|\s*$)/i.test(response.headers.get('content-type') || '')) fail('READER_CONTENT_TYPE');
+        const contentType = response.headers.get('content-type') || '';
+        // Decoder is strict UTF-8; non-UTF-8 declared charsets cannot be
+        // interpreted as UTF-8 and then considered source evidence.
+        if (!/^application\/(?:[a-z0-9.+-]+\+)?json(?:\s*;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(contentType))
+          fail('READER_CONTENT_TYPE');
         let data;
         try { data = JSON.parse(text); } catch { fail('READER_INVALID_JSON'); }
-        const validate = validators?.[path];
-        if (typeof validate !== 'function') fail('READER_SCHEMA_UNVERIFIED');
         let verified = false;
         try { verified = validate(data) === true; } catch { /* Reject validator failure. */ }
         if (!verified) fail('READER_SCHEMA_REJECTED');
