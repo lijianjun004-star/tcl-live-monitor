@@ -28,7 +28,7 @@ export function guardedFetch(fetchFn, guard) {
   if (typeof fetchFn !== 'function' || !guard || typeof guard !== 'object') throw Error('GUARD_INPUT_INVALID');
   guard.requests = 0;
   return async (url, init = {}) => {
-    if (guard.stopped) throw Error(guard.stopped.reason || 'ACCESS_STOPPED');
+    if (guard.stopped) throw Error('ACCESS_STOPPED_' + (guard.stopped.reason || 'SOURCE_ERROR'));
     if (String(init.method || 'GET').toUpperCase() !== 'GET') throw Error('ONLY_GET_ALLOWED');
     const path = new URL(String(url)).pathname;
     const stop = (reason, status = null) => {
