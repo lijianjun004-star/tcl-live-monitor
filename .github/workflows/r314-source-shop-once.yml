@@ -1,0 +1,33 @@
+name: R3.14 approved TCL OPS room/shop names - ENCRYPTED ONE SHOT
+on:
+  push:
+    branches:
+      - experiment/r314-source-shop-candidate-review-20261112
+    paths:
+      - '.github/workflows/r314-source-shop-once.yml'
+permissions:
+  contents: read
+jobs:
+  encrypted-two-source-gets:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r314-source-shop-candidate-review-20261112' && contains(github.event.head_commit.message, '[r314-source-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: One original source rooms+shops GET (no authentication, no bypass)
+        env:
+          R314_CANDIDATE_ONESHOT: R314_BOUNDED_TWO_GET_READS
+        run: node probes/r314/source-shop-evidence-once.mjs
+      - name: Upload encrypted room/shop names ONLY (ephemeral private key held elsewhere)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r314-private-shop-name-encrypted
+          path: out/r314/ops-shop-name-private-encrypted.json
+          if-no-files-found: warn
+          retention-days: 2
