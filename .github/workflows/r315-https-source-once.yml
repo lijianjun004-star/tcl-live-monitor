@@ -1,0 +1,22 @@
+name: R3.15 FIX02 HTTPS source contract - one-shot only
+on:
+  push:
+    branches: [experiment/r315-fix01-gemini-p1p3-20261112]
+    paths: ['.github/workflows/r315-https-source-once.yml']
+permissions:
+  contents: read
+jobs:
+  tls-source-readonly:
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[https-source-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: One approved existing GET endpoint over strict HTTPS (no secret and no body log)
+        env:
+          R315_TLS_PROBE: R315_APPROVED_TLS_HANDSHAKE_ONCE
+        run: node probes/r315/https-source-gate-once.mjs
