@@ -155,7 +155,18 @@ export async function executePlan({ plan, runKey, origin, fetchFn = globalThis.f
     // run-level source failure, not as a per-room absence or an OFFLINE signal.
     const reader = async (...args) => {
       if (guard.stopped) throw Error(guard.stopped.reason || 'SOURCE_STOPPED');
-      try { return await rawReader(...args); }
+      try {
+        const doc=await rawReader(...args);
+        const [path]=args;
+        const arrays={
+          [SOURCE_ROUTES.rooms]: [doc?.rooms, doc?.data?.rooms, doc?.data?.list, doc?.list],
+          [SOURCE_ROUTES.shops]: [doc, doc?.shops, doc?.data?.shops, doc?.data?.list, doc?.list],
+          [SOURCE_ROUTES.heartbeats]: [doc?.rooms, doc?.data?.rooms, doc?.data?.list, doc?.list],
+          [SOURCE_ROUTES.daily]: [doc?.days, doc?.data?.days],
+        };
+        if (!arrays[path]?.some(Array.isArray)) throw Error('SOURCE_SCHEMA_MISMATCH');
+        return doc;
+      }
       catch (e) {
         guard.stopped ||= { reason: 'SOURCE_READ_OR_SCHEMA_ERROR' };
         if (!controller.signal.aborted) controller.abort();
