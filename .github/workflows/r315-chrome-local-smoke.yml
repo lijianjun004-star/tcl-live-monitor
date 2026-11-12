@@ -1,0 +1,28 @@
+name: R3.15 FIX03 local Chrome RPA boundary - NO INTERNET
+on:
+  pull_request:
+    paths:
+      - 'probes/r315/rpa-playwright-context.mjs'
+      - 'probes/r315/rpa-network-policy.mjs'
+      - 'tests/r315/rpa-playwright-chrome.test.mjs'
+      - '.github/workflows/r315-chrome-local-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  local-chrome:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install Playwright library only (system Chrome)
+        run: |
+          npm init -y >/dev/null
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.64.1
+      - name: Browser interface and localhost-free fixture network deny test
+        env:
+          R315_CHROME_SMOKE: '1'
+        run: node --test tests/r315/rpa-playwright-chrome.test.mjs
