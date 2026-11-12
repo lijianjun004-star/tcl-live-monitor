@@ -11,6 +11,7 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
 import net from 'node:net';
+import { beijingDate } from '../lib/tcl-jd-all.mjs';
 
 if (process.env.R316_EXTRACT_ONCE !== 'GET_ONLY_ALLOWLIST_ONCE') throw Error('R316_ONESHOT_GUARD_REQUIRED');
 const ORIGIN = 'http://101.96.215.251';
@@ -27,7 +28,7 @@ const CHALLENGE = /(captcha|验证码|人机验证|安全验证|访问受限|请
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const startedAt = new Date();
-const bj = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+const bj = d => beijingDate(d); // ICU-independent YYYY-MM-DD (R0.6 regression guard)
 const today = bj(startedAt), from = bj(new Date(startedAt.getTime() - 7 * 86400000)), yday = bj(new Date(startedAt.getTime() - 86400000));
 
 const pub = { schemaVersion: 316, mode: 'PUBLIC_METADATA_ONLY', origin: ORIGIN, startedAt: startedAt.toISOString(), beijingDate: today,
@@ -54,13 +55,15 @@ async function get(path, params = null, label = path) {
   try {
     const r = await fetch(u, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT), headers: { accept: 'application/json, text/html;q=0.8, */*;q=0.5' } });
     meta.httpStatus = r.status; meta.contentType = (r.headers.get('content-type') || '').slice(0, 60);
+    if (r.status !== 200) { meta.error = 'HTTP_' + r.status; pub.stopped = { label, reason: meta.error }; }
     const buf = Buffer.from(await r.arrayBuffer());
     meta.responseBytes = buf.length; meta.sha256 = sha(buf);
     if (buf.length > MAX) { meta.error = 'RESPONSE_TOO_LARGE'; pub.stopped = { label, reason: 'RESPONSE_TOO_LARGE' }; }
     text = buf.subarray(0, MAX).toString('utf8');
-    if ([301, 302, 303, 307, 308].includes(r.status)) { meta.error = 'REDIRECT_NOT_FOLLOWED'; pub.stopped = { label, reason: 'REDIRECT' }; }
+    if (r.status >= 300 && r.status < 400) { meta.error = 'REDIRECT_NOT_FOLLOWED'; pub.stopped = { label, reason: 'REDIRECT' }; }
     if ([401, 403, 429].includes(r.status)) { meta.authRequired = r.status === 401; pub.stopped = { label, reason: 'HTTP_' + r.status }; }
-    if (/html/.test(meta.contentType) && path !== '/' && CHALLENGE.test(text)) { meta.challengeObserved = true; pub.stopped = { label, reason: 'CHALLENGE' }; }
+    if (/html/.test(meta.contentType) && CHALLENGE.test(text)) { meta.challengeObserved = true; pub.stopped = { label, reason: 'CHALLENGE' }; }
+    if (path.startsWith('/api/') && !/json/i.test(meta.contentType)) { meta.error = 'NON_JSON_API_RESPONSE'; pub.stopped = { label, reason: meta.error }; }
     if (/json/.test(meta.contentType)) {
       try {
         const j = JSON.parse(text);
@@ -70,9 +73,9 @@ async function get(path, params = null, label = path) {
         const pk = ['total', 'total_count', 'has_more', 'hasMore', 'next', 'next_cursor', 'offset', 'page', 'page_size', 'limit', 'pagination'];
         meta.paginationObserved = !Array.isArray(j) && pk.some(k => k in j) ? pk.filter(k => k in j) : false;
         if (!Array.isArray(j) && 'total' in j) meta.totalField = Number.isInteger(j.total) ? j.total : 'NON_INTEGER';
-      } catch { meta.error = 'JSON_PARSE_FAILED'; }
+      } catch { meta.error = 'JSON_PARSE_FAILED'; pub.stopped = { label, reason: meta.error }; }
     }
-  } catch (e) { meta.error = String(e?.name === 'TimeoutError' ? 'TIMEOUT' : (e?.cause?.code || e?.name || 'FETCH_ERROR')).slice(0, 40); }
+  } catch (e) { meta.error = String(e?.name === 'TimeoutError' ? 'TIMEOUT' : (e?.cause?.code || e?.name || 'FETCH_ERROR')).slice(0, 40); pub.stopped = { label, reason: meta.error }; }
   pub.requests.push(meta);
   priv.bodies[label + (params ? ' ' + new URLSearchParams(params) : '')] = { status: meta.httpStatus, contentType: meta.contentType, checkedAt: meta.checkedAt, body: text };
   await sleep(GAP);
