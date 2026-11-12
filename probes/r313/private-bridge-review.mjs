@@ -85,6 +85,8 @@ export function auditPrivateBridgeCSV({csvText,sourceDetail,registry}={}){
  const seenRooms=new Set(),seenShops=new Set(),seenPublic=new Set(),review=[];
  let instructionRows=0,conflictCount=0,verifiedInternalPairs=0,categoryDrift=0;
  for(const cells of entries){
+  // Existing private sheet ends with one plain two-column editorial note.
+  if(cells[0]?.trim()==='填写规则'&&cells.length<=2){instructionRows++;continue}
   if(cells.length!==REVIEW_HEADERS.length)throw Error('CSV_ROW_WIDTH_INVALID');
   const row=Object.fromEntries(REVIEW_HEADERS.map((h,i)=>[h,String(cells[i]??'').trim()]));
   const rid=row['内部房间ID'],sid=row['内部店铺ID'];
@@ -120,7 +122,7 @@ export function auditPrivateBridgeCSV({csvText,sourceDetail,registry}={}){
   const reviewReady=Boolean(internalVerified&&matched&&hasRoom&&secondProof&&thirdProof&&reviewer&&reviewedAt&&
     issues.filter(i=>i!=='HISTORICAL_CATEGORY_DIFF_REQUIRES_ORIGINAL_EVIDENCE').length===0);
   if(bridgeMark==='VERIFIED'&&!reviewReady)issues.push('UNSUPPORTED_BRIDGE_VERIFIED_MARKER');
-  if(issues.length)conflictCount++;
+  if(issues.length||!reviewReady)conflictCount++;
   // NEVER emit reviewApproved=true from a CSV marker, a name similarity, or a proof filename.
   review.push({
    privateOpsRoomId:rid,privateOpsShopId:sid,
