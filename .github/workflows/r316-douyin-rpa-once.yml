@@ -1,7 +1,7 @@
 name: R3.16 Douyin public visitor observation - TWO ACCOUNTS ONE PASS
 on:
   push:
-    branches: [experiment/r316-jd-douyin-current-chain-20261112]
+    branches: [experiment/r317-douyin-approved-rpa-once-20261112]
     paths: ['.github/workflows/r316-douyin-rpa-once.yml', 'config/r316-douyin-rpa-targets.json']
 permissions:
   contents: read
@@ -15,6 +15,8 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
+      - name: Approved-target and offline security regression (no live source requests)
+        run: node --test tests/r316/r317-safety-gates.test.mjs tests/r316/r317-claude-followup.test.mjs
       - name: Install Playwright Chromium (pinned)
         run: |
           npm install --no-save playwright@1.56.1
@@ -34,3 +36,12 @@ jobs:
           rm -f p.tgz k.bin
           echo "KEY_BEGIN"; base64 -w 0 k.enc; echo; echo "KEY_END"
           echo "DATA_BEGIN"; base64 -w 0 p.enc; echo; echo "DATA_END"
+
+      - name: Retain public sanitized one-shot receipt for 7 days
+        if: always() && hashFiles('out/r316-rpa-public.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: r317-douyin-approved-rpa-public-${{ github.run_id }}
+          path: out/r316-rpa-public.json
+          retention-days: 7
+          if-no-files-found: error
