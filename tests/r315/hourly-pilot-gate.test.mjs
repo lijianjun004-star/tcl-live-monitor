@@ -25,16 +25,29 @@ test('JD backup only within approved window after stale independently verified p
  assert.equal(x.decision,'ALLOW_CANDIDATE');
  assert.equal(x.slot,'backup');
 });
-test('untrusted prior, malformed hash and wrong platform never allow backup',()=>{
- for(const bad of [
+test('untrusted, malformed, stale or future prior state triggers a safe fresh baseline',()=>{
+ const bad=[
   {receipt:receipt(),trustedPrior:false},
   {receipt:{...receipt(),artifactSha256:'short'},trustedPrior:true},
   {receipt:{...receipt(),platform:'douyin'},trustedPrior:true},
   {receipt:{...receipt(),observedAt:'invalid'},trustedPrior:true},
- ]){
- const x=gate({...base,now:at(47),priorReceipt:bad.receipt,trustedPrior:bad.trustedPrior});
- assert.equal(x.decision,'BLOCK');
+  {receipt:{...receipt(),observedAt:'2026-11-11T00:00:00.000Z'},trustedPrior:true},
+  {receipt:{...receipt(),observedAt:'2026-11-12T10:00:00.000Z'},trustedPrior:true}
+ ];
+ for(const x of bad){
+  const out=gate({...base,now:at(47),priorReceipt:x.receipt,trustedPrior:x.trustedPrior});
+  assert.equal(out.decision,'ALLOW_CANDIDATE');
+  assert.equal(out.priorMode,'FRESH_BASELINE_IGNORE_UNTRUSTED_PRIOR');
+  assert.equal(out.preservePriorArtifact,true);
  }
+});
+test('a verified recent prior suppresses duplicate backup; a verified stale prior can be restored',()=>{
+ const recent=gate({...base,now:at(47),priorReceipt:receipt(at(0)),trustedPrior:true});
+ assert.equal(recent.decision,'SKIP');
+ const stale=gate({...base,now:at(47),priorReceipt:receipt('2026-11-12T08:47:00.000Z'),trustedPrior:true});
+ assert.equal(stale.decision,'ALLOW_CANDIDATE');
+ assert.equal(stale.priorMode,'RESTORE_VERIFIED_PRIOR');
+ assert.equal(stale.slot,'backup');
 });
 test('Douyin primary :23 and backup :53 are distinct from JD',()=>{
  const dy={...base,platform:'douyin',now:at(23)};
