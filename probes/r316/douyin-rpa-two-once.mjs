@@ -98,4 +98,11 @@ try {
   for (const p of pub) console.log('R316_RPA ' + JSON.stringify(p));
   console.log('R316_RPA_STOPPED ' + JSON.stringify(stopped));
   console.log('R316_RPA_BLOCKED ' + JSON.stringify(Object.fromEntries([...blocked].sort((a,b)=>b[1]-a[1]).slice(0,40))));
+  // Retain a SANITIZED, account-key-only summary as a short-lived GitHub artifact.
+  await fs.writeFile('out/r316-rpa-public.json', JSON.stringify({
+    schemaVersion:317, mode:'APPROVED_TWO_ACCOUNTS_ONE_PASS', at:new Date().toISOString(),
+    checked:pub, stopped, blockedHostsAndTypes:Object.fromEntries([...blocked].sort((a,b)=>b[1]-a[1]).slice(0,40)),
+    formalOpeningRatePercent:null, formalFullDurationRatePercent:null,
+  },null,2)+'\n');
+  if(stopped) process.exitCode = 3;
 }
