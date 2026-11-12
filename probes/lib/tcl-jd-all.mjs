@@ -11,14 +11,11 @@ const JD = new Set(['jd', 'jingdong', '京东']);
 export const EXPECTED_SOURCE_CATEGORY = Object.freeze({ '1': '冰箱', '14': '洗衣机', '15': '空调', '16': '全品类', '17': '电视', '18': '显示器' });
 export const isJD = platform => JD.has(String(platform ?? '').trim().toLowerCase());
 const safeId = value => { const s = String(value ?? '').trim(); return /^[0-9]{1,16}$/.test(s) ? s : null; };
+// China Standard Time is fixed UTC+8 in the monitoring period; no ICU tzdb required.
 export const beijingDate = instant => {
-  const d = instant instanceof Date ? instant : new Date(instant);
-  if (!Number.isFinite(d.getTime())) return 'INVALID_DATE';
-  const parts = {};
-  for (const p of new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d)) {
-    if (p.type === 'year' || p.type === 'month' || p.type === 'day') parts[p.type] = p.value;
-  }
-  return `${parts.year}-${parts.month}-${parts.day}`;
+  const t = (instant instanceof Date ? instant : new Date(instant)).getTime();
+  return Number.isFinite(t) ? new Date(t + 8 * 3600000).toISOString().slice(0, 10) : 'INVALID_DATE';
+
 };
 
 export function extractArray(json, paths, label) {
