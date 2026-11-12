@@ -1,0 +1,26 @@
+name: R3.12.1 external audit privacy and regression - OFFLINE ONLY
+on:
+  pull_request:
+    paths:
+      - 'probes/r311/douyin-catalog-reconcile.mjs'
+      - 'tests/r311-douyin-catalog-reconcile.test.mjs'
+      - 'tests/r3121-public-receipt-privacy.test.mjs'
+      - 'docs/r3121/**'
+      - '.github/workflows/r3121-privacy-audit-offline.yml'
+permissions:
+  contents: read
+jobs:
+  privacy-and-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Public receipt no-ID-order or sensitive payload checks
+        run: node --test tests/r311-douyin-catalog-reconcile.test.mjs tests/r312-claude-audit.test.mjs tests/r3121-public-receipt-privacy.test.mjs
+      - name: Full offline regression without network or production access
+        run: node --test tests/*.test.mjs
