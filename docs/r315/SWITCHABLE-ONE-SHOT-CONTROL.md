@@ -4,7 +4,7 @@
 
 ## 用户可操作的四种动作
 
-通过 GitHub Actions 的 `R3.15 Switchable hourly one-shot monitor` 工作流：
+通过 GitHub Actions 的 `R3.15 Switchable hourly one-shot monitor` 工作流（这是第一版操作入口，不是手机网页控制面板）：
 
 | 动作 | 作用 | 是否立即采集 | 是否修改自动开关 |
 |---|---|---:|---:|
@@ -22,6 +22,7 @@
 - 因而每日首个计划槽为 06:35，末个计划槽为 01:35。
 - GitHub schedule 是尽力触发，不能承诺准点 SLA；每次以真实 Actions 运行时间为准。
 - 不设置常驻进程、浏览器轮询、直播连接或视频拉流。
+- 自动开关 OFF 时，GitHub 仍会每小时启动一个极轻量的开关检查任务；它只读取独立控制文件并退出，不请求京东/抖音业务数据源，也不产生直播状态结果。若要求 OFF 时连 GitHub 检查任务都不启动，需要可动态暂停的外部调度器，GitHub 固定 cron 本身无法做到。
 - 单个 workflow job 最大 5 分钟；完成一次决策/采集后退出。
 
 ## 持久化开关
