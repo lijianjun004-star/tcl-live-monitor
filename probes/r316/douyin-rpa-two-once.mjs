@@ -35,6 +35,15 @@ await ctx.route('**/*', route => {
 // Browser route() cannot intercept WebSockets; explicitly terminate WebSocket sessions.
 await ctx.routeWebSocket(/.*/, ws => { blocked.set('websocket', (blocked.get('websocket') || 0) + 1); ws.close(); });
 let stopped = null; const pub = [], priv = [];
+let activeKey = null;
+// A 401/403/429 from ANY page response is an access-limit signal, not just
+// from the top-level navigation. Close pages to prevent further browsing.
+ctx.on('response', response => {
+  const code = response.status();
+  if (![401, 403, 429].includes(code) || stopped) return;
+  stopped = { key: activeKey || 'PRE_NAVIGATION', reason: 'HTTP_' + code + '_RESOURCE' };
+  for (const page of ctx.pages()) void page.close().catch(() => {});
+});
 async function snap(url) {
   const page = await ctx.newPage();
   try {
@@ -53,22 +62,23 @@ async function snap(url) {
   } catch (e) { return { httpStatus: null, navigationError: String(e?.name || 'NAV_ERROR').slice(0, 40) }; }
   finally { await page.close().catch(() => {}); }
 }
-const stopOf = s => !s ? null : [401, 403, 429].includes(s.httpStatus) ? 'HTTP_' + s.httpStatus
+const stopOf = s => !s ? null : s.navigationError ? 'NAVIGATION_ERROR' : [401, 403, 429].includes(s.httpStatus) ? 'HTTP_' + s.httpStatus
   : (s.finalHost && !/(^|\.)douyin\.com$/.test(s.finalHost)) ? 'REDIRECT_OFF_DOUYIN'
   : STOP_PATH.test(s.finalPath || '') ? 'LOGIN_OR_VERIFY_REDIRECT'
   : CHALLENGE_RE.test(`${s.title} ${s.bodyExcerpt}`) ? 'CHALLENGE_TEXT' : null;
 try {
   for (const t of selected) {
+    activeKey = t.key;
     const at = new Date().toISOString();
     if (stopped) { pub.push({ key: t.key, at, state: 'NOT_RUN', reason: 'STOPPED_AFTER_ACCESS_LIMIT' }); continue; }
     const profile = await snap(t.profileUrl);
-    let reasonStop = stopOf(profile), room = null;
-    if (!reasonStop && !profile.navigationError) {
+    let reasonStop = stopped?.reason || stopOf(profile), room = null;
+    if (!reasonStop && !stopped && !profile.navigationError) {
       const ids = liveAnchorRoomIds(profile);
-      if (ids[0]) { await new Promise(r => setTimeout(r, 5000)); room = await snap(`https://live.douyin.com/${ids[0]}`); reasonStop = stopOf(room); }
+      if (ids[0]) { await new Promise(r => setTimeout(r, 5000)); room = await snap(`https://live.douyin.com/${ids[0]}`); reasonStop = stopped?.reason || stopOf(room); }
     }
     let d;
-    if (reasonStop) { stopped = { key: t.key, reason: reasonStop }; d = { state: 'UNKNOWN', reason: 'STOPPED_' + reasonStop }; }
+    if (reasonStop) { stopped ||= { key: t.key, reason: reasonStop }; d = { state: 'UNKNOWN', reason: 'STOPPED_' + reasonStop }; }
     else if (profile.navigationError) d = { state: 'UNKNOWN', reason: 'PROFILE_NAVIGATION_ERROR' };
     else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined }); // registry room id, if previously verified
     if (d.state === 'OFFLINE') d = { ...d, state: 'UNKNOWN', reason: 'OFFLINE_RULE_NOT_VALIDATED' };
