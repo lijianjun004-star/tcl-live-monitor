@@ -21,7 +21,7 @@ export const RUNNER_READY = Object.freeze({ jd: true, douyin: true });
 export const JD_REVIEWED_BASELINE = Object.freeze(['1', '14', '15', '16', '17', '18']);
 export const DOUYIN_HISTORICAL_MINIMUM = 10;
 const ACCESS_LIMIT = new Set([401, 403, 429]);
-const safeId = v => /^[1-9]\\d{0,15}$/.test(String(v ?? '')) ? String(v) : null;
+const safeId = v => /^[1-9]\d{0,15}$/.test(String(v ?? '')) ? String(v) : null;
 
 /** All remote access errors latch a global stop; no further source requests are permitted. */
 export function guardedFetch(fetchFn, guard) {
