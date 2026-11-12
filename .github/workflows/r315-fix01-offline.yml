@@ -5,6 +5,7 @@ on:
       - 'probes/r315/**'
       - 'tests/r315/**'
       - 'docs/r315/**'
+      - '.github/workflows/r315-switchable-one-shot.yml'
       - '.github/workflows/r315-fix01-offline.yml'
 permissions:
   contents: read
@@ -21,6 +22,8 @@ jobs:
           node-version: '22'
       - name: P1 to P3 dedicated tests, entirely offline
         run: node --test tests/r315/*.test.mjs
+      - name: Workflow YAML syntax
+        run: ruby -e "require 'yaml'; YAML.parse_file('.github/workflows/r315-switchable-one-shot.yml'); puts 'R315_WORKFLOW_YAML_SYNTAX_OK'"
       - name: Prior project baseline regression
         run: node --test tests/*.test.mjs
       - name: No production schedulers, passwords or private artifacts added
