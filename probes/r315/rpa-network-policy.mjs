@@ -22,7 +22,24 @@ export function isAllowedRpaDocumentRequest(request, allowedDocumentUrls) {
       allowedDocumentUrls.length > 4 || new Set(allowedDocumentUrls).size !== allowedDocumentUrls.length ||
       !allowedDocumentUrls.every(allowedDocumentUrl)) return false;
   if (!request || typeof request !== 'object' || Array.isArray(request)) return false;
-  if (!['GET', 'HEAD'].includes(request.method) || request.resourceType !== 'document' ||
-      request.isNavigationRequest !== true || !allowedDocumentUrl(request.url)) return false;
-  return allowedDocumentUrls.includes(request.url);
+  // Playwright Request uses methods, not fields. A pre-normalized request must
+  // explicitly attest to main-frame and redirect-chain checks as well.
+  let u,method,type,navigation,mainFrame,redirected;
+  try {
+    if (typeof request.url === 'function') {
+      u=request.url();method=request.method();type=request.resourceType();
+      navigation=request.isNavigationRequest();
+      mainFrame=request.frame()?.parentFrame?.() === null;
+      redirected=request.redirectedFrom() !== null;
+    } else {
+      u=request.url;method=request.method;type=request.resourceType;
+      navigation=request.isNavigationRequest;
+      mainFrame=request.isMainFrame === true;
+      redirected=request.redirectedFrom !== null;
+    }
+  } catch { return false; }
+  if (mainFrame !== true || redirected !== false) return false;
+  if (!['GET', 'HEAD'].includes(method) || type !== 'document' ||
+      navigation !== true || !allowedDocumentUrl(u)) return false;
+  return allowedDocumentUrls.includes(u);
 }

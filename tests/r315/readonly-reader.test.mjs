@@ -139,7 +139,7 @@ test('all network and response failures permanently trip the breaker', async () 
     let calls=0; const r=reader(async()=>{calls++;return response();},{validators});
     await assert.rejects(r.read('/api/shops'));
     await assert.rejects(r.read('/api/shops'),e=>code(e)==='READER_ACCESS_BLOCKED');
-    assert.equal(calls,1);
+    assert.equal(calls,Object.keys(validators).length === 0 ? 0 : 1);
   }
 });
 
@@ -162,4 +162,29 @@ test('factory rejects missing, mismatched, malformed or duplicate room approvals
     assert.throws(()=>createReadonlyReader({origin,...approved,fetchImpl,approvedRoomIdsByPlatform:scope}),e=>code(e)==='READER_INVALID_CONFIG');
   // An explicit empty set enables safe catalog reads while forbidding all daily IDs.
   assert.doesNotThrow(()=>createReadonlyReader({origin,...approved,fetchImpl,approvedRoomIdsByPlatform:{jd:[]}}));
+});
+
+
+test('P1 absent schema validator fails BEFORE first network request and trips breaker',async()=>{
+ let calls=0;
+ const r=reader(async()=>{calls++;return response()}, {validators:{}});
+ await assert.rejects(r.read('/api/shops'),e=>code(e)==='READER_SCHEMA_UNVERIFIED');
+ assert.equal(calls,0);
+ await assert.rejects(r.read('/api/shops'),e=>code(e)==='READER_ACCESS_BLOCKED');
+ assert.equal(calls,0);
+});
+test('P1 validator functions are snapshotted and cannot be mutated after construction',async()=>{
+ const mutable={'/api/shops':()=>false};
+ const r=reader(async()=>response(),{validators:mutable});
+ mutable['/api/shops']=()=>true;
+ await assert.rejects(r.read('/api/shops'),e=>code(e)==='READER_SCHEMA_REJECTED');
+});
+test('P3 JSON declared GBK, non-UTF8 or unexpected parameters reject despite valid payload',async()=>{
+ for(const type of ['application/json; charset=gbk','application/json; charset=shift_jis',
+    'application/json; charset=latin1','application/json; something=else']){
+  const r=reader(async()=>response('{}',{type}));
+  await assert.rejects(r.read('/api/shops'),e=>code(e)==='READER_CONTENT_TYPE',type);
+ }
+ const ok=reader(async()=>response('{}',{type:'application/json; charset=utf-8'}));
+ await ok.read('/api/shops');
 });

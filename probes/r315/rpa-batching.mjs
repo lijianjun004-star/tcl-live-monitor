@@ -20,13 +20,13 @@ export function planApprovedDouyinBatches(config) {
       throw new Error('RPA_BATCH_INVALID_TARGET');
     }
     seen.add(target.key);
-    if (target.scopeApproved === true) {
-      if (!validProfile(target.profileUrl) || approvedProfiles.has(target.profileUrl)) {
-        throw new Error('RPA_BATCH_INVALID_OR_DUPLICATE_PROFILE');
-      }
-      approvedProfiles.add(target.profileUrl);
-      approved.push(target.key);
+    // A revoked/unapproved alias sharing a profile URL with an approved target
+    // is an identity conflict, not a valid batch. Check the entire registry.
+    if (!validProfile(target.profileUrl) || approvedProfiles.has(target.profileUrl)) {
+      throw new Error('RPA_BATCH_INVALID_OR_DUPLICATE_PROFILE');
     }
+    approvedProfiles.add(target.profileUrl);
+    if (target.scopeApproved === true) approved.push(target.key);
   }
   if (!approved.length) throw new Error('RPA_BATCH_NO_APPROVED_TARGETS');
   approved.sort();

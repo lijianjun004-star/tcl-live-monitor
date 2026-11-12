@@ -6,7 +6,9 @@ const now = '2026-11-12T10:00:00.000Z';
 const expected = { platform:'jd', repository:'owner/repo', defaultBranch:'main', workflow:'pilot.yml', schemaVersion:1 };
 const candidate = () => ({
   run:{ repository:'owner/repo', headRepository:'owner/repo', branch:'main', workflow:'pilot.yml', status:'completed', conclusion:'success', id:'1', attempt:'1', createdAt:'2026-11-12T09:00:00.000Z', completedAt:'2026-11-12T09:05:00.000Z' },
-  artifact:{ runId:'1', runAttempt:'1', uploadComplete:true, expired:false, createdAt:'2026-11-12T09:04:00.000Z', expiresAt:'2026-11-13T09:04:00.000Z' },
+  artifact:{ id:'10',name:'r315-jd-state',sha256:'a'.repeat(64),
+    runId:'1', runAttempt:'1', uploadComplete:true, expired:false,
+    createdAt:'2026-11-12T09:04:00.000Z', expiresAt:'2026-11-13T09:04:00.000Z' },
   state:{ runId:'1', runAttempt:'1', platform:'jd', schemaVersion:1, observedAt:'2026-11-12T09:03:00.000Z', sourceReadOk:true, schemaValidated:true, identityValidated:true, redactedStateReady:true },
 });
 const choose = (candidates, options = {}) => selectRestorableState({ candidates, completeListing:true, expected, now, maxAgeMs:3600000, trustedMaxAgeMs:3600000, ...options });
@@ -61,8 +63,27 @@ test('returns only a non-authoritative minimal reference, never the source item'
   const result = choose([c]);
   assert.deepEqual(result, {
     status:'CANDIDATE',
-    reference:{runId:'1', runAttempt:'1', observedAt:'2026-11-12T09:03:00.000Z'},
+    reference:{runId:'1', runAttempt:'1', artifactId:'10',artifactName:'r315-jd-state',
+      artifactSha256:'a'.repeat(64),observedAt:'2026-11-12T09:03:00.000Z'},
     independentVerificationRequired:true, usableForRestoreOrSkip:false,
   });
   assert.equal(JSON.stringify(result).includes('private'), false);
 });
+
+test('rejects missing, malformed, duplicate and equivocal artifact identity before selection',()=>{
+ const invalid=[
+  c=>delete c.artifact.id,
+  c=>c.artifact.id='artifact-1',
+  c=>c.artifact.sha256='abc',
+  c=>c.artifact.sha256='z'.repeat(64),
+  c=>c.artifact.name='r315-douyin-state'
+ ];
+ for(const mutate of invalid){const c=candidate();mutate(c);assert.equal(choose([c]).status,'UNKNOWN')}
+ assert.equal(choose([null,candidate()]).status,'UNKNOWN');
+ assert.equal(choose([candidate(),'corrupt']).status,'UNKNOWN');
+ const a=candidate(),b=candidate();
+ b.state.observedAt='2026-11-12T09:04:00.000Z';
+ b.artifact.id='11';b.artifact.sha256='b'.repeat(64);
+ assert.equal(choose([a,b]).status,'UNKNOWN');
+});
+

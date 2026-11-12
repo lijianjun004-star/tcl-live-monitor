@@ -14,6 +14,7 @@ const time = value => {
   return Number.isFinite(parsed) && new Date(parsed).toISOString() === value ? parsed : NaN;
 };
 const validId = value => typeof value === 'string' && ID.test(value);
+const validSha256 = value => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
 
 export function selectRestorableState({ candidates, completeListing, expected, now, maxAgeMs, trustedMaxAgeMs } = {}) {
   const nowMs = time(now);
@@ -26,16 +27,25 @@ export function selectRestorableState({ candidates, completeListing, expected, n
       !Number.isFinite(nowMs) || !Number.isSafeInteger(trustedMaxAgeMs) || trustedMaxAgeMs < 1 ||
       trustedMaxAgeMs > ABSOLUTE_MAX_AGE_MS || !Number.isSafeInteger(maxAgeMs) || maxAgeMs < 1 ||
       maxAgeMs > trustedMaxAgeMs) return { status: 'UNKNOWN' };
-  const valid = [];
+  const valid = [], runAttempts = new Set();
   for (const item of candidates) {
-    if (!item || typeof item !== 'object' || !item.run || !item.artifact || !item.state) continue;
+    if (!item || typeof item !== 'object' || Array.isArray(item) ||
+        !item.run || !item.artifact || !item.state ||
+        typeof item.run !== 'object' || typeof item.artifact !== 'object' ||
+        typeof item.state !== 'object') return { status: 'UNKNOWN' };
     const { run, artifact, state } = item;
+    if (!validId(run.id) || !validId(run.attempt)) return {status:'UNKNOWN'};
+    const identity = run.id + ':' + run.attempt;
+    if (runAttempts.has(identity)) return {status:'UNKNOWN'};
+    runAttempts.add(identity);
     const created = time(run.createdAt), ended = time(run.completedAt), uploaded = time(artifact.createdAt);
     const expires = time(artifact.expiresAt), observed = time(state.observedAt);
     if (run.repository !== expected.repository || run.headRepository !== expected.repository ||
         run.branch !== expected.defaultBranch || run.workflow !== expected.workflow ||
         run.status !== 'completed' || run.conclusion !== 'success' ||
-        !validId(run.id) || !validId(run.attempt) || artifact.runId !== run.id || artifact.runAttempt !== run.attempt ||
+        !validId(artifact.id) || artifact.name !== `r315-${expected.platform}-state` ||
+        !validSha256(artifact.sha256) ||
+        artifact.runId !== run.id || artifact.runAttempt !== run.attempt ||
         state.runId !== run.id || state.runAttempt !== run.attempt || state.platform !== expected.platform ||
         state.schemaVersion !== expected.schemaVersion || artifact.uploadComplete !== true || artifact.expired !== false ||
         state.sourceReadOk !== true || state.schemaValidated !== true || state.identityValidated !== true ||
@@ -52,7 +62,10 @@ export function selectRestorableState({ candidates, completeListing, expected, n
   const { run, state } = valid[0].item;
   return {
     status: 'CANDIDATE',
-    reference: { runId: run.id, runAttempt: run.attempt, observedAt: state.observedAt },
+    reference: { runId: run.id, runAttempt: run.attempt, artifactId: valid[0].item.artifact.id,
+      artifactName: valid[0].item.artifact.name,
+      artifactSha256: valid[0].item.artifact.sha256.toLowerCase(),
+      observedAt: state.observedAt },
     independentVerificationRequired: true,
     usableForRestoreOrSkip: false,
   };
