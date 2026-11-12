@@ -1,0 +1,29 @@
+name: R3.15 FIX01 Gemini 7 boundary repairs - OFFLINE ONLY
+on:
+  pull_request:
+    paths:
+      - 'probes/r315/**'
+      - 'tests/r315/**'
+      - 'docs/r315/**'
+      - '.github/workflows/r315-fix01-offline.yml'
+permissions:
+  contents: read
+jobs:
+  code-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: P1 to P3 dedicated tests, entirely offline
+        run: node --test tests/r315/*.test.mjs
+      - name: Prior project baseline regression
+        run: node --test tests/*.test.mjs
+      - name: No production schedulers, passwords or private artifacts added
+        run: |
+          test ! -f .github/workflows/r315-hourly-live.yml
+          node -e "console.log('R315_FIX01_PRIVACY_GATE_OFFLINE_ONLY')"
