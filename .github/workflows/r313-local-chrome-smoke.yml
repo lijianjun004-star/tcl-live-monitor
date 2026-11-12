@@ -1,0 +1,29 @@
+name: R3.13 private four-layer mobile workbench browser smoke - LOCAL ONLY
+on:
+  pull_request:
+    paths:
+      - 'tools/r313/**'
+      - 'probes/r313/private-bridge-review.mjs'
+      - 'tests/r313-browser-smoke.test.mjs'
+      - '.github/workflows/r313-local-chrome-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  local-mobile-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline parser checks
+        run: node --test tests/r313-private-bridge-review.test.mjs tests/r313-workbench-static.test.mjs
+      - name: Install Playwright JS only (use runner preinstalled Chrome)
+        run: |
+          npm init -y >/dev/null
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.64.1
+      - name: Simulate phone web UI using synthetic private records on localhost only
+        run: node --test tests/r313-browser-smoke.test.mjs
