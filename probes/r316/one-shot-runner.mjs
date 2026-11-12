@@ -93,6 +93,20 @@ export function sessionEvidence(prev, cur, at) {
   return out;
 }
 
+/**
+ * Stable delivery key for one requested scan. A retry of the same manual dispatch
+ * must not create a second source read. The scheduled key uses the Beijing slot.
+ * A delay of 60+ minutes is not provably attributable from wall clock alone.
+ */
+export const SCHEDULE_SLOT_MINUTE = 35;
+export function deliveryKey({ eventName, runId, now }) {
+  const t = now instanceof Date ? now.getTime() : Number(now);
+  if (!Number.isFinite(t)) throw Error('DELIVERY_CLOCK_INVALID');
+  if (eventName === 'schedule') return 'sched.' + new Date(t - SCHEDULE_SLOT_MINUTE * 60000 + 8 * 3600000).toISOString().slice(0,13).replace('T','.');
+  if (!/^[0-9]{1,20}$/.test(String(runId ?? ''))) throw Error('DELIVERY_RUN_ID_INVALID');
+  return 'run.' + runId;
+}
+
 // A single bounded deadline (not a poll): cleared as soon as the read settles.
 const deadline = (p, ms, stop) => { let t; return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => { stop(); rej(Error('RUN_DEADLINE_EXCEEDED')); }, ms); })]).finally(() => clearTimeout(t)); };
 

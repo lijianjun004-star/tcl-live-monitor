@@ -23,13 +23,17 @@ const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] }
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN' });
 // Explicit network boundary: only public GET/HEAD on douyin.com; block subresource streams,
 // non-GET verbs, third-party hosts, WebSockets and media. Never send account credentials.
+const blocked = new Map(); // report only hostname/type counts to diagnose missing first-party assets
 await ctx.route('**/*', route => {
   const req = route.request(), u = new URL(req.url());
   const hostAllowed = u.protocol === 'https:' && (u.hostname === 'douyin.com' || u.hostname.endsWith('.douyin.com'));
-  if (!hostAllowed || !['GET', 'HEAD'].includes(req.method()) || ['media', 'websocket', 'eventsource'].includes(req.resourceType()))
-    return route.abort('blockedbyclient');
-  return route.continue();
+  if (hostAllowed && ['GET', 'HEAD'].includes(req.method()) && !['media', 'eventsource'].includes(req.resourceType())) return route.continue();
+  const k = !hostAllowed ? 'host:' + u.hostname : 'type:' + req.resourceType() + '/' + req.method();
+  blocked.set(k, (blocked.get(k) || 0) + 1);
+  return route.abort('blockedbyclient');
 });
+// Browser route() cannot intercept WebSockets; explicitly terminate WebSocket sessions.
+await ctx.routeWebSocket(/.*/, ws => { blocked.set('websocket', (blocked.get('websocket') || 0) + 1); ws.close(); });
 let stopped = null; const pub = [], priv = [];
 async function snap(url) {
   const page = await ctx.newPage();
@@ -66,7 +70,7 @@ try {
     let d;
     if (reasonStop) { stopped = { key: t.key, reason: reasonStop }; d = { state: 'UNKNOWN', reason: 'STOPPED_' + reasonStop }; }
     else if (profile.navigationError) d = { state: 'UNKNOWN', reason: 'PROFILE_NAVIGATION_ERROR' };
-    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: undefined }); // known room id: avoids the LIVE_ROOM_ID_CHANGED mislabel seen in run 43233269273
+    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined }); // registry room id, if previously verified
     if (d.state === 'OFFLINE') d = { ...d, state: 'UNKNOWN', reason: 'OFFLINE_RULE_NOT_VALIDATED' };
     const ids = profile.navigationError ? [] : liveAnchorRoomIds(profile);
     pub.push({ key: t.key, at, profileHttp: profile.httpStatus ?? null, roomHttp: room?.httpStatus ?? null,
@@ -83,4 +87,5 @@ try {
   await fs.writeFile('out/r316-private/rpa.json', JSON.stringify({ at: new Date().toISOString(), priv }));
   for (const p of pub) console.log('R316_RPA ' + JSON.stringify(p));
   console.log('R316_RPA_STOPPED ' + JSON.stringify(stopped));
+  console.log('R316_RPA_BLOCKED ' + JSON.stringify(Object.fromEntries([...blocked].sort((a,b)=>b[1]-a[1]).slice(0,40))));
 }
