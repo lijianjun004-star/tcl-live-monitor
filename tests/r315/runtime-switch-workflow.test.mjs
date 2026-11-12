@@ -7,7 +7,7 @@ const cli = fs.readFileSync('probes/r315/runtime-switch-cli.mjs','utf8');
 
 test('switch workflow exposes exactly one hourly schedule opportunity',()=>{
  const matches=[...workflow.matchAll(/cron:\s*'([^']+)'/g)].map(x=>x[1]);
- assert.deepEqual(matches,['35 * * * *']);
+ assert.deepEqual(matches,['35 0-17,22-23 * * *']);
  assert.match(workflow,/workflow_dispatch:/);
  assert.match(workflow,/timeout-minutes:\s*5/);
 });
