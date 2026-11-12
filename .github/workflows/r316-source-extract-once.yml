@@ -1,0 +1,37 @@
+name: R3.16 TCL OPS read-only extraction - ONE SHOT
+# Push-triggered on this experiment branch only, and only when the commit message carries the token.
+# GET allowlist, no credentials. Public log = metadata; bodies leave the runner only RSA-encrypted.
+on:
+  push:
+    branches: [experiment/r316-jd-douyin-current-chain-20261112]
+    paths: ['.github/workflows/r316-source-extract-once.yml']
+permissions:
+  contents: read
+jobs:
+  extract:
+    if: contains(github.event.head_commit.message, '[r316-extract-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: One bounded GET pass (metadata only in log)
+        env: { R316_EXTRACT_ONCE: GET_ONLY_ALLOWLIST_ONCE }
+        run: node probes/r316/source-extract-once.mjs
+      - name: Encrypt private bodies with repository public key, emit ciphertext only
+        if: always()
+        run: |
+          set -euo pipefail
+          test -d out/r316-private || { echo "no private output"; exit 0; }
+          tar czf p.tgz -C out r316-private && rm -rf out/r316-private
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in p.tgz -out p.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey probes/keys/analysis-pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out k.enc
+          rm -f p.tgz k.bin
+          echo "KEY_BEGIN"; base64 -w 0 k.enc; echo; echo "KEY_END"
+          echo "DATA_BEGIN"; base64 -w 0 p.enc; echo; echo "DATA_END"
+      - name: Public metadata summary
+        if: always()
+        run: test -f out/r316-public-summary.json && cat out/r316-public-summary.json >> "$GITHUB_STEP_SUMMARY" || true
