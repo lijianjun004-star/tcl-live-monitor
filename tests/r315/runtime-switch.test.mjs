@@ -33,7 +33,7 @@ test('scheduled mode triggers only enabled platforms and ends after one bounded 
   const state = ready();
   state.autoEnabled.jd = true;
   const result = planRuntimeAction({
-    eventName: 'schedule', state, now: at('2026-11-12T23:35:00.000Z')
+    eventName: 'schedule', state, now: at('2026-11-12T23:35:00.000Z'), runnerReady: true
   });
   assert.equal(result.decision, 'ONE_SHOT');
   assert.equal(result.trigger, 'SCHEDULED_ONE_SHOT');
@@ -46,7 +46,7 @@ test('manual run once works with auto mode OFF and does not mutate switch state'
   const state = ready();
   const result = planRuntimeAction({
     eventName: 'workflow_dispatch', action: 'run_once', platform: 'douyin',
-    state, now: at('2026-11-12T03:20:00.000Z'), actor: 'operator', runId: 99
+    state, now: at('2026-11-12T03:20:00.000Z'), actor: 'operator', runId: 99, runnerReady: true
   });
   assert.equal(result.decision, 'ONE_SHOT');
   assert.equal(result.trigger, 'MANUAL_ONE_SHOT');
