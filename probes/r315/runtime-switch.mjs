@@ -53,7 +53,7 @@ function selectedPlatforms(platform) {
  */
 export function planRuntimeAction({
   eventName, action = null, platform = 'both', state, now,
-  actor = 'unknown', runId = null
+  actor = 'unknown', runId = null, runnerReady = false
 } = {}) {
   const checked = validateRuntimeSwitch(state);
   if (!checked.valid) return { decision: 'BLOCK', reason: checked.reason, sourceAccess: false };
@@ -66,7 +66,7 @@ export function planRuntimeAction({
     const targets = PLATFORMS.filter(p => state.autoEnabled[p]);
     if (!targets.length)
       return { decision: 'SKIP', reason: 'ALL_AUTOMATIC_SWITCHES_OFF', targets: [], sourceAccess: false };
-    return buildOneShot(targets, state, 'SCHEDULED_ONE_SHOT');
+    return buildOneShot(targets, state, 'SCHEDULED_ONE_SHOT', runnerReady);
   }
 
   if (eventName !== 'workflow_dispatch' || !ACTIONS.includes(action))
@@ -98,14 +98,14 @@ export function planRuntimeAction({
     };
   }
 
-  return buildOneShot(targets, state, 'MANUAL_ONE_SHOT');
+  return buildOneShot(targets, state, 'MANUAL_ONE_SHOT', runnerReady);
 }
 
-function buildOneShot(targets, state, trigger) {
+function buildOneShot(targets, state, trigger, runnerReady) {
   const results = targets.map(platform => {
     if (state.sourceAccessApproved[platform] !== true)
       return { platform, status: 'BLOCKED', reason: 'SOURCE_ACCESS_NOT_APPROVED', sourceAccess: false };
-    if (state.adapterReady[platform] !== true)
+    if (state.adapterReady[platform] !== true || runnerReady !== true)
       return { platform, status: 'BLOCKED', reason: 'SOURCE_ADAPTER_NOT_READY', sourceAccess: false };
     return { platform, status: 'READY_FOR_SINGLE_SCAN', reason: 'ONE_SHOT_ONLY', sourceAccess: true };
   });
