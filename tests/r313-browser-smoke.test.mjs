@@ -4,7 +4,7 @@ import {createServer} from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
+// Browser dependency is loaded ONLY in the dedicated smoke workflow.
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const head=['序号','内部房间ID','内部店铺ID','来源类目(11-11)','来源类目(11-07原值)',
@@ -24,7 +24,8 @@ const sec='MS4wLjABAAAAHLgxNf9c59NqJuH9tm5U2L3E1B6bNBehePdI5rKsZ2s';
 const registry={douyin:[{key:'fake-approved',scopeApproved:true,
  profileUrl:'https://www.douyin.com/user/'+sec}]};
 function fixture(name,content,mimeType){return{name,mimeType,buffer:Buffer.from(content)}}
-test('real headless Chrome opens mobile workbench, audits 10 synthetic rows, never sends remote request',async()=>{
+test('real headless Chrome opens mobile workbench, audits 10 synthetic rows, never sends remote request',{skip:process.env.R313_BROWSER_SMOKE!=='1'},async()=>{
+ const {chromium}=await import('playwright');
  const server=createServer(async(req,res)=>{
   try{
    const url=new URL(req.url,'http://localhost');
