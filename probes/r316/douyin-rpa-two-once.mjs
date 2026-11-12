@@ -11,10 +11,25 @@ import { decideDouyin, liveAnchorRoomIds, CHALLENGE_RE } from '../lib/douyin.mjs
 
 if (process.env.R316_RPA_ONCE !== 'TWO_ACCOUNTS_ONE_PASS') throw Error('R316_RPA_GUARD_REQUIRED');
 const { targets, maxPerRun } = JSON.parse(await fs.readFile('config/r316-douyin-rpa-targets.json', 'utf8'));
-if (!Array.isArray(targets) || targets.length > 2 || maxPerRun !== 2) throw Error('RPA_TARGET_LIMIT');
+const registry = JSON.parse(await fs.readFile('config/probe-targets.json', 'utf8'));
+if (!Array.isArray(targets) || targets.length > 2 || maxPerRun !== 2 || new Set(targets.map(t => t.key)).size !== targets.length) throw Error('RPA_TARGET_LIMIT');
+const approved = new Map((registry.douyin || []).filter(x => x.scopeApproved === true).map(x => [x.key, x]));
+const selected = targets.map(t => {
+  if (!t || typeof t.key !== 'string' || Object.keys(t).some(k => k !== 'key') || !approved.has(t.key)) throw Error('RPA_TARGET_NOT_SCOPE_APPROVED');
+  return approved.get(t.key);
+});
 const STOP_PATH = /(login|passport|verify|captcha|sso)/i;
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN' });
+// Explicit network boundary: only public GET/HEAD on douyin.com; block subresource streams,
+// non-GET verbs, third-party hosts, WebSockets and media. Never send account credentials.
+await ctx.route('**/*', route => {
+  const req = route.request(), u = new URL(req.url());
+  const hostAllowed = u.protocol === 'https:' && (u.hostname === 'douyin.com' || u.hostname.endsWith('.douyin.com'));
+  if (!hostAllowed || !['GET', 'HEAD'].includes(req.method()) || ['media', 'websocket', 'eventsource'].includes(req.resourceType()))
+    return route.abort('blockedbyclient');
+  return route.continue();
+});
 let stopped = null; const pub = [], priv = [];
 async function snap(url) {
   const page = await ctx.newPage();
@@ -39,7 +54,7 @@ const stopOf = s => !s ? null : [401, 403, 429].includes(s.httpStatus) ? 'HTTP_'
   : STOP_PATH.test(s.finalPath || '') ? 'LOGIN_OR_VERIFY_REDIRECT'
   : CHALLENGE_RE.test(`${s.title} ${s.bodyExcerpt}`) ? 'CHALLENGE_TEXT' : null;
 try {
-  for (const t of targets) {
+  for (const t of selected) {
     const at = new Date().toISOString();
     if (stopped) { pub.push({ key: t.key, at, state: 'NOT_RUN', reason: 'STOPPED_AFTER_ACCESS_LIMIT' }); continue; }
     const profile = await snap(t.profileUrl);
@@ -51,7 +66,7 @@ try {
     let d;
     if (reasonStop) { stopped = { key: t.key, reason: reasonStop }; d = { state: 'UNKNOWN', reason: 'STOPPED_' + reasonStop }; }
     else if (profile.navigationError) d = { state: 'UNKNOWN', reason: 'PROFILE_NAVIGATION_ERROR' };
-    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined }); // known room id: avoids the LIVE_ROOM_ID_CHANGED mislabel seen in run 43233269273
+    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: undefined }); // known room id: avoids the LIVE_ROOM_ID_CHANGED mislabel seen in run 43233269273
     if (d.state === 'OFFLINE') d = { ...d, state: 'UNKNOWN', reason: 'OFFLINE_RULE_NOT_VALIDATED' };
     const ids = profile.navigationError ? [] : liveAnchorRoomIds(profile);
     pub.push({ key: t.key, at, profileHttp: profile.httpStatus ?? null, roomHttp: room?.httpStatus ?? null,
