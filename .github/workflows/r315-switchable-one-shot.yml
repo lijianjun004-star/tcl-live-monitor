@@ -1,0 +1,128 @@
+name: R3.15 Switchable hourly one-shot monitor
+
+on:
+  # One scheduled opportunity per hour during the Beijing operating window.
+  # UTC 00–17 and 22–23 maps to Beijing 08:35–01:35 and 06:35–07:35.
+  schedule:
+    - cron: '35 0-17,22-23 * * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'status / run once / turn automatic mode on or off'
+        required: true
+        type: choice
+        default: status
+        options:
+          - status
+          - run_once
+          - enable_auto
+          - disable_auto
+      platform:
+        description: 'Which platform(s) this action applies to'
+        required: true
+        type: choice
+        default: both
+        options:
+          - jd
+          - douyin
+          - both
+
+permissions:
+  contents: write
+  actions: read
+
+# Serialize switch writes and scan decisions. No workflow starts a resident process.
+concurrency:
+  group: r315-switchable-one-shot-control
+  cancel-in-progress: false
+
+jobs:
+  one-shot-control:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      INPUT_ACTION: ${{ github.event.inputs.action || '' }}
+      INPUT_PLATFORM: ${{ github.event.inputs.platform || 'both' }}
+    steps:
+      - name: Checkout the exact workflow revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Read persistent runtime switch from isolated control branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/contents/config/r315-runtime-switch.json?ref=r315-runtime-control" > r315-control-response.json
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const response = JSON.parse(fs.readFileSync('r315-control-response.json','utf8'));
+          if (response.encoding !== 'base64' || typeof response.content !== 'string' ||
+              typeof response.sha !== 'string' || !/^[a-f0-9]{40}$/i.test(response.sha)) {
+            throw new Error('R315_CONTROL_BRANCH_RESPONSE_INVALID');
+          }
+          const bytes = Buffer.from(response.content.replace(/\s/g,''),'base64');
+          const text = new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+          JSON.parse(text);
+          fs.writeFileSync('r315-runtime-switch.json',text,{mode:0o600});
+          fs.writeFileSync('r315-control-sha.txt',response.sha);
+          JS
+
+      - name: Plan exactly one bounded action (no polling and no source request)
+        id: plan
+        run: node probes/r315/runtime-switch-cli.mjs r315-runtime-switch.json r315-run-summary.json
+
+      - name: Persist enable/disable switch change only
+        if: github.event_name == 'workflow_dispatch' && (github.event.inputs.action == 'enable_auto' || github.event.inputs.action == 'disable_auto')
+        shell: bash
+        run: |
+          set -euo pipefail
+          encoded=$(base64 -w0 r315-runtime-switch.json)
+          sha=$(cat r315-control-sha.txt)
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/config/r315-runtime-switch.json" \
+            -f message="chore(r315): ${INPUT_ACTION} ${INPUT_PLATFORM} automatic switch" \
+            -f content="$encoded" \
+            -f branch="r315-runtime-control" \
+            -f sha="$sha" > r315-control-update.json
+          echo "Runtime switch persisted to r315-runtime-control. No scan was started by this control action."
+
+      - name: Publish one-shot decision summary
+        if: always() && hashFiles('r315-run-summary.json') != ''
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const s=JSON.parse(fs.readFileSync('r315-run-summary.json','utf8'));
+          const lines=[
+            '## R3.15 switchable one-shot monitor',
+            '- Event: ' + s.eventName,
+            '- Action: ' + (s.action || 'scheduled'),
+            '- Decision: ' + s.decision,
+            '- Process: ' + s.processModel,
+            '- Continuous polling: false',
+            '- Source access: ' + String(s.sourceAccess),
+            '- Targets: ' + JSON.stringify(s.targets),
+            '- Automatic switches: ' + JSON.stringify(s.switchState.autoEnabled),
+            '- Source approval: ' + JSON.stringify(s.switchState.sourceAccessApproved),
+            '- Adapter readiness: ' + JSON.stringify(s.switchState.adapterReady),
+            '',
+            'A blocked/unknown source is never converted to OFFLINE. This control workflow does not fetch a live source until a reviewed adapter is explicitly wired.'
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
+          JS
+
+      - name: Retain sanitized control/run receipt for 7 days
+        if: always() && hashFiles('r315-run-summary.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: r315-one-shot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: r315-run-summary.json
+          retention-days: 7
+          if-no-files-found: error
