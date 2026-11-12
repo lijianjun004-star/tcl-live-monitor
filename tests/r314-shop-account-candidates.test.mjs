@@ -94,3 +94,20 @@ test('bounded top candidates and registry sizes reject abusive inputs',()=>{
  assert.throws(()=>buildPrivateShopAccountCandidates({sourceRows:source(),approvedAccounts:registry,maxCandidatesPerShop:0}),/CANDIDATE_LIMIT_INVALID/);
  assert.throws(()=>buildPrivateShopAccountCandidates({sourceRows:source(),approvedAccounts:registry,maxCandidatesPerShop:99}),/CANDIDATE_LIMIT_INVALID/);
 });
+
+test('TCL official source must never be paired to FFALCON RayNeo by generic TV words',()=>{
+ for(const candidate of ['FFALCON雷鸟电视旗舰店','RayNeo雷鸟创新']){
+  const r=candidateSignals('TCL电视机官方旗舰店',candidate,'电视');
+  assert.equal(r.suggested,false);assert.equal(r.reason,'BRAND_FAMILY_MISMATCH_NAME_ONLY');
+ }
+});
+test('source official flagship never suggests unrelated TCL dealer by generic brand or shop name',()=>{
+ const r=candidateSignals('TCL家电官方旗舰店','TCL富世新家电智选店','家电');
+ assert.equal(r.suggested,false);
+ assert.equal(r.reason,'SOURCE_OFFICIAL_VS_PUBLIC_DEALER');
+});
+test('brand family exclusion preserves genuine same-brand name-only leads',()=>{
+ const r=candidateSignals('TCL官方旗舰店电视直播间','TCL旗舰店电视直播间','电视');
+ assert.equal(r.suggested,true);
+ assert.notEqual(r.reason,'BRAND_FAMILY_MISMATCH_NAME_ONLY');
+});
