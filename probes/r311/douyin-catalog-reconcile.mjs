@@ -9,6 +9,7 @@ const safeId = value => /^(?:[1-9]\d{0,15})$/.test(String(value??'')) ? String(v
 const isOps = platform => ['dy','douyin','抖音'].includes(String(platform??'').trim().toLowerCase());
 const safeISO = x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(x) && Number.isFinite(Date.parse(x)) ? new Date(x).toISOString() : null;
 const RPA_GOOD = o => o?.state==='LIVE' && o?.profileIdentityVerified===true && o?.roomIdentityVerified===true;
+const MAX_LIVE_SAMPLE_AGE_MS = 10*60000, CLOCK_SKEW_MS = 60000;
 
 function safeOps(r, lastSeenAt, observedNow){
  const id=safeId(r?.roomId),shopId=safeId(r?.shopId);
@@ -19,7 +20,7 @@ function safeOps(r, lastSeenAt, observedNow){
   opsSourceState:observedNow && r.status==='LIVE'?'LIVE':'UNKNOWN',
   opsSourceReason:observedNow && typeof r.reason==='string'?r.reason.slice(0,72):'NOT_OBSERVED_IN_CURRENT_SOURCE',
   seenInCurrentResponse:observedNow,lastSeenAt,
-  publicAccountKey:null,publicLiveRoomId:null,identityVerified:false,
+  publicAccountKey:null,publicLiveRoomId:null,identityVerified:false,publicEvidenceReason:null,
   verifiedPublicLive:false, publicEvidenceState:'UNVERIFIED',
   formalOpeningRatePercent:null,formalFullDurationRatePercent:null,exactStartAt:null,exactEndAt:null};
 }
@@ -30,7 +31,7 @@ function safeOps(r, lastSeenAt, observedNow){
  * warning threshold only, and cannot recreate missing room identifiers.
  */
 export function reconcileDouyinCatalog({sourceReport,previousInventory=null,approvedAccounts=[],rpaObservations=[],bridgeEvidence=[],
-  historicalConfirmedMinimum=10}={}){
+  historicalConfirmedMinimum=10,now=null,maxLiveSampleAgeMs=MAX_LIVE_SAMPLE_AGE_MS}={}){
  if(!Array.isArray(approvedAccounts)||!Array.isArray(rpaObservations)||!Array.isArray(bridgeEvidence))throw Error('INVALID_RECONCILE_INPUT');
  if(!Number.isSafeInteger(historicalConfirmedMinimum)||historicalConfirmedMinimum<0||historicalConfirmedMinimum>1000)throw Error('BASELINE_INVALID');
  if(approvedAccounts.length>1000||rpaObservations.length>10000||bridgeEvidence.length>1000)throw Error('RECONCILE_LIMIT_EXCEEDED');
@@ -39,6 +40,12 @@ export function reconcileDouyinCatalog({sourceReport,previousInventory=null,appr
  const old=previousInventory?.platform==='douyin'&&Array.isArray(previousInventory.rooms)?previousInventory.rooms:[];
  if(latest?.length>1000||old.length>1000)throw Error('ROOM_LIMIT_EXCEEDED');
  const checkedAt=safeISO(sourceReport?.checkedAt)||null;
+ // R3.12: a LIVE sample only describes the moment it was taken. Evaluate freshness against an
+ // explicit clock (caller `now`, else the source read time, else the wall clock); never against the bridge date.
+ if(!Number.isSafeInteger(maxLiveSampleAgeMs)||maxLiveSampleAgeMs<60000||maxLiveSampleAgeMs>3600000)throw Error('LIVE_SAMPLE_AGE_LIMIT_INVALID');
+ const evalAt=now===null?(checkedAt?Date.parse(checkedAt):Date.now()):(typeof now==='number'?now:Date.parse(safeISO(now)??''));
+ if(!Number.isFinite(evalAt)||evalAt<=0)throw Error('EVALUATION_TIME_INVALID');
+ const fresh=o=>{const t=Date.parse(o.checkedAt);return t<=evalAt+CLOCK_SKEW_MS&&evalAt-t<=maxLiveSampleAgeMs};
  const observed=new Map(),history=new Map(),conflicts=[];
  for(const x of old){
   const rid=safeId(x?.roomId);
@@ -83,6 +90,7 @@ export function reconcileDouyinCatalog({sourceReport,previousInventory=null,appr
   if(!RPA_GOOD(sample))continue;
   if(safeId(sample.observedRoomId)!==link.publicLiveRoomId)continue;
   if(Date.parse(sample.checkedAt)<Date.parse(link.verifiedAt)||Date.parse(sample.checkedAt)-Date.parse(link.verifiedAt)>7*86400000)continue;
+  if(!fresh(sample)){r.publicEvidenceReason='RPA_LIVE_SAMPLE_STALE_OR_FUTURE';continue}
   r.publicEvidenceState='LIVE';r.verifiedPublicLive=true;
  }
  const warnings=[];
@@ -100,6 +108,8 @@ export function reconcileDouyinCatalog({sourceReport,previousInventory=null,appr
   retainedPriorRooms:rooms.length-freshRoomCount,inventoryRows:rooms.length,
   approvedPublicAccounts:approved.size,rpaSampledPublicAccounts:rpaLatest.size,
   publiclyDoubleVerifiedLiveSamples:publicRpaSamples.filter(RPA_GOOD).length,
+  freshDoubleVerifiedLiveSamples:publicRpaSamples.filter(o=>RPA_GOOD(o)&&fresh(o)).length,
+  evaluatedAt:new Date(evalAt).toISOString(),maxLiveSampleAgeMs,
   verifiedFourLayerBridges:bridge.verifiedLinks,verifiedPublicLiveOpsRooms:rooms.filter(r=>r.verifiedPublicLive).length,
   opsSourceLiveCandidates:rooms.filter(r=>r.opsSourceState==='LIVE').length,
   sourceShopJoined:rooms.filter(r=>r.seenInCurrentResponse&&r.opsShopIdentityMatched).length,
@@ -121,6 +131,7 @@ export function publicDouyinCatalogReceipt(report){
   retainedPriorRooms:report.retainedPriorRooms,inventoryRows:report.inventoryRows,
   approvedPublicAccounts:report.approvedPublicAccounts,rpaSampledPublicAccounts:report.rpaSampledPublicAccounts,
   publiclyDoubleVerifiedLiveSamples:report.publiclyDoubleVerifiedLiveSamples,
+  freshDoubleVerifiedLiveSamples:report.freshDoubleVerifiedLiveSamples??0,
   verifiedFourLayerBridges:report.verifiedFourLayerBridges,
   verifiedPublicLiveOpsRooms:report.verifiedPublicLiveOpsRooms,
   opsSourceLiveCandidates:report.opsSourceLiveCandidates,

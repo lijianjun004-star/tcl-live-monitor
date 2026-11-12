@@ -10,7 +10,8 @@ import { classifyTclOps, liveMinutesDelta, trackSessionGap } from '../lib/tcl-op
 import { SOURCE_ROUTES, beijingDate, extractArray } from '../lib/tcl-jd-all.mjs';
 
 const PLATFORMS = new Set(['dy','douyin','抖音']);
-const CAT = new Set(['电视','空调','冰箱','洗衣机','显示器','全品类','本地生活','智能门锁','雷鸟电视','雷鸟显示器','其他']);
+const CAT = new Set(['电视','空调','冰箱','洗衣机','显示器','全品类','本地生活','智能门锁','雷鸟电视','雷鸟显示器','其他',
+  '家电']); // R3.12: '家电' is a category value the source really returns; dropping it hid real data
 const id = v => /^[0-9]{1,16}$/.test(String(v??'')) ? String(v) : null;
 const dt = v => typeof v === 'string' && Number.isFinite(Date.parse(v)) ? Date.parse(v) : null;
 export const isDouyin = v => PLATFORMS.has(String(v??'').trim().toLowerCase());
