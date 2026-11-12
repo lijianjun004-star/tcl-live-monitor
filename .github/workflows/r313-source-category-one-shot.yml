@@ -1,0 +1,35 @@
+name: R3.13 original TCL OPS category refresh - ONE SHOT
+on:
+  push:
+    branches:
+      - experiment/r313-private-bridge-review-20261112
+    paths:
+      - '.github/workflows/r313-source-category-one-shot.yml'
+permissions:
+  contents: read
+jobs:
+  approved-two-get-reads:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r313-private-bridge-review-20261112' && contains(github.event.head_commit.message, '[r313-category-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source registry and privacy rules offline
+        run: node --test tests/r313-private-bridge-review.test.mjs
+      - name: GET two existing TCL OPS routes once and encrypt before disk
+        env:
+          R313_CATEGORY_ONESHOT: APPROVED_TWO_GET_ROUTES_ONCE
+        run: node probes/r313/refresh-source-category-once.mjs
+      - name: Upload encrypted JSON only; no private keys and no plaintext
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r313-private-source-category-encrypted
+          path: out/r313/source-category-private-encrypted.json
+          if-no-files-found: warn
+          retention-days: 2
