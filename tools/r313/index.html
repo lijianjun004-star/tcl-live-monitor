@@ -159,7 +159,8 @@ function render(report){
    const input=document.createElement('input');input.type='text';input.value=row[idx]||'';
    input.setAttribute('autocomplete','off');input.setAttribute('spellcheck','false');
    input.addEventListener('input',()=>{row[idx]=input.value;stateReady=false;
-    $('export-safe').disabled=true;setStatus('数据已编辑。请重新点击“核验”，再导出。')});
+    $('export-csv').disabled=true;$('export-safe').disabled=true;
+    setStatus('数据已编辑。请重新点击“核验”，再导出。')});
    lab.appendChild(input);fields.appendChild(lab);
   }
   detail.appendChild(fields);root.appendChild(detail);
