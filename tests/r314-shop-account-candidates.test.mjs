@@ -111,3 +111,18 @@ test('brand family exclusion preserves genuine same-brand name-only leads',()=>{
  assert.equal(r.suggested,true);
  assert.notEqual(r.reason,'BRAND_FAMILY_MISMATCH_NAME_ONLY');
 });
+
+test('one public account name lead for several internal shops is an ambiguity, never a bridge',()=>{
+ const rows=source(['TCL电视机官方旗舰店','TCL家电官方旗舰店','TCL官方旗舰店电视直播间']);
+ const p=buildPrivateShopAccountCandidates({sourceRows:rows,approvedAccounts:[registry[0],registry[1]]});
+ assert.ok(p.ambiguousPublicAccountLeads>=1);
+ assert.ok(p.ambiguousCandidateRows>=2);
+ assert.ok(p.rows.some(x=>x.candidateStatus==='MULTIPLE_OPS_SHOPS_CLAIM_SAME_PUBLIC_LEAD'));
+ assert.equal(p.verifiedFourLayerBridges,0);
+ for(const x of p.rows)for(const c of x.candidates){
+   if(c.crossShopCandidateConflict)assert.equal(c.identityStatus,'UNVERIFIED');
+ }
+ const publicReceipt=safePublicCandidateCounts(p);
+ assert.equal(publicReceipt.ambiguousCandidateRows,p.ambiguousCandidateRows);
+ assert.ok(!('rows' in publicReceipt));
+});
