@@ -15,8 +15,10 @@ jobs:
         with: { node-version: '22' }
       - name: R3.16 dedicated tests
         run: node --test tests/r316/*.test.mjs
+      - name: R3.18 static resource and identity tests (offline only)
+        run: node --test tests/r318/*.test.mjs
       - name: Full repository regression
-        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs
+        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs
       - name: Workflow YAML syntax (every workflow file)
         run: |
           python3 - <<'PY'
