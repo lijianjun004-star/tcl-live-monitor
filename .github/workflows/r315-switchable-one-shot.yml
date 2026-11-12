@@ -79,15 +79,61 @@ jobs:
         id: plan
         run: node probes/r315/runtime-switch-cli.mjs r315-runtime-switch.json r315-run-summary.json
 
+      - name: Restore authenticated cross-run state or fail before any live request
+        shell: bash
+        env:
+          R316_STATE_KEY: ${{ secrets.R316_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ "$(node -p "require('./r315-run-summary.json').decision")" != "ONE_SHOT" ]; then
+            printf '{}\n' > r316-previous-state.json
+            echo 'No source approved for this decision: no prior state needed.'
+            exit 0
+          fi
+          if [ -z "${R316_STATE_KEY:-}" ]; then
+            echo 'BLOCKED: encrypted state key not provisioned; no source request.'
+            exit 3
+          fi
+          # This private state lives as AES-GCM ciphertext on the isolated control branch;
+          # no plaintext internal IDs are committed to a public branch or artifact.
+          gh api "repos/${GITHUB_REPOSITORY}/contents/config/r316-encrypted-state.json?ref=r315-runtime-control" > r316-state-response.json
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync('r316-state-response.json','utf8'));
+          if(r.encoding!=='base64'||!r.content||!/^[0-9a-f]{40}$/i.test(r.sha||''))throw Error('STATE_RESPONSE_INVALID');
+          fs.writeFileSync('r316-encrypted-state.json',Buffer.from(r.content.replace(/\s/g,''),'base64'),{mode:0o600});
+          fs.writeFileSync('r316-control-state-sha.txt',r.sha,{mode:0o600});
+          JS
+          node probes/r316/state-cli.mjs decrypt r316-encrypted-state.json r316-previous-state.json
+
       - name: Execute READY targets exactly once (R3.16 runner; no source request unless the plan is ONE_SHOT)
         id: run
         env:
           TCL_OPS_ORIGIN: 'http://101.96.215.251'
         run: |
           set -euo pipefail
-          # Cross-run state is NOT persisted yet (no private store): '-' = no previous state.
-          node probes/r316/one-shot-cli.mjs r315-run-summary.json - r316-receipt.json r316-private-run.json r316-next-state.json
-          rm -f r316-next-state.json
+          node probes/r316/one-shot-cli.mjs r315-run-summary.json r316-previous-state.json r316-receipt.json r316-private-run.json r316-next-state.json
+
+      - name: Persist authenticated private state only after a successful source read
+        if: success() && hashFiles('r316-next-state.json') != ''
+        shell: bash
+        env:
+          R316_STATE_KEY: ${{ secrets.R316_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          trap 'rm -f r316-previous-state.json r316-next-state.json r316-encrypted-state.json r316-encrypted-next.json r316-state-response.json' EXIT
+          if ! node -e "const r=require('./r316-receipt.json');process.exit(r.results.some(x=>x.status==='READ_ONCE')?0:1)"; then
+            echo 'No successful read; previous ciphertext remains unchanged.'
+            exit 0
+          fi
+          test -n "${R316_STATE_KEY:-}"
+          node probes/r316/state-cli.mjs encrypt r316-next-state.json r316-encrypted-next.json
+          encoded=$(base64 -w0 r316-encrypted-next.json)
+          sha=$(cat r316-control-state-sha.txt)
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/config/r316-encrypted-state.json" \
+            -f message="chore(r316): encrypted one-shot state" \
+            -f content="$encoded" -f branch="r315-runtime-control" -f sha="$sha" > /dev/null
+          echo 'Encrypted previous-room state persisted without disclosing identifiers.'
 
       - name: Encrypt per-room detail with repository public key (ciphertext only in log)
         if: always() && hashFiles('r316-private-run.json') != ''
