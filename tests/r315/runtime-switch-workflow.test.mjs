@@ -29,6 +29,10 @@ test('workflow uses isolated runtime-control branch and persists only control ac
 
 test('CLI does not contain timers or perform network access',()=>{
  assert.doesNotMatch(cli,/setInterval|setTimeout|EventSource|WebSocket|fetch\s*\(/);
- assert.match(cli,/runnerReady:\s*false/);
+ // R3.16: the compiled-in gate is now the frozen RUNNER_READY map of the reviewed one-shot runner.
+ // It must never be read from the control file, environment or dispatch inputs.
+ assert.match(cli,/runnerReady:\s*RUNNER_READY\b/);
+ assert.match(cli,/import \{ RUNNER_READY \} from '\.\.\/r316\/one-shot-runner\.mjs'/);
+ assert.doesNotMatch(cli,/runnerReady:\s*(state|process\.env|JSON)/);
  assert.match(cli,/ONE_SHOT_THEN_EXIT/);
 });

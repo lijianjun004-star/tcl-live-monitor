@@ -79,6 +79,27 @@ jobs:
         id: plan
         run: node probes/r315/runtime-switch-cli.mjs r315-runtime-switch.json r315-run-summary.json
 
+      - name: Execute READY targets exactly once (R3.16 runner; no source request unless the plan is ONE_SHOT)
+        id: run
+        env:
+          TCL_OPS_ORIGIN: 'http://101.96.215.251'
+        run: |
+          set -euo pipefail
+          # Cross-run state is NOT persisted yet (no private store): '-' = no previous state.
+          node probes/r316/one-shot-cli.mjs r315-run-summary.json - r316-receipt.json r316-private-run.json r316-next-state.json
+          rm -f r316-next-state.json
+
+      - name: Encrypt per-room detail with repository public key (ciphertext only in log)
+        if: always() && hashFiles('r316-private-run.json') != ''
+        run: |
+          set -euo pipefail
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in r316-private-run.json -out p.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey probes/keys/analysis-pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out k.enc
+          rm -f k.bin r316-private-run.json
+          echo "KEY_BEGIN"; base64 -w 0 k.enc; echo; echo "KEY_END"
+          echo "DATA_BEGIN"; base64 -w 0 p.enc; echo; echo "DATA_END"
+
       - name: Persist enable/disable switch change only
         if: github.event_name == 'workflow_dispatch' && (github.event.inputs.action == 'enable_auto' || github.event.inputs.action == 'disable_auto')
         shell: bash
@@ -123,6 +144,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: r315-one-shot-${{ github.run_id }}-${{ github.run_attempt }}
-          path: r315-run-summary.json
+          path: |
+            r315-run-summary.json
+            r316-receipt.json
           retention-days: 7
           if-no-files-found: error

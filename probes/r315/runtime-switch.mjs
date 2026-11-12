@@ -105,7 +105,9 @@ function buildOneShot(targets, state, trigger, runnerReady) {
   const results = targets.map(platform => {
     if (state.sourceAccessApproved[platform] !== true)
       return { platform, status: 'BLOCKED', reason: 'SOURCE_ACCESS_NOT_APPROVED', sourceAccess: false };
-    if (state.adapterReady[platform] !== true || runnerReady !== true)
+    // runnerReady: compiled-in readiness, either one boolean or a per-platform map (R3.16).
+    const compiled = runnerReady !== null && typeof runnerReady === 'object' ? runnerReady[platform] === true : runnerReady === true;
+    if (state.adapterReady[platform] !== true || !compiled)
       return { platform, status: 'BLOCKED', reason: 'SOURCE_ADAPTER_NOT_READY', sourceAccess: false };
     return { platform, status: 'READY_FOR_SINGLE_SCAN', reason: 'ONE_SHOT_ONLY', sourceAccess: true };
   });

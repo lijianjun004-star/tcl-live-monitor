@@ -1,0 +1,66 @@
+name: R3.16 run_once acceptance harness - REAL SOURCE, ONE PASS
+# Why a harness: workflow_dispatch of r315-switchable-one-shot.yml needs the file on the default
+# branch, which must not change. This push-triggered job executes the SAME planner + runner code
+# with a harness-local control state (approved gates, automatic switches OFF). It is labelled as
+# such in every output; it is not the production control branch and changes nothing persistent.
+on:
+  push:
+    branches: [experiment/r316-jd-douyin-current-chain-20261112]
+    paths: ['.github/workflows/r316-run-once-harness.yml']
+permissions:
+  contents: read
+concurrency: { group: r315-switchable-one-shot-control, cancel-in-progress: false }
+jobs:
+  harness:
+    if: contains(github.event.head_commit.message, '[r316-run-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      TCL_OPS_ORIGIN: 'http://101.96.215.251'
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Offline gate first
+        run: node --test tests/r316/*.test.mjs tests/r315/runtime-switch*.test.mjs
+      - name: Harness-local control state (NOT the r315-runtime-control branch)
+        run: |
+          cat > harness-state.json <<'JSON'
+          {"schemaVersion":1,"autoEnabled":{"jd":false,"douyin":false},"sourceAccessApproved":{"jd":true,"douyin":true},
+           "adapterReady":{"jd":true,"douyin":true},"updatedAt":"2026-11-12T00:00:00.000Z","updatedBy":"r316-harness","updatedByRunId":null}
+          JSON
+      - name: 1. JD manual run_once (one real read, then exit)
+        run: |
+          set -euo pipefail
+          GITHUB_EVENT_NAME=workflow_dispatch INPUT_ACTION=run_once INPUT_PLATFORM=jd node probes/r315/runtime-switch-cli.mjs harness-state.json plan-jd.json
+          node probes/r316/one-shot-cli.mjs plan-jd.json - receipt-jd.json private-jd.json state-jd.json
+      - name: 1b. Same delivery again (idempotency) - must not touch the source
+        run: |
+          set -euo pipefail
+          node probes/r316/one-shot-cli.mjs plan-jd.json state-jd.json receipt-jd-repeat.json private-jd-repeat.json state-jd-repeat.json
+          node -e "const r=require('./receipt-jd-repeat.json').results[0];if(r.status!=='SKIPPED_DUPLICATE_RUN'||r.requests!==0)throw Error('NOT_IDEMPOTENT');console.log('R316_IDEMPOTENT '+JSON.stringify(r))"
+      - name: 2. Douyin internal source run_once
+        run: |
+          set -euo pipefail
+          GITHUB_EVENT_NAME=workflow_dispatch INPUT_ACTION=run_once INPUT_PLATFORM=douyin node probes/r315/runtime-switch-cli.mjs harness-state.json plan-dy.json
+          R316_RUN_KEY_SUFFIX=.douyin node probes/r316/one-shot-cli.mjs plan-dy.json - receipt-dy.json private-dy.json state-dy.json
+      - name: 3. Scheduled slot with automatic switches OFF - must not read the source
+        run: |
+          set -euo pipefail
+          GITHUB_EVENT_NAME=schedule node probes/r315/runtime-switch-cli.mjs harness-state.json plan-sched.json
+          R316_RUN_KEY_SUFFIX=.sched node probes/r316/one-shot-cli.mjs plan-sched.json - receipt-sched.json private-sched.json state-sched.json
+          node -e "const r=require('./receipt-sched.json');if(r.results.some(x=>x.sourceAccess))throw Error('SOURCE_READ_WHILE_OFF');console.log('R316_AUTO_OFF '+JSON.stringify({decision:r.decision,results:r.results.map(x=>({p:x.platform,s:x.status,a:x.sourceAccess}))}))"
+      - name: Encrypt private detail (ciphertext only)
+        if: always()
+        run: |
+          set -euo pipefail
+          ls private-*.json >/dev/null 2>&1 || exit 0
+          tar czf p.tgz private-*.json state-*.json 2>/dev/null || tar czf p.tgz private-*.json
+          rm -f private-*.json state-*.json
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in p.tgz -out p.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey probes/keys/analysis-pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out k.enc
+          rm -f k.bin p.tgz
+          echo "KEY_BEGIN"; base64 -w 0 k.enc; echo; echo "KEY_END"
+          echo "DATA_BEGIN"; base64 -w 0 p.enc; echo; echo "DATA_END"
