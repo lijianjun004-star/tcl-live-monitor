@@ -11,20 +11,42 @@ export const LOGIN_GATE_RE = /(请先登录后观看|登录后观看|扫码登�
 // Explicit end-of-broadcast wording on the room page (candidate signal only; to be calibrated).
 export const ENDED_RE = /(直播已结束|直播已经结束|主播已下播|暂未开播|主播暂未开播)/;
 
-export function profileIdentity(p, t) {
-  if (p?.httpStatus !== 200 || CHALLENGE_RE.test(`${p.title} ${p.bodyExcerpt}`)) return false;
-  const title = String(p.title || '').trim();
+/**
+ * Conservative evidence from the page that the browser ACTUALLY loaded.
+ * A title variant is acceptable only when the resolved approved profile URL
+ * and one uniquely visible Douyin ID both match the approved registry.
+ * A missing ID or a redirect to a different account is UNKNOWN.
+ */
+export function profileIdentityEvidence(p, t) {
+  const title = String(p?.title || '').trim();
+  const id = String(t?.displayDouyinId || '').trim();
+  const name = String(t?.accountName || '');
   const allowedTitles = new Set([
-    `${t.accountName}的抖音 - 抖音`,
-    `${t.accountName}的主页 - 抖音`,
+    name + '的抖音 - 抖音',
+    name + '的主页 - 抖音',
     ...(Array.isArray(t?.alternateTitles) ? t.alternateTitles : []),
   ]);
-  if (!allowedTitles.has(title)) return false;
-  // Exact token match only: "抖音号：14145381" must not match "抖音号：141453819".
-  const id = String(t.displayDouyinId || '');
-  const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const exact = new RegExp(`抖音号[:：]\\s*${esc}(?![A-Za-z0-9._-])`);
-  return (p.douyinIdsInPage || []).includes(id) || exact.test(String(p.bodyExcerpt || ''));
+  const titleExact = allowedTitles.has(title);
+  let expected = null;
+  try { expected = new URL(t.profileUrl); } catch {}
+  const finalProvided = typeof p?.finalHost === 'string' && typeof p?.finalPath === 'string';
+  const finalUrlExact = expected?.protocol === 'https:' && expected?.hostname === 'www.douyin.com' &&
+    p?.finalHost === 'www.douyin.com' && p?.finalPath === expected.pathname;
+  const esc = id.replace(/[.*+?^$()|[\]{}]/g, '\\$&');
+  const idPattern = id ? new RegExp('抖音号[:：]\\s*' + esc + '(?![A-Za-z0-9._-])') : null;
+  const ids = [...new Set((Array.isArray(p?.douyinIdsInPage) ? p.douyinIdsInPage : []).map(String))];
+  const idExact = id.length > 0 && (ids.length === 1 ? ids[0] === id
+    : ids.length === 0 && idPattern.test(String(p?.bodyExcerpt || '')));
+  const accessOk = p?.httpStatus === 200 &&
+    !CHALLENGE_RE.test(title + ' ' + (p?.bodyExcerpt || '')) &&
+    !LOGIN_GATE_RE.test(String(p?.bodyExcerpt || ''));
+  const verified = accessOk && idExact && (finalProvided ? finalUrlExact : titleExact);
+  return { verified: verified === true, httpOk: p?.httpStatus === 200,
+    titleExact, idExact, finalProvided, finalUrlExact: Boolean(finalUrlExact),
+    multipleVisibleIds: ids.length > 1, accessOk };
+}
+export function profileIdentity(p, t) {
+  return profileIdentityEvidence(p,t).verified;
 }
 
 /** Room ids the verified profile marks as live right now. */
@@ -52,13 +74,17 @@ export function roomIdentity(r, t) {
  */
 export function decideDouyin(profile, room, t, { offlineRuleValidated = false } = {}) {
   const challenged = CHALLENGE_RE.test(`${profile?.title} ${profile?.bodyExcerpt}`) || CHALLENGE_RE.test(`${room?.title} ${room?.bodyExcerpt}`);
-  const pid = profileIdentity(profile, t);
+  const profileEvidence = profileIdentityEvidence(profile, t);
+  const pid = profileEvidence.verified;
   const anchors = pid ? liveAnchorRoomIds(profile) : [];
   const observedRoomId = anchors[0] || null;
-  const rid = roomIdentity(room, t);
+  const roomPageUrlMatches = !observedRoomId || !room?.finalHost || (
+    room.finalHost === 'live.douyin.com' && room.finalPath === '/' + observedRoomId);
+  const rid = roomIdentity(room, t) && roomPageUrlMatches;
   const roomIdChanged = !!observedRoomId && observedRoomId !== t.roomId;
   const out = { state: 'UNKNOWN', reason: null, profileIdentityVerified: pid, roomPageIdentityVerified: rid,
-    observedRoomId, roomIdChanged, offlineCandidate: false, signals: {} };
+    observedRoomId, roomIdChanged, offlineCandidate: false,
+    signals: { profile: profileEvidence, roomPageUrlMatches } };
   if (challenged) return { ...out, reason: 'PUBLIC_GUEST_ACCESS_CHALLENGED' };
   if (!pid) return { ...out, reason: 'PROFILE_IDENTITY_NOT_VERIFIED' };
   if (observedRoomId) {
@@ -70,7 +96,7 @@ export function decideDouyin(profile, room, t, { offlineRuleValidated = false } 
   const fields = room?.statusFields || [];
   // Webcast room payloads commonly use status 4 for "ended" (unverified convention; candidate only).
   const passiveEnded = fields.some(f => /\.data.*\.status$/i.test(f.field) && Number(f.value) === 4);
-  out.signals = { endedText, passiveEnded, roomHttp: room?.httpStatus ?? null, statusFields: fields.slice(0, 12) };
+  out.signals = { ...out.signals, endedText, passiveEnded, roomHttp: room?.httpStatus ?? null, statusFields: fields.slice(0, 12) };
   if (room?.httpStatus === 200 && endedText && passiveEnded) {
     if (offlineRuleValidated) return { ...out, state: 'OFFLINE', offlineEvidence: true, reason: 'NO_BADGE_ENDED_TEXT_AND_STATUS_4' };
     return { ...out, offlineCandidate: true, reason: 'OFFLINE_CANDIDATE_RULE_NOT_VALIDATED' };
