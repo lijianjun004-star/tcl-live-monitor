@@ -4,7 +4,8 @@ import { isAllowedRpaDocumentRequest as allowed } from '../../probes/r315/rpa-ne
 
 const profile = 'https://www.douyin.com/user/MS4wLjABAAAA' + 'a'.repeat(24);
 const room = 'https://live.douyin.com/123456789';
-const request = (overrides = {}) => ({ url: profile, method: 'GET', resourceType: 'document', isNavigationRequest: true, ...overrides });
+const request = (overrides = {}) => ({ url: profile, method: 'GET', resourceType: 'document',
+  isNavigationRequest: true, isMainFrame:true, redirectedFrom:null, ...overrides });
 
 test('permits only exact explicitly allowed public document navigations', () => {
   assert.equal(allowed(request(), [profile, room]), true);
@@ -48,4 +49,19 @@ test('rejects malformed or ambiguous allowlists and requests', () => {
   for (const req of [null, {}, [], { ...request(), url: undefined }]) {
     assert.equal(allowed(req, [profile]), false);
   }
+});
+
+test('real Playwright Request-method adapter only allows main-frame nonredirected document',()=>{
+ const p = {url:()=>profile,method:()=> 'GET',resourceType:()=> 'document',
+   isNavigationRequest:()=>true,frame:()=>({parentFrame:()=>null}),redirectedFrom:()=>null};
+ assert.equal(allowed(p,[profile]),true);
+ assert.equal(allowed({...p,frame:()=>({parentFrame:()=>({})})},[profile]),false);
+ assert.equal(allowed({...p,redirectedFrom:()=>({url:()=>profile})},[profile]),false);
+ assert.equal(allowed({...p,resourceType:()=> 'websocket'},[profile]),false);
+});
+test('adapted object rejects iframe, redirected request and missing trust fields',()=>{
+ assert.equal(allowed(request({isMainFrame:false}),[profile]),false);
+ assert.equal(allowed(request({redirectedFrom:{url:profile}}),[profile]),false);
+ assert.equal(allowed(request({isMainFrame:undefined}),[profile]),false);
+ assert.equal(allowed(request({redirectedFrom:undefined}),[profile]),false);
 });
