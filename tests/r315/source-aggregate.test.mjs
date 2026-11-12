@@ -197,7 +197,10 @@ test('P1 contradictory room containers and total count mismatch abort first read
   {rooms:[{id:'11',platform:'jd'}],data:{rooms:[{id:'99',platform:'jd'}]}},
   {rooms:[{id:'11',platform:'jd'}],pagination:{total:500}},
   {rooms:[{id:'11',platform:'jd'}],data:{pagination:{offset:1}}},
-  {rooms:[{id:'11',platform:'jd'}],has_more:true}
+  {rooms:[{id:'11',platform:'jd'}],has_more:true},
+  {rooms:[{id:'11',platform:'jd'}],pagination:{page:1,total_pages:3}},
+  {rooms:[{id:'11',platform:'jd'}],pagination:{pageSize:1}},
+  {rooms:[{id:'11',platform:'jd'}],pagination:{hasNextPage:true}}
  ]){
   let count=0;
   const x=await scanAggregate({platformValue:'jd',knownPlatformValues:['jd'],date,minimumObservedRooms:1,
@@ -206,23 +209,44 @@ test('P1 contradictory room containers and total count mismatch abort first read
   assert.equal(count,1);
  }
 });
-test('P2 global ID collision between JD and Douyin stops before other endpoints',async()=>{
+test('P2 equal numeric IDs across different platforms remain separate namespaces',async()=>{
+ const calls=[];
+ const reader=async path=>{
+  calls.push(path);
+  if(path.endsWith('/capture/rooms'))return {rooms:[
+    {id:'11',platform:'jd',shop_id:'31'},{id:'11',platform:'dy',shop_id:'31'}]};
+  if(path.endsWith('/shops'))return [
+    {id:'31',platform:'jd'},{id:'31',platform:'dy'}];
+  if(path.endsWith('/active-rooms'))return {rooms:[
+    {id:'11',platform:'jd'},{id:'11',platform:'dy'}]};
+  return {days:[{date}]};
+ };
+ const x=await scanAggregate({reader,platformValue:'jd',knownPlatformValues:['jd','dy'],
+   date,minimumObservedRooms:1});
+ assert.equal(x.sourceAccess,'PARTIAL');
+ assert.equal(x.roomCount,1);
+ assert.equal(x.shopCount,1);
+ assert.equal(x.roomShopJoins,1);
+ assert.equal(x.heartbeatRowsMatched,1);
+ assert.equal(calls.length,4);
+});
+test('P2 duplicate IDs within the same platform are rejected for rooms, shops and heartbeats',async()=>{
  for(const stage of ['rooms','shops','heartbeat']){
   let calls=0;
   const reader=async path=>{
    calls++;
    if(path.endsWith('/capture/rooms'))return {rooms:stage==='rooms'?
-     [{id:'11',platform:'jd'},{id:'11',platform:'dy'}]:[{id:'11',platform:'jd'}]};
+     [{id:'11',platform:'jd'},{id:'11',platform:'jd'}]:[{id:'11',platform:'jd'}]};
    if(path.endsWith('/shops'))return stage==='shops'?
-     [{id:'31',platform:'jd'},{id:'31',platform:'dy'}]:[];
+     [{id:'31',platform:'jd'},{id:'31',platform:'jd'}]:[{id:'31',platform:'jd'}];
    if(path.endsWith('/active-rooms'))return {rooms:stage==='heartbeat'?
-     [{id:'11',platform:'jd'},{id:'11',platform:'dy'}]:[]};
+     [{id:'11',platform:'jd'},{id:'11',platform:'jd'}]:[{id:'11',platform:'jd'}]};
    return {days:[{date}]};
   };
-  const x=await scanAggregate({reader,platformValue:'jd',knownPlatformValues:['jd','dy'],
-     date,minimumObservedRooms:1});
+  const x=await scanAggregate({reader,platformValue:'jd',knownPlatformValues:['jd'],
+    date,minimumObservedRooms:1});
   assert.equal(x.sourceAccess,'UNKNOWN',stage);
-  assert.ok(calls<4,stage);
+  assert.ok(calls<=3,stage);
  }
 });
 test('P2 consistent-null shop aliases accepted, malformed nested shop rejected',async()=>{
