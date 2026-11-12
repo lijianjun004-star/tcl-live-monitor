@@ -18,19 +18,25 @@ export function preflightHourlyPilot({platform,trigger,now,priorReceipt=null,
  const primaryDelta=clock-config.primary,backupDelta=clock-config.backup;
  const primary=primaryDelta>=0&&primaryDelta<=12,backup=backupDelta>=0&&backupDelta<=6;
  if(!primary&&!backup)return {decision:'SKIP',reason:'OUTSIDE_APPROVED_SLOT_WINDOW'};
+ let priorMode='NEW_BASELINE';
  if(priorReceipt!==null){
-  if(trustedPrior!==true||typeof priorReceipt!=='object'||Array.isArray(priorReceipt)||
-   priorReceipt.platform!==platform || priorReceipt.verifiedArtifact!==true||
-   priorReceipt.sourceReadOk!==true ||priorReceipt.schemaValidated!==true||
-   typeof priorReceipt.artifactSha256!=='string'||
-   !/^[a-f0-9]{64}$/i.test(priorReceipt.artifactSha256))
-    return {decision:'BLOCK',reason:'UNTRUSTED_PRIOR_STATE'};
-  const last=parsed(priorReceipt.observedAt),elapsed=Date.parse(now)-last;
-  if(!Number.isFinite(last)||elapsed<0||elapsed>24*60*60*1000)
-    return {decision:'BLOCK',reason:'PRIOR_TIMESTAMP_INVALID'};
-  if(elapsed<55*60*1000)return {decision:'SKIP',reason:'RECENT_VERIFIED_SUCCESS'};
+  let trusted=false,elapsed=NaN,last=NaN;
+  if(trustedPrior===true&&typeof priorReceipt==='object'&&!Array.isArray(priorReceipt)&&
+   priorReceipt.platform===platform&&priorReceipt.verifiedArtifact===true&&
+   priorReceipt.sourceReadOk===true&&priorReceipt.schemaValidated===true&&
+   typeof priorReceipt.artifactSha256==='string'&&/^[a-f0-9]{64}$/i.test(priorReceipt.artifactSha256)){
+    last=parsed(priorReceipt.observedAt);
+    elapsed=Date.parse(now)-last;
+    trusted=Number.isFinite(last)&&elapsed>=0&&elapsed<=24*60*60*1000;
+  }
+  if(trusted&&elapsed<55*60*1000)
+    return {decision:'SKIP',reason:'RECENT_VERIFIED_SUCCESS'};
+  priorMode=trusted?'RESTORE_VERIFIED_PRIOR':'FRESH_BASELINE_IGNORE_UNTRUSTED_PRIOR';
  }
  return {decision:'ALLOW_CANDIDATE',slot:primary?'primary':'backup',
-  reason:'REQUIRES_CROSS_RUN_LOCK_AND_PERSISTENCE_VERIFICATION',
+  priorMode,preservePriorArtifact:true,
+  reason:priorMode==='RESTORE_VERIFIED_PRIOR'?
+   'REQUIRES_CROSS_RUN_LOCK_AND_PERSISTENCE_VERIFICATION':
+   'FRESH_SCAN_WITHOUT_RESTORING_UNTRUSTED_STATE',
   guaranteedHourly:false,formalRate:null};
 }
