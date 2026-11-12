@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<title>TCL 抖音｜私有四层身份核验台 R3.13</title>
+<style>
+:root{color-scheme:light;--ink:#15263b;--sub:#53637a;--line:#dce4ec;--blue:#1460a0;--surface:#fff;--back:#f5f8fb;--warn:#92600b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--back);color:var(--ink);font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.55}
+header{padding:22px 16px;background:linear-gradient(130deg,#102c46,#215d83);color:#fff}
+.wrap{max-width:980px;margin:0 auto}
+header h1{margin:0 0 6px;font-size:21px;line-height:1.35}
+header p{margin:0;color:#daebf4;font-size:13px}
+main{padding:16px 13px 64px}
+h2{font-size:16px;margin:0 0 13px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #183b5c08}
+.note{color:var(--sub);font-size:13px}
+.notice{border-left:3px solid #e2a842;background:#fff9ed;padding:10px 12px;font-size:13px;margin:12px 0;border-radius:0 8px 8px 0}
+.inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.file{display:block;border:1px dashed #9eb8cf;border-radius:10px;padding:13px;min-width:0;background:#fbfdff}
+.file b{display:block;font-size:13px}
+.file small{display:block;color:var(--sub);font-size:11px;margin-top:4px}
+input[type=file]{display:block;margin-top:9px;width:100%;font-size:11px}
+.buttons{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+button{font:inherit;border:0;border-radius:9px;cursor:pointer;padding:10px 14px;background:var(--blue);color:#fff;font-weight:600;font-size:13px}
+button.secondary{background:#e5edf5;color:#214460}
+button:disabled{opacity:.5;cursor:not-allowed}
+#status{margin-top:12px;white-space:pre-wrap;font-size:13px}
+#status.error{color:#b32f35}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.kpi{padding:10px;background:#f4f8fc;border-radius:10px}
+.kpi b{font-size:24px;line-height:1.3;display:block}
+.kpi span{font-size:12px;color:var(--sub)}
+.hidden{display:none}
+#rooms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.room{border:1px solid var(--line);border-radius:12px;padding:13px;background:#fff;min-width:0}
+.room summary{cursor:pointer;font-weight:600;font-size:14px}
+.room summary small{display:block;color:var(--sub);font-weight:400;margin-top:3px;font-size:12px}
+.room .status{display:inline-block;border-radius:5px;font-size:11px;padding:2px 6px;background:#edf3f9;color:#375875;margin-top:7px}
+.room .status.warn{background:#fff0cf;color:var(--warn)}
+.room .fields{display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px}
+label.form-field{display:block;font-size:12px;color:var(--sub)}
+label.form-field input{display:block;width:100%;margin-top:4px;padding:10px;border:1px solid #c4d3e0;border-radius:8px;color:var(--ink);font-size:13px;min-width:0}
+.room .issues{white-space:pre-wrap;font-size:12px;color:#7c561a}
+footer{text-align:center;color:var(--sub);font-size:12px;margin-top:20px}
+@media(max-width:740px){.inputs{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#rooms{grid-template-columns:1fr}header h1{font-size:19px}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>TCL 抖音｜四层身份私有核验台</h1><p>R3.13 · 源房间优先 · 本地只读导入 · 不自动判 LIVE / OFFLINE</p></div></header>
+<main class="wrap">
+<section class="panel">
+<h2>1. 导入三份资料（仅在当前浏览器内处理）</h2>
+<div class="inputs">
+ <label class="file"><b>① R3.12 私有四层工作表</b><small>包含 10 条内部房间的 CSV</small><input type="file" id="input-csv" accept=".csv,text/csv"></label>
+ <label class="file"><b>② R3.11 私有原始来源明细</b><small>解密后 rooms JSON，不使用公开匿名回执</small><input type="file" id="input-source" accept=".json,application/json"></label>
+ <label class="file"><b>③ 已批准抖音账号名单</b><small>仓库 config/probe-targets.json</small><input type="file" id="input-registry" accept=".json,application/json"></label>
+</div>
+<div class="notice"><strong>隐私：</strong>此页面没有网络请求、埋点或服务器保存。公开 GitHub 只存空白程序代码。加载的真实房间、店铺和证据只存在本页内存中；请避免在公共电脑打开。</div>
+<div class="buttons">
+ <button id="analyze" disabled>核验 10 个房间</button>
+ <button id="export-csv" class="secondary" disabled>导出私有工作表</button>
+ <button id="export-safe" class="secondary" disabled>导出脱敏汇总</button>
+</div>
+<div id="status" role="status" aria-live="polite">请选择三份文件，导入前不会处理任何数据。</div>
+</section>
+<section id="summary" class="panel hidden">
+<h2>2. 身份证据汇总</h2>
+<div class="kpis">
+ <div class="kpi"><b id="k-internal">–</b><span>内部来源房间匹配</span></div>
+ <div class="kpi"><b id="k-public">–</b><span>已填批准公开账号</span></div>
+ <div class="kpi"><b id="k-ready">–</b><span>具备人工复核条件</span></div>
+ <div class="kpi"><b id="k-bridges">0</b><span>已独立核准四层关联</span></div>
+</div>
+<p class="note" id="summary-text"></p>
+<div class="notice">第 1 层来源配对通过，不代表第 2–4 层通过。文件名、截图路径、表格中的“VERIFIED”文字都不能独立证明证据真实。没有授权人员审查及来源证据前，跨系统关联始终为 0。</div>
+</section>
+<section id="list" class="panel hidden">
+<h2>3. 逐房间补充证据（私有，不上传）</h2>
+<p class="note">点击一间房展开。可补充 secUid、实际公开直播间号、两份证据位置、审核人及时间。编辑后请重新点击“核验”。</p>
+<div id="rooms"></div>
+</section>
+<footer>R3.13 私有审查模式 · 不能替代真人直播真值采集 · 不计算正式满播率</footer>
+</main>
+<script type="module">
+import {REVIEW_HEADERS,parsePrivateCSV,auditPrivateBridgeCSV,publicBridgePreflightSummary}
+  from '../../probes/r313/private-bridge-review.mjs';
+
+const $=id=>document.getElementById(id);
+const store={csv:null,source:null,registry:null,rows:[],report:null};
+const labels=[
+ ['第2层 店铺→公开账号secUid','公开账号 secUid'],
+ ['第2层证据(原件位置/截图/导出)','店铺→公开账号原始证据位置'],
+ ['第3层 账号→公开直播间ID','账号实际直播间数字 ID'],
+ ['第3层证据','账号→直播间原始证据位置'],
+ ['第4层 跨系统桥接','桥接状态（请填待审核，不能自行宣称已核验）'],
+ ['审核人','审核人员'],
+ ['审核时间','审核时间（ISO 8601）'],
+ ['说明','审查备注']
+];
+let stateReady=false;
+function setStatus(t,error=false){$('status').textContent=t;$('status').classList.toggle('error',error)}
+function csvCell(value){
+ let text=String(value??'');
+ if(/^[\s]*[=+@-]/.test(text) && !/^\s*-[0-9]+(?:\.[0-9]+)?\s*$/.test(text))text="'"+text;
+ return /[",\n\r]/.test(text)?'"'+text.replaceAll('"','""')+'"':text;
+}
+function toCSV(rows){return '\uFEFF'+[REVIEW_HEADERS,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n'}
+function save(name,text,type='text/plain;charset=utf-8'){
+ const blob=new Blob([text],{type});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function fileChanged(e,key){
+ const file=e.target.files?.[0];if(!file)return;
+ try{
+  const txt=await file.text();
+  store[key]=key==='csv'?txt:JSON.parse(txt);
+  if(key==='csv')store.rows=parsePrivateCSV(txt).map(r=>[...r]);
+  const complete=Boolean(store.csv&&store.source&&store.registry);
+  $('analyze').disabled=!complete;
+  stateReady=false;$('export-csv').disabled=true;$('export-safe').disabled=true;
+  setStatus('已导入 '+['csv','source','registry'].filter(k=>store[k]!=null).length+'/3 份。'+(complete?'可以进行私有核验。':'请继续选择其他文件。'));
+ }catch(error){store[key]=null;$('analyze').disabled=true;setStatus('文件读取失败：'+String(error?.message||'格式错误'),true)}
+}
+$('input-csv').addEventListener('change',e=>fileChanged(e,'csv'));
+$('input-source').addEventListener('change',e=>fileChanged(e,'source'));
+$('input-registry').addEventListener('change',e=>fileChanged(e,'registry'));
+function td(text,cls){const d=document.createElement('div');d.className=cls||'';d.textContent=text;return d}
+function render(report){
+ $('summary').classList.remove('hidden');$('list').classList.remove('hidden');
+ $('k-internal').textContent=report.internalSourcePairsVerified+'/'+report.inputSourceRoomCount;
+ $('k-public').textContent=String(report.declaredPublicAccounts);
+ $('k-ready').textContent=String(report.rowsReadyForIndependentHumanReview);
+ $('k-bridges').textContent='0';
+ $('summary-text').textContent='来源登记 '+report.inputSourceRoomCount+' 间；工作表 '+report.privateSheetRoomCount+
+  ' 间；类目差异 '+report.categoryDifferenceRows+' 间；未完成或冲突 '+report.conflictedOrIncompleteRows+
+  ' 间；未登记来源房间 '+report.missingSourceRowsInSheet+' 间。';
+ const root=$('rooms');root.replaceChildren();
+ for(const r of report.review){
+  const detail=document.createElement('details');detail.className='room';
+  const sum=document.createElement('summary');
+  sum.textContent='内部房间 '+r.privateOpsRoomId+' · 店铺 '+r.privateOpsShopId;
+  const small=document.createElement('small');small.textContent='来源配对：'+(r.sourcePairMatched?'通过':'待核')+
+   ' · 第2–4层：未核实';sum.appendChild(small);detail.appendChild(sum);
+  const pill=td(r.reviewReady?'材料具备人工复核条件':'仍缺独立审核证据','status'+(!r.reviewReady?' warn':''));
+  detail.appendChild(pill);
+  const caveat=td(r.issues.join('；')||'无格式冲突，但仍须人工核对原始证据真伪。','issues');
+  detail.appendChild(caveat);
+  const fields=document.createElement('div');fields.className='fields';
+  const row=store.rows.find(x=>String(x[1]).trim()===r.privateOpsRoomId);
+  for(const [key,label] of labels){
+   const idx=REVIEW_HEADERS.indexOf(key);
+   if(!row||idx<0)continue;
+   const lab=document.createElement('label');lab.className='form-field';lab.textContent=label;
+   const input=document.createElement('input');input.type='text';input.value=row[idx]||'';
+   input.setAttribute('autocomplete','off');input.setAttribute('spellcheck','false');
+   input.addEventListener('input',()=>{row[idx]=input.value;stateReady=false;
+    $('export-csv').disabled=true;$('export-safe').disabled=true;
+    setStatus('数据已编辑。请重新点击“核验”，再导出。')});
+   lab.appendChild(input);fields.appendChild(lab);
+  }
+  detail.appendChild(fields);root.appendChild(detail);
+ }
+}
+$('analyze').addEventListener('click',()=>{
+ try{
+  const value=toCSV(store.rows);
+  store.report=auditPrivateBridgeCSV({csvText:value,sourceDetail:store.source,registry:store.registry});
+  render(store.report);
+  stateReady=true;$('export-csv').disabled=false;$('export-safe').disabled=false;
+  setStatus('本地审查完成。来源配对 '+store.report.internalSourcePairsVerified+'/'+store.report.inputSourceRoomCount+
+   '；完成四层证据核准 0；未启动任何网络请求。');
+ }catch(e){stateReady=false;$('export-csv').disabled=true;$('export-safe').disabled=true;
+  setStatus('核验阻断：'+String(e?.message||'输入资料不一致'),true)}
+});
+$('export-csv').addEventListener('click',()=>{if(stateReady)save('TCL-R313-私有四层身份核验工作表.csv',toCSV(store.rows),'text/csv;charset=utf-8')});
+$('export-safe').addEventListener('click',()=>{if(stateReady)save('TCL-R313-脱敏核验汇总.json',JSON.stringify(publicBridgePreflightSummary(store.report),null,2))});
+</script>
+</body>
+</html>
