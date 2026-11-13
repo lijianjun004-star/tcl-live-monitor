@@ -11,6 +11,11 @@ import { decideDouyin, profileIdentityEvidence, liveAnchorRoomIds, CHALLENGE_RE 
 import { classifyDouyinResource, CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
 
 if (process.env.R316_RPA_ONCE !== 'TWO_ACCOUNTS_ONE_PASS') throw Error('R316_RPA_GUARD_REQUIRED');
+// Explicitly approved, once-only experimental scope. Any misspelled flag fails closed.
+const CDN_FLAG = 'TWO_APPROVED_CDNS_JS_CSS_ONLY';
+if (process.env.R319_CORE_CDN_APPROVED_ONCE && process.env.R319_CORE_CDN_APPROVED_ONCE !== CDN_FLAG)
+  throw Error('R319_CDN_FLAG_INVALID');
+const approvedCoreStatic = process.env.R319_CORE_CDN_APPROVED_ONCE === CDN_FLAG;
 const { targets, maxPerRun } = JSON.parse(await fs.readFile('config/r316-douyin-rpa-targets.json', 'utf8'));
 const registry = JSON.parse(await fs.readFile('config/probe-targets.json', 'utf8'));
 if (!Array.isArray(targets) || targets.length > 2 || maxPerRun !== 2 || new Set(targets.map(t => t.key)).size !== targets.length) throw Error('RPA_TARGET_LIMIT');
@@ -24,12 +29,21 @@ const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] }
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN', serviceWorkers: 'block' });
 // Explicit network boundary: only public GET/HEAD on douyin.com; block subresource streams,
 // non-GET verbs, third-party hosts, WebSockets and media. Never send account credentials.
-const blocked = new Map(); // report only hostname/type counts to diagnose missing first-party assets
+const blocked = new Map(); // report only domain/type aggregates; never paths or cookies
+const allowedCoreCdn = new Map();
 await ctx.route('**/*', route => {
   const req = route.request(), u = new URL(req.url());
-  // On this branch no CDN permission is granted: policy defaults to false.
-  const verdict = classifyDouyinResource({ url:req.url(), method:req.method(), resourceType:req.resourceType() });
-  if (verdict.allow) return route.continue();
+  const verdict = classifyDouyinResource(
+    { url:req.url(), method:req.method(), resourceType:req.resourceType() },
+    { approvedCoreStatic }
+  );
+  if (verdict.allow) {
+    if (verdict.reason === 'EXPLICITLY_APPROVED_CORE_STATIC') {
+      const k = u.hostname + ':' + req.resourceType();
+      allowedCoreCdn.set(k, (allowedCoreCdn.get(k) || 0) + 1);
+    }
+    return route.continue();
+  }
   const named = [...CORE_STATIC_CANDIDATES, ...UNKNOWN_STATIC_CANDIDATES].includes(u.hostname);
   const k = (named ? u.hostname : 'OTHER') + ':' + req.resourceType() + ':' + verdict.reason;
   blocked.set(k, (blocked.get(k) || 0) + 1);
@@ -43,8 +57,18 @@ let activeKey = null;
 // from the top-level navigation. Close pages to prevent further browsing.
 ctx.on('response', response => {
   const code = response.status();
-  if (![401, 403, 429].includes(code) || stopped) return;
-  stopped = { key: activeKey || 'PRE_NAVIGATION', reason: 'HTTP_' + code + '_RESOURCE' };
+  if (stopped) return;
+  const location = response.headers()['location'];
+  let redirectToAccessGate = false;
+  if (code >= 300 && code < 400 && location) {
+    try {
+      const destination = new URL(location, response.url());
+      redirectToAccessGate = /(?:login|passport|verify|captcha|sso)/i.test(destination.pathname);
+    } catch { redirectToAccessGate = true; }
+  }
+  if (![401, 403, 429].includes(code) && !redirectToAccessGate) return;
+  stopped = { key: activeKey || 'PRE_NAVIGATION',
+    reason: redirectToAccessGate ? 'ACCESS_GATE_REDIRECT_RESOURCE' : 'HTTP_' + code + '_RESOURCE' };
   for (const page of ctx.pages()) void page.close().catch(() => {});
 });
 async function snap(url) {
@@ -106,10 +130,13 @@ try {
   for (const p of pub) console.log('R316_RPA ' + JSON.stringify(p));
   console.log('R316_RPA_STOPPED ' + JSON.stringify(stopped));
   console.log('R316_RPA_BLOCKED ' + JSON.stringify(Object.fromEntries([...blocked].sort((a,b)=>b[1]-a[1]).slice(0,40))));
+  console.log('R319_CORE_CDN_ALLOWED ' + JSON.stringify(Object.fromEntries([...allowedCoreCdn].sort((a,b)=>b[1]-a[1]))));
   // Retain a SANITIZED, account-key-only summary as a short-lived GitHub artifact.
   await fs.writeFile('out/r316-rpa-public.json', JSON.stringify({
-    schemaVersion:317, mode:'APPROVED_TWO_ACCOUNTS_ONE_PASS', at:new Date().toISOString(),
-    checked:pub, stopped, blockedHostsAndTypes:Object.fromEntries([...blocked].sort((a,b)=>b[1]-a[1]).slice(0,40)),
+    schemaVersion:319, mode:approvedCoreStatic ? 'APPROVED_TWO_CORE_CDNS_JS_CSS_ONE_PASS' : 'DEFAULT_BLOCKED_ONE_PASS', at:new Date().toISOString(),
+    checked:pub, stopped,
+    approvedCoreCdnCount:Object.fromEntries([...allowedCoreCdn].sort((a,b)=>b[1]-a[1])),
+    blockedHostsAndTypes:Object.fromEntries([...blocked].sort((a,b)=>b[1]-a[1]).slice(0,40)),
     formalOpeningRatePercent:null, formalFullDurationRatePercent:null,
   },null,2)+'\n');
   if(stopped) process.exitCode = 3;
