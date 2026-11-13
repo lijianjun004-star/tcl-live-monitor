@@ -73,7 +73,7 @@ test('R319: public receipts are sanitized and do not contain room URLs / account
   assert.match(s,/allowedCoreCdn\.set/);
   assert.match(s,/blockedHostsAndTypes/);
   assert.match(s,/formalFullDurationRatePercent:null/);
-  const publicSlice=s.slice(s.indexOf('pub.push('),s.indexOf('priv.push('));
+  const publicSlice=s.slice(s.indexOf('pub.push({ key: t.key, at, profileHttp:'),s.indexOf('priv.push('));
   assert.doesNotMatch(publicSlice,/title:|secUid:|liveRoomIds:|profileUrl:|accountName:/);
 });
 test('R319: workflow is one-push-only; no cron, dispatch or elevated permissions',()=>{
