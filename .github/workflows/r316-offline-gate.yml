@@ -25,8 +25,10 @@ jobs:
         run: node --test tests/r320/network-identity-offline.test.mjs
       - name: R3.21 Claude+Gemini review regressions (offline only)
         run: node --test tests/r321/*.test.mjs
+      - name: R3.22 observation ledger and offline view tests
+        run: node --test tests/r322/*.test.mjs
       - name: Full repository regression
-        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs tests/r321/*.test.mjs
+        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs tests/r321/*.test.mjs tests/r322/*.test.mjs
       - name: Workflow YAML syntax (every workflow file)
         run: |
           python3 - <<'PY'
@@ -60,7 +62,7 @@ jobs:
           mkdir -p /tmp/r321-review-source
           git archive --format=zip HEAD -o /tmp/r321-review-source/R321_Full_PR_Head_Source.zip
           git rev-parse HEAD > /tmp/r321-review-source/COMMIT_SHA.txt
-          sha256sum /tmp/r321-review-source/R321_Full_PR_Head_Source.zip > /tmp/r321-review-source/SHA256SUMS.txt
+          (cd /tmp/r321-review-source && sha256sum R321_Full_PR_Head_Source.zip > SHA256SUMS.txt)
           cat /tmp/r321-review-source/COMMIT_SHA.txt
           cat /tmp/r321-review-source/SHA256SUMS.txt
       - name: Upload exact PR-head full source ZIP and hashes (7 days)
