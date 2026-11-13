@@ -1,0 +1,63 @@
+name: JD fixed-window full-broadcast rate (08:00-24:00 Beijing, read-only)
+# User instruction 2026-11-14 01:14 (Beijing): implement JD fully. JD rooms start between 07:00 and 08:00 and
+# end between 24:00 and 01:00, so the required window is 08:00-24:00 (960 minutes) per Beijing day.
+# Source: the authorized TCL OPS platform, GET only, allow-listed routes, about 8 requests per run.
+# Independent of the existing JD patrol (jd-r23-scheduled / jd-r33-backup): shares no file, state or lock.
+# Minute data is capture data: if capture breaks while the stream continues, the rate is under-counted.
+on:
+  schedule:
+    - cron: '4,19,34 0 * * *'    # 08:04 / 08:19 / 08:34 Beijing: the first run inside 08:00-09:00 is the day's snapshot
+    - cron: '34 16,17 * * *'     # 00:34 / 01:34 Beijing: final reading of the day that just ended
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: jd-fullday-rate
+  cancel-in-progress: false
+jobs:
+  rate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      TCL_OPS_BASE_URL: ${{ secrets.TCL_OPS_BASE_URL || 'http://101.96.215.251' }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Offline tests before any source request
+        run: node --test tests/r327/*.test.mjs
+      - name: Restore the previous state (latest successful run of this workflow)
+        run: |
+          mkdir -p prev out
+          ID=$(gh run list --workflow jd-fullday-rate.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty' || true)
+          if [ -n "$ID" ] && gh run download "$ID" -n jd-fullday-state -D prev && [ -f prev/state.json ]; then
+            if node --input-type=module -e "import fs from 'node:fs';import {validateState} from './probes/r327/jd-fullday.mjs';validateState(JSON.parse(fs.readFileSync('prev/state.json','utf8')));"; then cp prev/state.json out/previous.json
+            else echo "::warning::previous state failed validation and was not used"; fi
+          fi
+          echo "restored: $([ -f out/previous.json ] && echo yes || echo no)"
+      - name: One read-only pass over the JD rooms (GET only, no retries)
+        run: node probes/r327/jd-fullday-cli.mjs --previous out/previous.json --state-output out/state.json --report-output out/report.json
+      - name: Report (room ids, categories, dates, minutes and rates only)
+        run: |
+          node -e "
+          const r=require('./out/report.json');const f=x=>x===null||x===undefined?'—':x;const yn=x=>x===true?'是':x===false?'否':'—';
+          const rate=x=>x.ratePercent!==null?x.ratePercent+'%':x.rangePercent?x.rangePercent[0]+'%–'+x.rangePercent[1]+'%（缺 8 点快照，只有范围）':x.soFarMinutes!==null?'当天进行中（全天已有 '+x.soFarMinutes+' 分钟）':'—';
+          const rows=r.rows.map(x=>'| '+[x.date,'jd-'+x.roomId+' '+(x.category||'')+(x.captureBound?'':'（未绑定采集）'),f(x.inWindowMinutes),rate(x),yn(x.liveByWindowStart),f(x.lastMinuteBeijing),yn(x.reachedWindowEnd)].join(' | ')+' |');
+          const md=['## 京东满播率（考核时段 08:00–24:00，北京时间）','','按运营平台分钟数据估算；采集中断时会少算。','','| 日期 | 直播间 | 时段内分钟（满 960） | 满播率 | 8 点已在播 | 当天最后一分钟 | 播到 24 点 |','|---|---|---|---|---|---|---|',...rows,''].join('\n');
+          require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY,md);
+          for(const x of r.rows) console.log('R327_JD_DAY '+JSON.stringify(x));"
+      - name: Save rolling state and report (7 days)
+        if: always() && hashFiles('out/state.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: jd-fullday-state
+          path: |
+            out/state.json
+            out/report.json
+          retention-days: 7
+          if-no-files-found: error
