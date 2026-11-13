@@ -18,6 +18,20 @@ export function isAccessGate(url) {
   } catch { return true; }
 }
 
+const CORE_HOSTS = ['lf-douyin-pc-web.douyinstatic.com','lf-douyin-pc-web-back.douyinstatic.com'];
+/** Fixed diagnostic classes only: never expose an URL, path, query, room ID or account ID. */
+export function hostClass(url) {
+  try {
+    const h=new URL(url).hostname;
+    if(h==='www.douyin.com') return 'DOUYIN_WWW';
+    if(h==='live.douyin.com') return 'DOUYIN_LIVE';
+    if(CORE_HOSTS.includes(h)) return h;
+    if(h.endsWith('.douyin.com')) return 'DOUYIN_OTHER_SUBDOMAIN';
+    if(h.endsWith('.douyinstatic.com')||h.endsWith('.douyincdn.com')) return 'DOUYIN_OTHER_STATIC';
+    return 'THIRD_PARTY';
+  } catch { return 'INVALID_URL'; }
+}
+
 export function denyGateResource(info, opt={}) {
   if(isAccessGate(info?.url)) return {allow:false,reason:'ACCESS_GATE_PATH_OR_HOST'};
   return classifyDouyinResource(info,opt);
@@ -54,12 +68,24 @@ export async function guardedRoute(route,{
   const request=route.request();
   const info={url:request.url(),method:request.method(),resourceType:request.resourceType()};
   const forbidden=policy(info,{approvedCoreStatic});
+  let mainFrameNavigation=false;
+  try { mainFrameNavigation=request.isNavigationRequest() && !request.frame().parentFrame(); } catch {}
+  const evidence=status=>({
+    status:status??null,
+    hostClass:hostClass(info.url),
+    resourceType:['document','script','stylesheet','image','font','media','xhr','fetch','websocket','eventsource'].includes(info.resourceType)?info.resourceType:'other',
+    method:['GET','HEAD','POST','PUT','PATCH','DELETE'].includes(info.method)?info.method:'OTHER',
+    mainFrameNavigation
+  });
   const safeAbort=async()=>{
     try { await route.abort('blockedbyclient'); } catch { /* page already closed */ }
   };
   if(isStopped()) { await safeAbort(); return {decision:'STOPPED'}; }
   if(!forbidden?.allow) {
     tallyBlocked(info, forbidden?.reason || 'DENIED');
+    // An unauthorized main-frame navigation is an access-limit signal, not merely a subresource.
+    if(mainFrameNavigation) stop(forbidden?.reason==='ACCESS_GATE_PATH_OR_HOST'?'ACCESS_GATE_NAVIGATION':'MAIN_FRAME_NAVIGATION_DENIED',
+      {...evidence(null),policyReason:String(forbidden?.reason||'DENIED')});
     await safeAbort();
     return {decision:'DENIED',reason:forbidden?.reason || 'DENIED'};
   }
@@ -70,7 +96,7 @@ export async function guardedRoute(route,{
     const status=response.status();
     const reason=inspectHttpResponse(status,response.headers());
     if(reason) {
-      stop(reason);
+      stop(reason,evidence(status));
       await safeAbort();
       return {decision:'STOP',reason};
     }
@@ -79,7 +105,7 @@ export async function guardedRoute(route,{
     tallyAllowed(info,forbidden.reason);
     return {decision:'FULFILLED',status};
   } catch {
-    stop('ROUTED_FETCH_FAILED');
+    stop('ROUTED_FETCH_FAILED',evidence(null));
     await safeAbort();
     return {decision:'STOP',reason:'ROUTED_FETCH_FAILED'};
   }
@@ -88,7 +114,7 @@ export async function guardedRoute(route,{
 /** Prevent browser-side UDP WebRTC, workers and unrouteable beacons before any page scripts run. */
 export function disableUnroutedChannels() {
   const blocked=()=>{ throw new Error('R320_PUBLIC_GUEST_CHANNEL_DISABLED'); };
-  for(const key of ['RTCPeerConnection','webkitRTCPeerConnection','Worker','SharedWorker','EventSource','WebSocket']) {
+  for(const key of ['RTCPeerConnection','webkitRTCPeerConnection','mozRTCPeerConnection','Worker','SharedWorker','EventSource','WebSocket','WebSocketStream','WebTransport']) {
     try { Object.defineProperty(window,key,{value:blocked,configurable:false,writable:false}); } catch {}
   }
   try { Object.defineProperty(navigator,'sendBeacon',{value:()=>false,configurable:false,writable:false}); } catch {}
