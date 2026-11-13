@@ -102,7 +102,9 @@ async function snap(url) {
         mainPlayerEndedText: document.querySelector('[data-e2e="player-ended"], [data-e2e="live-ended"]')?.textContent?.trim().slice(0,120) || '' };
     });
     const f = new URL(page.url());
-    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 80), ...data };
+    // Never truncate below a real profile path: approved accounts have 82-char /user/<secUid> paths and
+    // identity needs an EXACT final path (R3.18). finalPath goes to the encrypted private record only.
+    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 256), ...data };
   } catch (e) { return { httpStatus: null, navigationError: String(e?.name || 'NAV_ERROR').slice(0, 40) }; }
   finally { await page.close().catch(() => {}); }
 }

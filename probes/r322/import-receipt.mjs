@@ -28,6 +28,8 @@ try {
   if(new Set(identities).size!==identities.length) throw new Error('PATH_ALIASES_MUST_DIFFER');
   const lockPath=opt.state+'.lock';
   const lock=await fs.open(lockPath,'wx',0o600);
+  // Lets an operator judge a lock left by a crash (no account data in it).
+  await lock.writeFile(JSON.stringify({pid:process.pid,startedAt:new Date().toISOString()})+'\n');
   const temps=[];
   try {
     let previous=null;
@@ -39,11 +41,16 @@ try {
     for(const [target,data] of [[opt.state,JSON.stringify(ledger,null,2)+'\n'],[opt.html,html]]){
       await fs.mkdir(path.dirname(path.resolve(target)),{recursive:true});
       const temp=target+'.'+randomUUID()+'.tmp';temps.push(temp);
-      await fs.writeFile(temp,data,{mode:0o600,flag:'wx'});
+      const fh=await fs.open(temp,'wx',0o600);
+      try { await fh.writeFile(data); await fh.sync(); } finally { await fh.close(); }
     }
     await fs.rename(temps[0],opt.state);
     try { await fs.rename(temps[1],opt.html); }
     catch { throw new Error('VIEW_COMMIT_FAILED_LEDGER_SAVED_RETRY_SAME_RECEIPT'); }
+    // Make both renames durable (best effort: directory fsync is not supported everywhere).
+    for(const d of new Set([opt.state,opt.html].map(t=>path.dirname(path.resolve(t))))) {
+      try { const dh=await fs.open(d,'r'); try { await dh.sync(); } finally { await dh.close(); } } catch {}
+    }
     console.log(JSON.stringify({status:'IMPORTED_OFFLINE',evidenceKind:ledger.evidenceKind,observations:ledger.observations.length,latestAt:ledger.latestAt}));
   } finally {
     for(const temp of temps) await fs.rm(temp,{force:true});

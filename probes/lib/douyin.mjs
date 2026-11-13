@@ -134,5 +134,5 @@ export function decideDouyin(profile, room, t, { offlineRuleValidated = false, s
     if (offlineRuleValidated) return { ...out, state: 'OFFLINE', offlineEvidence: true, reason: 'NO_BADGE_ENDED_TEXT_AND_STATUS_4' };
     return { ...out, offlineCandidate: true, reason: 'OFFLINE_CANDIDATE_RULE_NOT_VALIDATED' };
   }
-  return { ...out, reason: 'NO_LIVE_BADGE; not proof of offline' };
+  return { ...out, reason: 'NO_LIVE_BADGE_NOT_PROOF_OF_OFFLINE' };
 }
