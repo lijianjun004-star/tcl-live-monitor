@@ -121,11 +121,16 @@ async function snap(url, target = null) {
         live: links.map(a => ({ a, m: /^https:\/\/live\.douyin\.com\/(\d+)/.exec(a.href) })).filter(x => x.m).slice(0, 15)
           .map(({ a, m }) => ({ room: m[1], liveText: (a.innerText || a.textContent || '').includes('直播中'), ancestry: chain(a) })),
         users: links.filter(a => a.href.startsWith('https://www.douyin.com/user/')).slice(0, 60)
-          .map(a => { try { return { path: new URL(a.href).pathname, ancestry: chain(a) }; } catch { return null; } }).filter(Boolean) };
+          .map(a => { try { return { path: new URL(a.href).pathname, ancestry: chain(a) }; } catch { return null; } }).filter(Boolean),
+        // R3.25: where (if anywhere) the rendered page says "直播回放": count and ancestry labels only.
+        replay: (() => { const hits = []; const w = document.createTreeWalker(document.body || document, NodeFilter.SHOW_TEXT);
+          for (let n = w.nextNode(), i = 0; n && i < 20000; n = w.nextNode(), i++) if ((n.nodeValue || '').includes('直播回放')) hits.push(n.parentElement);
+          return { textNodes: hits.length, ancestry: hits.filter(Boolean).slice(0, 3).map(e => [label(e), ...chain(e)].slice(0, 12)) }; })() };
     }).catch(() => null);
     const structure = raw && target ? {
       liveAnchors: raw.live.map(x => ({ registeredRoom: x.room === String(target.roomId ?? ''), liveText: x.liveText, ancestry: x.ancestry })),
-      ownerLinks: raw.users.filter(x => x.path === new URL(target.profileUrl).pathname).slice(0, 10).map(x => ({ ancestry: x.ancestry })) } : null;
+      ownerLinks: raw.users.filter(x => x.path === new URL(target.profileUrl).pathname).slice(0, 10).map(x => ({ ancestry: x.ancestry })),
+      replay: raw.replay } : null;
     const f = new URL(page.url());
     // Never truncate below a real profile path: approved accounts have 82-char /user/<secUid> paths and
     // identity needs an EXACT final path (R3.18). finalPath goes to the encrypted private record only.

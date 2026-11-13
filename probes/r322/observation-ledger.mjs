@@ -21,11 +21,22 @@ function canonicalReason(x) {
   if (typeof r !== 'string' || !REASON.test(r)) fail();
   return r;
 }
-function normalizeRow(r, platform) {
+// R3.25: the verified profile itself showed a live link to THIS account's own room (owner-scoped, or the
+// single live link equal to its registered room). Profile-only evidence: never turned into LIVE, which
+// still needs profile AND room page identity.
+const OWN_ROOM_SCOPES = new Set(['OWNER_HEADER_LIVE_ANCHOR', 'REGISTERED_ROOM_LIVE_ANCHOR']);
+function normalizeRow(r, platform, { stored = false } = {}) {
   if (!object(r) || typeof r.key !== 'string' || !KEY.test(r.key) || !STATES.has(r.state)) fail();
   const reportedReason = canonicalReason(r.reason);
-  for (const k of ['profileIdentityVerified','roomIdentityVerified','roomPageIdentityVerified','offlineEvidence','offlineRuleValidated'])
+  for (const k of ['profileIdentityVerified','roomIdentityVerified','roomPageIdentityVerified','offlineEvidence','offlineRuleValidated','liveBadgeSeen'])
     if (r[k] !== undefined && typeof r[k] !== 'boolean') fail();
+  if (r.ownerAnchorScope !== undefined && (typeof r.ownerAnchorScope !== 'string' || !REASON.test(r.ownerAnchorScope))) fail();
+  // Ledger rows keep only the derived flag, and only when true (R3.22 ledgers stay valid unchanged).
+  // Receipt rows can never assert it directly: it is derived from the probe's own fields.
+  if (stored && r.ownRoomLiveBadge !== undefined && r.ownRoomLiveBadge !== true) fail();
+  const ownRoomLiveBadge = stored ? r.ownRoomLiveBadge === true
+    : r.state !== 'NOT_RUN' && r.profileIdentityVerified === true && r.liveBadgeSeen === true && OWN_ROOM_SCOPES.has(r.ownerAnchorScope);
+  if (ownRoomLiveBadge && r.profileIdentityVerified !== true) fail();
   const at = iso(r.at);
   const roomVerified = r.roomIdentityVerified === true || r.roomPageIdentityVerified === true;
   if (r.roomIdentityVerified !== undefined && r.roomPageIdentityVerified !== undefined && r.roomIdentityVerified !== r.roomPageIdentityVerified) fail();
@@ -38,7 +49,8 @@ function normalizeRow(r, platform) {
   }
   return { platform, key:r.key, at, state, reason, reportedState:r.state,reportedReason,
     profileIdentityVerified:r.profileIdentityVerified === true, roomIdentityVerified:roomVerified,
-    offlineEvidence:r.offlineEvidence === true, offlineRuleValidated:r.offlineRuleValidated === true };
+    offlineEvidence:r.offlineEvidence === true, offlineRuleValidated:r.offlineRuleValidated === true,
+    ...(ownRoomLiveBadge ? { ownRoomLiveBadge: true } : {}) };
 }
 function readLedger(previous) {
   if (previous === null || previous === undefined) return null;
@@ -48,7 +60,7 @@ function readLedger(previous) {
   const seen = new Set();
   for (const r of previous.observations) {
     if (!object(r) || !PLATFORMS.has(r.platform)) fail();
-    const normalized = normalizeRow({...r, state:r.reportedState,reason:r.reportedReason}, r.platform);
+    const normalized = normalizeRow({...r, state:r.reportedState,reason:r.reportedReason}, r.platform, { stored: true });
     if (JSON.stringify(normalized) !== JSON.stringify(r)) fail();
     const id = `${r.platform}:${r.key}:${r.at}`;
     if (seen.has(id) || r.at > previous.latestAt || Date.parse(r.at) < Date.parse(previous.latestAt) - WEEK) fail();
@@ -117,4 +129,44 @@ export function buildSummary(ledger) {
     }
   }
   return {rooms:rooms.sort((a,b)=>a.platform.localeCompare(b.platform)||a.key.localeCompare(b.key)),sessions};
+}
+
+/** Beijing calendar day (YYYY-MM-DD) of an ISO instant. */
+export function beijingDay(isoAt) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(isoAt));
+}
+/**
+ * R3.25 "did this account broadcast today?" per account and Beijing day.
+ * BROADCAST_SEEN: at least one sample showed it live (strongest evidence reported).
+ * NOT_SEEN_IN_SAMPLES: verified samples exist but none showed it live. NOT proof that it did not broadcast:
+ *   a session between samples can be missed.
+ * UNKNOWN: no verified sample that day (blocked, not run or identity not verified).
+ */
+export function buildDailyBroadcast(ledger) {
+  const valid = readLedger(ledger);
+  if (!valid) fail();
+  const latestDay = beijingDay(valid.latestAt);
+  const groups = new Map();
+  for (const r of valid.observations) {
+    const id = `${r.platform}:${r.key}:${beijingDay(r.at)}`;
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id).push(r);
+  }
+  const days = [];
+  for (const rows of groups.values()) {
+    rows.sort((a, b) => a.at.localeCompare(b.at));
+    const verified = rows.filter(r => r.state !== 'NOT_RUN' && r.profileIdentityVerified === true);
+    const dual = rows.filter(r => r.state === 'LIVE');            // ledger LIVE already needs both identities
+    const badge = rows.filter(r => r.ownRoomLiveBadge === true);
+    const seen = [...new Set([...dual, ...badge])].sort((a, b) => a.at.localeCompare(b.at));
+    const date = beijingDay(rows[0].at);
+    days.push({ platform: rows[0].platform, key: rows[0].key, date,
+      status: seen.length ? 'BROADCAST_SEEN' : verified.length ? 'NOT_SEEN_IN_SAMPLES' : 'UNKNOWN',
+      evidence: dual.length ? 'PROFILE_AND_ROOM_PAGE_IDENTITY' : badge.length ? 'PROFILE_OWN_ROOM_LIVE_BADGE' : null,
+      firstSeenAt: seen[0]?.at ?? null, lastSeenAt: seen.at(-1)?.at ?? null,
+      samples: rows.length, verifiedSamples: verified.length,
+      firstVerifiedSampleAt: verified[0]?.at ?? null, lastVerifiedSampleAt: verified.at(-1)?.at ?? null,
+      latestDay: date === latestDay, retentionTruncated: valid.retentionTruncated });
+  }
+  return days.sort((a, b) => b.date.localeCompare(a.date) || a.platform.localeCompare(b.platform) || a.key.localeCompare(b.key));
 }

@@ -32,7 +32,9 @@ const foreignStatic = '<link rel="stylesheet" href="https://static.synthetic-cdn
 const room = (t, emptyTitle = false, kind = null) => page(emptyTitle ? '' : `${t.accountName}的抖音直播间 - 抖音直播`,
   `<main><div data-e2e="room-owner"><a href="${t.profileUrl}">${t.accountName}</a></div><video></video></main>${ssr(t, kind)}`,
   `<meta name="description" content="欢迎来到${t.accountName}的抖音直播间">${kind ? foreignStatic : ''}`);
-const firstProfile = { NORMAL: () => profile(first, false), REAL_LAYOUT: () => profile(first, false, [first.roomId]),
+// R3.25: a "直播回放" entry on the first profile (REAL_LAYOUT) for the private replay diagnostics.
+const withReplay = html => html.replace('</main>', '<section data-e2e="live-replay"><span>直播回放</span></section></main>');
+const firstProfile = { NORMAL: () => profile(first, false), REAL_LAYOUT: () => withReplay(profile(first, false, [first.roomId])),
   FOREIGN_BADGE: () => profile(first, false, [FOREIGN]), ROOM_TITLE_EMPTY: () => profile(first, false, [first.roomId]) };
 const secondProfile = { NORMAL: () => profile(second, true), REAL_LAYOUT: () => profile(second, false),
   FOREIGN_BADGE: () => profile(second, false, [second.roomId, FOREIGN]), ROOM_TITLE_EMPTY: () => profile(second, false) };

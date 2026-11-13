@@ -137,6 +137,9 @@ export function documentShape(html, t) {
     status: [...text.matchAll(/"((?:live_|room_)?status)"\s*:\s*(\d{1,2})(?!\d)/g)].slice(0, 16)
       .map(m => ({ key: m[1], value: Number(m[2]), before: keysBefore(m.index) })),
     endedText: ENDED_RE.test(raw + decoded), loginGateText: LOGIN_GATE_RE.test(raw + decoded),
+    // R3.25: does the raw page mention live replays at all? Count of the wording and key NAMES only.
+    replayText: (text.match(/直播回放/g) || []).length,
+    replayKeys: [...new Set([...text.matchAll(/"([A-Za-z_]{0,24}replay[A-Za-z_]{0,24})"\s*:/gi)].map(m => m[1]))].filter(k => k.length <= 32).slice(0, 10),
   };
 }
 

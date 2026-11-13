@@ -60,19 +60,22 @@ assert.deepEqual(pick(row(rte, first)), { state: 'UNKNOWN', reason: 'LIVE_BADGE_
 const shapeAll = json('REAL_LAYOUT', 'private-shape.json'), shape = shapeAll.rows;
 const sf = shape.find(x => x.key === first), ss = shape.find(x => x.key === second);
 assert.deepEqual(sf.profile.liveAnchors, [{ registeredRoom: true, liveText: true, insideLiveEntry: true, insideUserInfo: false, labelsSafe: true }]);
-assert.deepEqual(sf.profile.keys, ['liveAnchors', 'ownerLinks']);
+assert.deepEqual(sf.profile.keys, ['liveAnchors', 'ownerLinks', 'replay']);
+// R3.25: replay wording found in the rendered first profile, labels only; none elsewhere.
+assert.deepEqual(sf.profile.replay, { textNodes: 1, inLiveReplaySection: true, labelsSafe: true });
+assert.deepEqual(ss.profile.replay, { textNodes: 0, inLiveReplaySection: false, labelsSafe: true });
 assert.deepEqual(sf.profile.anchorKeys, ['ancestry', 'liveText', 'registeredRoom']);
 assert.deepEqual(sf.room.ownerLinks, [{ insideRoomOwner: true, insideUserInfo: false, labelsSafe: true }]);
 assert.deepEqual([ss.profile.liveAnchors, ss.room], [[], null]);
 // R3.24 raw server HTML shape (private, reduced to booleans): RENDER_DATA and streamed chunks both parsed;
 // owner id found under owner.sec_uid, room id under web_rid, live/ended status read; hostnames of
 // blocked JS/CSS recorded per page kind, never paths.
-const DOC_FIELDS = 'accountName,bytes,displayId,endedText,loginGateText,metaTagHasName,metaTagPresent,paceScripts,renderData,renderDataDecoded,roomId,secUid,status,titleTagEmpty,titleTagHasName';
-assert.deepEqual(sf.roomDoc, { renderData: true, paceScripts: 0, titleTagEmpty: false, secUidUnderOwnerKey: true, roomIdUnderWebRid: true, statusValues: [2], keysOk: true, fields: DOC_FIELDS });
-assert.deepEqual([sf.profileDoc.renderData, sf.profileDoc.statusValues, sf.profileDoc.keysOk, ss.roomDoc], [false, [], true, null]);
+const DOC_FIELDS = 'accountName,bytes,displayId,endedText,loginGateText,metaTagHasName,metaTagPresent,paceScripts,renderData,renderDataDecoded,replayKeys,replayText,roomId,secUid,status,titleTagEmpty,titleTagHasName';
+assert.deepEqual(sf.roomDoc, { renderData: true, paceScripts: 0, titleTagEmpty: false, secUidUnderOwnerKey: true, roomIdUnderWebRid: true, statusValues: [2], keysOk: true, replayText: 0, replayKeysOk: true, fields: DOC_FIELDS });
+assert.deepEqual([sf.profileDoc.renderData, sf.profileDoc.statusValues, sf.profileDoc.keysOk, sf.profileDoc.replayText, ss.profileDoc.replayText, ss.roomDoc], [false, [], true, 1, 0, null]);
 assert.deepEqual(shapeAll.hosts, { synthetic: ['room|static.synthetic-cdn.test'], keysOk: true, countsOk: true });
 const rteShape = json('ROOM_TITLE_EMPTY', 'private-shape.json');
-assert.deepEqual(rteShape.rows.find(x => x.key === first).roomDoc, { renderData: false, paceScripts: 1, titleTagEmpty: true, secUidUnderOwnerKey: true, roomIdUnderWebRid: true, statusValues: [4], keysOk: true, fields: DOC_FIELDS });
+assert.deepEqual(rteShape.rows.find(x => x.key === first).roomDoc, { renderData: false, paceScripts: 1, titleTagEmpty: true, secUidUnderOwnerKey: true, roomIdUnderWebRid: true, statusValues: [4], keysOk: true, replayText: 0, replayKeysOk: true, fields: DOC_FIELDS });
 assert.deepEqual(json('NORMAL', 'private-shape.json').hosts, { synthetic: [], keysOk: true, countsOk: true });
 const fshape = json('FOREIGN_BADGE', 'private-shape.json').rows;
 assert.deepEqual(fshape.find(x => x.key === second).profile.liveAnchors.map(x => x.registeredRoom), [true, false]);
@@ -109,10 +112,25 @@ assert.equal(ledger2.observations.length, 6);
 assert.deepEqual(summary2.sessions.map(s => [s.key, s.status, s.hasUnknownObservations]), [[first, 'END_UNCONFIRMED', true]]);
 assert.deepEqual(summary2.rooms.map(r => [r.key, r.state, r.reason]).sort(), [[first, 'UNKNOWN', 'LIVE_BADGE_BUT_ROOM_PAGE_NOT_CROSS_VERIFIED'], [second, 'UNKNOWN', 'NO_LIVE_BADGE_NOT_PROOF_OF_OFFLINE']].sort());
 const html2 = fs.readFileSync(path.join(ledger2Dir, 'index.html'), 'utf8');
+// R3.25 daily "did it broadcast?": the first account has dual evidence (REAL_LAYOUT) and own-room badges;
+// FOREIGN_BADGE rows never count; the second account is only "not seen in samples", never "did not broadcast".
+const own = s => ledger2.observations.filter(o => o.key === s && o.ownRoomLiveBadge === true).length;
+assert.deepEqual([own(first), own(second)], [2, 0]);   // REAL_LAYOUT + ROOM_TITLE_EMPTY; FOREIGN_BADGE excluded
+const { buildDailyBroadcast } = await import(path.join(root, 'probes/r322/observation-ledger.mjs'));
+const daily2 = buildDailyBroadcast(ledger2);
+const dFirst = daily2.filter(d => d.key === first), dSecond = daily2.filter(d => d.key === second);
+assert.ok(dFirst.some(d => d.status === 'BROADCAST_SEEN' && d.evidence === 'PROFILE_AND_ROOM_PAGE_IDENTITY'));
+assert.ok(dSecond.every(d => d.status === 'NOT_SEEN_IN_SAMPLES' && d.evidence === null));
+assert.equal(dSecond.reduce((n, d) => n + d.verifiedSamples, 0), 3);
+assert.match(html2, /每日开播（北京时间）/); assert.match(html2, /已开播/); assert.match(html2, /采样中未见开播/);
+assert.doesNotMatch(html2, /没播|>未开播/);
+const dailyCli = spawnSync(process.execPath, [path.join(root, 'probes/r325/daily-report.mjs'), path.join(ledger2Dir, 'state.json')], { encoding: 'utf8' });
+assert.equal(dailyCli.status, 0, dailyCli.stderr);
+fs.writeFileSync(path.join(work, 'daily-r325.txt'), dailyCli.stdout);
 assert.doesNotMatch(html2, /<script|src=|href=|https?:\/\//i);
 const ALL = ['NORMAL', 'FORBIDDEN_FIRST', ...R323];
 const outputs = ALL.flatMap(s => ['receipt.json', 'probe-stdout.txt', 'server-log.json', 'private-shape.json'].map(f => read(s, f)))
-  .concat(fs.readFileSync(path.join(ledgerDir, 'state.json'), 'utf8'), html, fs.readFileSync(path.join(ledger2Dir, 'state.json'), 'utf8'), html2);
+  .concat(fs.readFileSync(path.join(ledgerDir, 'state.json'), 'utf8'), html, fs.readFileSync(path.join(ledger2Dir, 'state.json'), 'utf8'), html2, dailyCli.stdout);
 for (const o of outputs) for (const x of needles) assert.ok(!o.includes(x), 'registry identifier leaked into an output');
 
 if (copyTo) {
@@ -121,10 +139,12 @@ if (copyTo) {
     fs.copyFileSync(path.join(work, s, f), path.join(copyTo, `${s}-${f}`));
   for (const f of ['state.json', 'index.html']) fs.copyFileSync(path.join(ledgerDir, f), path.join(copyTo, `ledger-${f}`));
   for (const f of ['state.json', 'index.html']) fs.copyFileSync(path.join(ledger2Dir, f), path.join(copyTo, `ledger-r323-${f}`));
+  fs.copyFileSync(path.join(work, 'daily-r325.txt'), path.join(copyTo, 'daily-r325.txt'));
 }
 console.log('R322_SEALED_E2E ' + JSON.stringify({
   normal: n.checked.map(r => [r.key, r.state, r.reason]), forbiddenFirst: f.checked.map(r => [r.key, r.state, r.reason]),
   realLayout: rl.checked.map(r => [r.key, r.state, r.reason, r.ownerAnchorScope]), foreignBadge: fb.checked.map(r => [r.key, r.state, r.reason]),
   roomTitleEmpty: rte.checked.map(r => [r.key, r.state, r.reason]),
   stopEvidence: f.stopEvidence, ledgerObservations: ledger.observations.length + ledger2.observations.length,
-  sessionClues: summary.sessions.length + summary2.sessions.length, result: 'PASS' }));
+  sessionClues: summary.sessions.length + summary2.sessions.length,
+  daily: daily2.map(d => [d.key, d.date, d.status, d.evidence, d.verifiedSamples]), result: 'PASS' }));
