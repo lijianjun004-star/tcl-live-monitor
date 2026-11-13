@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { decideDouyin, profileIdentityEvidence, roomIdentityEvidence, documentShape, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
+import { decideDouyin, profileIdentityEvidence, roomIdentityEvidence, documentShape, rawRoomEvidence, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
 import { CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
 import { guardedRoute, disableUnroutedChannels, hostClass } from '../r320/network-guard.mjs';
 
@@ -87,12 +87,15 @@ ctx.on('response', response => {
     reason: redirectToAccessGate ? 'ACCESS_GATE_REDIRECT_RESOURCE' : 'HTTP_' + code + '_RESOURCE' };
   for (const page of ctx.pages()) void page.close().catch(() => {});
 });
-async function snap(url, target = null) {
+async function snap(url, target = null, roomId = null) {
   const page = await ctx.newPage();
   try {
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
     // R3.24 calibration, PRIVATE only: the RAW server HTML reduced at once to counts and key names.
-    const doc = target && resp ? documentShape(await resp.text().catch(() => ''), target) : null;
+    const html = target && resp ? await resp.text().catch(() => '') : '';
+    const doc = target && resp ? documentShape(html, target) : null;
+    // R3.26: room identity signals from the same raw HTML (booleans and a status integer only).
+    const rawRoom = target && roomId ? rawRoomEvidence(html, target, roomId) : null;
     await page.waitForTimeout(6000);
     const data = await page.evaluate(() => {
       const text = document.body?.innerText || '';
@@ -134,7 +137,7 @@ async function snap(url, target = null) {
     const f = new URL(page.url());
     // Never truncate below a real profile path: approved accounts have 82-char /user/<secUid> paths and
     // identity needs an EXACT final path (R3.18). finalPath goes to the encrypted private record only.
-    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 256), ...data, structure, doc };
+    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 256), ...data, structure, doc, raw: rawRoom };
   } catch (e) { return { httpStatus: null, navigationError: String(e?.name || 'NAV_ERROR').slice(0, 40) }; }
   finally { await page.close().catch(() => {}); }
 }
@@ -156,7 +159,7 @@ try {
       const scope=liveAnchorScope(profile, t);
       if (scope.roomId) {
         await new Promise(r => setTimeout(r, 5000));
-        if(!stopped) { activePageKind = 'room'; room = await snap(`https://live.douyin.com/${scope.roomId}`, t); reasonStop = stopped?.reason || stopOf(room); }
+        if(!stopped) { activePageKind = 'room'; room = await snap(`https://live.douyin.com/${scope.roomId}`, t, scope.roomId); reasonStop = stopped?.reason || stopOf(room); }
       }
     }
     let d;
@@ -171,7 +174,7 @@ try {
       profileSignals: { titleExact: profileEvidence.titleExact, idExact: profileEvidence.idExact,
         finalUrlExact: profileEvidence.finalUrlExact, multipleVisibleIds: profileEvidence.multipleVisibleIds,
         titleEmpty: String(profile.title || '').trim() === '' },
-      roomSignals: room ? (({ httpOk, titleEmpty, titleExact, metaExact, ownerLinkExact }) => ({ httpOk, titleEmpty, titleExact, metaExact, ownerLinkExact }))(roomIdentityEvidence(room, t)) : null,
+      roomSignals: room ? roomIdentityEvidence(room, t) : null,
       state: d.state, reason: d.reason, stop: reasonStop });
     priv.push({ key: t.key, at, profileTitle: profile.title, finalHost: profile.finalHost, finalPath: profile.finalPath,
       douyinIdsInPage: profile.douyinIdsInPage, liveRoomIds: ids, roomTitle: room?.title ?? null, roomMeta: room?.metaDescription?.slice(0, 120) ?? null,

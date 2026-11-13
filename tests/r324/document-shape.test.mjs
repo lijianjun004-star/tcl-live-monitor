@@ -53,7 +53,7 @@ test('bounded and fail-safe: empty, malformed, huge or hostile input never throw
 
 test('probe: raw HTML goes through documentShape at once and only into the private record', () => {
   const src = fs.readFileSync('probes/r316/douyin-rpa-two-once.mjs', 'utf8');
-  assert.match(src, /const doc = target && resp \? documentShape\(await resp\.text\(\)\.catch\(\(\) => ''\), target\) : null;/);
+  assert.match(src, /const html = target && resp \? await resp\.text\(\)\.catch\(\(\) => ''\) : '';\n    const doc = target && resp \? documentShape\(html, target\) : null;/);
   assert.equal((src.match(/resp\.text\(/g) || []).length, 1, 'raw HTML read once, never kept');
   const pubBlock = /pub\.push\(\{ key: t\.key, at, profileHttp[\s\S]*?\}\);/.exec(src)?.[0];
   assert.doesNotMatch(pubBlock, /\bdoc\b|Doc\b|blockedStaticHosts/);

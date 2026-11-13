@@ -143,13 +143,52 @@ export function documentShape(html, t) {
   };
 }
 
+/**
+ * R3.26: room identity from the RAW server HTML of the room page (no page script needed).
+ * Shape seen in approved run 43464891978: roomStore.roomInfo.room{id_str,status,...,owner{sec_uid}} and
+ * {roomId,web_rid,anchor{sec_uid}}. Returns booleans and the small status integer only. Fail closed.
+ */
+export function rawRoomEvidence(html, t, roomId) {
+  const out = { forRoomId: roomId ? String(roomId) : null, present: false, webRidExact: false, ownerExact: false, anchorExact: false, status: null };
+  const raw = typeof html === 'string' ? html : '';
+  let sec = '';
+  try { sec = new URL(t?.profileUrl).pathname.split('/').pop() || ''; } catch {}
+  if (!raw || sec.length < 8 || !/^\d{5,24}$/.test(String(roomId || ''))) return out;
+  let decoded = '';
+  const rd = /<script[^>]*\bid=["']RENDER_DATA["'][^>]*>([\s\S]*?)<\/script>/i.exec(raw);
+  if (rd) { try { decoded = decodeURIComponent(rd[1]); } catch { decoded = ''; } }
+  const text = (raw + '\n' + decoded).replace(/\\"/g, '"');
+  const start = text.indexOf('"roomStore"');
+  if (start < 0) return out;
+  const win = text.slice(start, start + 600000);
+  const room = /"roomInfo"\s*:\s*\{[\s\S]{0,400}?"room"\s*:\s*\{\s*"id_str"\s*:\s*"\d{5,24}"\s*,\s*"status"\s*:\s*(\d{1,2})(?!\d)/.exec(win);
+  if (!room) return out;
+  out.present = true; out.status = Number(room[1]);
+  // The room object's own owner: the first owner object after the room starts.
+  const owner = /"owner"\s*:\s*\{[^{}]{0,200}?"sec_uid"\s*:\s*"([^"]{1,200})"/.exec(win.slice(room.index));
+  out.ownerExact = owner?.[1] === sec;
+  // Every {web_rid, anchor} pair for THIS room number must name this account; none may name another.
+  const pairs = [...win.matchAll(/"web_rid"\s*:\s*"(\d{5,24})"\s*,[^{}]{0,200}?"anchor"\s*:\s*\{[^{}]{0,200}?"sec_uid"\s*:\s*"([^"]{1,200})"/g)];
+  const mine = pairs.filter(m => m[1] === String(roomId));
+  out.webRidExact = mine.length > 0;
+  out.anchorExact = mine.length > 0 && mine.every(m => m[2] === sec);
+  return out;
+}
+/** True only when every raw-HTML identity signal holds for the room that was actually checked. */
+export function rawRoomIdentity(room, observedRoomId) {
+  const e = room?.raw;
+  return Boolean(e && observedRoomId && e.forRoomId === String(observedRoomId) && e.present && e.webRidExact && e.ownerExact && e.anchorExact);
+}
+
 /** Booleans only, for the public receipt: which room-page identity signal held. */
 export function roomIdentityEvidence(r, t) {
   const title = String(r?.title || '');
   return { httpOk: r?.httpStatus === 200, titleEmpty: title.trim() === '',
     titleExact: title === `${t?.accountName}的抖音直播间 - 抖音直播`,
     metaExact: String(r?.metaDescription || '').startsWith(`欢迎来到${t?.accountName}的抖音直播间`),
-    ownerLinkExact: strictRoomOwnerVerified(r, t) };
+    ownerLinkExact: strictRoomOwnerVerified(r, t),
+    rawPresent: r?.raw?.present === true, rawWebRidExact: r?.raw?.webRidExact === true, rawOwnerExact: r?.raw?.ownerExact === true,
+    rawAnchorExact: r?.raw?.anchorExact === true, rawStatus: Number.isInteger(r?.raw?.status) ? r.raw.status : null };
 }
 
 export function roomIdentity(r, t) {
@@ -182,6 +221,13 @@ export function decideDouyin(profile, room, t, { offlineRuleValidated = false, s
     // Stale profile live badge cannot override the actual main player's ended state.
     if (rid && ENDED_RE.test(String(room?.mainPlayerEndedText || ''))) return { ...out, state: 'UNKNOWN', reason: 'LIVE_BADGE_BUT_MAIN_PLAYER_ENDED' };
     if (rid) return { ...out, state: 'LIVE', reason: roomIdChanged ? 'LIVE_ROOM_ID_CHANGED' : 'PROFILE_LIVE_BADGE_AND_ROOM_PAGE_IDENTITY' };
+    // R3.26: the room page did not render, but its RAW server HTML names this account as owner and anchor
+    // of exactly this room. Only the strict path, only on the exact room URL, never when gated.
+    const rawOk = strictRoomOwner && room?.httpStatus === 200 && room?.finalHost === 'live.douyin.com' && room?.finalPath === '/' + observedRoomId
+      && !LOGIN_GATE_RE.test(String(room?.bodyExcerpt || '')) && rawRoomIdentity(room, observedRoomId);
+    if (rawOk && room.raw.status === 2) return { ...out, state: 'LIVE', roomPageIdentityVerified: true,
+      reason: roomIdChanged ? 'LIVE_ROOM_ID_CHANGED' : 'PROFILE_LIVE_BADGE_AND_ROOM_RAW_HTML_IDENTITY' };
+    if (rawOk) return { ...out, roomPageIdentityVerified: true, reason: 'ROOM_RAW_HTML_STATUS_NOT_LIVE' };
     return { ...out, reason: 'LIVE_BADGE_BUT_ROOM_PAGE_NOT_CROSS_VERIFIED' };
   }
   // A live link IS on the verified page but could not be tied to this account: say so (it is not

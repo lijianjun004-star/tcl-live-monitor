@@ -33,8 +33,10 @@ jobs:
         run: node --test tests/r324/*.test.mjs
       - name: R3.25 daily "broadcast today?" and replay diagnostics tests (offline only)
         run: node --test tests/r325/*.test.mjs
+      - name: R3.26 raw-HTML room identity tests (offline only)
+        run: node --test tests/r326/*.test.mjs
       - name: Full repository regression
-        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs tests/r321/*.test.mjs tests/r322/*.test.mjs tests/r323/*.test.mjs tests/r324/*.test.mjs tests/r325/*.test.mjs
+        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs tests/r321/*.test.mjs tests/r322/*.test.mjs tests/r323/*.test.mjs tests/r324/*.test.mjs tests/r325/*.test.mjs tests/r326/*.test.mjs
       - name: Workflow YAML syntax (every workflow file)
         run: |
           python3 - <<'PY'

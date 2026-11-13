@@ -73,11 +73,11 @@ test('decideDouyin (strict): a live link that cannot be tied to the account is n
   assert.deepEqual([legacy.state, legacy.reason, legacy.signals.ownerAnchorScope], ['UNKNOWN', 'LIVE_BADGE_BUT_ROOM_PAGE_NOT_CROSS_VERIFIED', 'LEGACY']);
 });
 
-test('roomIdentityEvidence: booleans only, one per signal', () => {
-  assert.deepEqual(roomIdentityEvidence(room('20000000002'), t), { httpOk: true, titleEmpty: false, titleExact: true, metaExact: true, ownerLinkExact: true });
-  assert.deepEqual(roomIdentityEvidence(room('20000000002', { title: '  ', ownerProfileLinks: [] }), t), { httpOk: true, titleEmpty: true, titleExact: false, metaExact: true, ownerLinkExact: false });
-  assert.deepEqual(roomIdentityEvidence(null, t), { httpOk: false, titleEmpty: true, titleExact: false, metaExact: false, ownerLinkExact: false });
-  for (const v of Object.values(roomIdentityEvidence(room('20000000002'), t))) assert.equal(typeof v, 'boolean');
+test('roomIdentityEvidence: booleans (and one small status integer) only', () => {
+  assert.deepEqual(roomIdentityEvidence(room('20000000002'), t), { httpOk: true, titleEmpty: false, titleExact: true, metaExact: true, ownerLinkExact: true, rawPresent: false, rawWebRidExact: false, rawOwnerExact: false, rawAnchorExact: false, rawStatus: null });
+  assert.deepEqual(roomIdentityEvidence(room('20000000002', { title: '  ', ownerProfileLinks: [] }), t), { httpOk: true, titleEmpty: true, titleExact: false, metaExact: true, ownerLinkExact: false, rawPresent: false, rawWebRidExact: false, rawOwnerExact: false, rawAnchorExact: false, rawStatus: null });
+  assert.deepEqual(roomIdentityEvidence(null, t), { httpOk: false, titleEmpty: true, titleExact: false, metaExact: false, ownerLinkExact: false, rawPresent: false, rawWebRidExact: false, rawOwnerExact: false, rawAnchorExact: false, rawStatus: null });
+  for (const [k, v] of Object.entries(roomIdentityEvidence(room('20000000002'), t))) assert.ok(k === 'rawStatus' ? v === null || Number.isInteger(v) : typeof v === 'boolean');
 });
 
 test('probe: identity extractor byte-identical to R3.22; public receipt adds booleans only; diagnostics stay private', () => {

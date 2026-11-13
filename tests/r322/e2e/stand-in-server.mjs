@@ -13,7 +13,7 @@ const { targets } = JSON.parse(fs.readFileSync(root + '/config/r316-douyin-rpa-t
 const [first, second] = targets.map(t => reg.douyin.find(x => x.key === t.key));
 const FOREIGN = '70000000001'; // synthetic room of some OTHER account (e.g. a recommendation)
 if (reg.douyin.some(t => String(t.roomId) === FOREIGN)) throw Error('FOREIGN_ROOM_COLLIDES_WITH_REGISTRY');
-const R323 = ['REAL_LAYOUT', 'FOREIGN_BADGE', 'ROOM_TITLE_EMPTY'].includes(scenario);
+const R323 = ['REAL_LAYOUT', 'FOREIGN_BADGE', 'ROOM_TITLE_EMPTY', 'RAW_ROOM'].includes(scenario);
 const pathOf = t => new URL(t.profileUrl).pathname;
 const page = (title, body, head = '') => `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>${head}</head><body>${body}</body></html>`;
 const header = (t, inner = '') => `<div data-e2e="user-info"><h1>${t.accountName}</h1><span>抖音号：${t.displayDouyinId}</span>${inner}</div>`;
@@ -34,9 +34,14 @@ const room = (t, emptyTitle = false, kind = null) => page(emptyTitle ? '' : `${t
   `<meta name="description" content="欢迎来到${t.accountName}的抖音直播间">${kind ? foreignStatic : ''}`);
 // R3.25: a "直播回放" entry on the first profile (REAL_LAYOUT) for the private replay diagnostics.
 const withReplay = html => html.replace('</main>', '<section data-e2e="live-replay"><span>直播回放</span></section></main>');
-const firstProfile = { NORMAL: () => profile(first, false), REAL_LAYOUT: () => withReplay(profile(first, false, [first.roomId])),
+// R3.26: an UNRENDERED room page as in approved run 43464891978: empty title, no meta, no owner link;
+// identity only in the raw streamed payload (roomStore.roomInfo.room.owner / web_rid + anchor).
+const rawRoom = t => { const sec = pathOf(t).split('/').pop(); const o = { id_str: '111', sec_uid: sec, nickname: t.accountName };
+  const st = { state: { roomStore: { roomInfo: { room: { id_str: '7000000000000000001', status: 2, owner: o }, roomId: '7000000000000000001', web_rid: String(t.roomId), anchor: o } } } };
+  return page('', `<main></main><script>(self.__pace_f=self.__pace_f||[]).push([1,${JSON.stringify(JSON.stringify(st))}])</script>`, foreignStatic); };
+const firstProfile = { RAW_ROOM: () => profile(first, false, [first.roomId]), NORMAL: () => profile(first, false), REAL_LAYOUT: () => withReplay(profile(first, false, [first.roomId])),
   FOREIGN_BADGE: () => profile(first, false, [FOREIGN]), ROOM_TITLE_EMPTY: () => profile(first, false, [first.roomId]) };
-const secondProfile = { NORMAL: () => profile(second, true), REAL_LAYOUT: () => profile(second, false),
+const secondProfile = { RAW_ROOM: () => profile(second, false), NORMAL: () => profile(second, true), REAL_LAYOUT: () => profile(second, false),
   FOREIGN_BADGE: () => profile(second, false, [second.roomId, FOREIGN]), ROOM_TITLE_EMPTY: () => profile(second, false) };
 if (scenario !== 'FORBIDDEN_FIRST' && !firstProfile[scenario]) throw Error('UNKNOWN_SCENARIO');
 const log = [];
@@ -50,6 +55,7 @@ https.createServer({ key: fs.readFileSync(work + '/key.pem'), cert: fs.readFileS
   if (host === 'www.douyin.com' && p === pathOf(second)) { log.push('profile:second'); return send(200, secondProfile[scenario]()); }
   if (host === 'live.douyin.com' && p === '/' + second.roomId) { log.push('room:second'); return send(200, room(second)); }
   if (host === 'live.douyin.com' && p === '/' + first.roomId) { log.push('room:first');
+    if (scenario === 'RAW_ROOM') return send(200, rawRoom(first));
     return send(200, room(first, scenario === 'ROOM_TITLE_EMPTY', scenario === 'REAL_LAYOUT' ? 'RENDER_DATA' : scenario === 'ROOM_TITLE_EMPTY' ? 'PACE' : null)); }
   if (host === 'live.douyin.com' && p === '/' + FOREIGN) { log.push('room:foreign'); return send(200, page('', '<main></main>')); }
   log.push(host === 'www.douyin.com' || host === 'live.douyin.com' ? 'douyin:other-path' : 'other-host');

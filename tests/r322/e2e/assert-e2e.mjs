@@ -40,7 +40,7 @@ const rl = json('REAL_LAYOUT', 'receipt.json');
 assert.deepEqual(json('REAL_LAYOUT', 'server-log.json'), ['profile:first', 'room:first', 'profile:second']);
 assert.deepEqual(pick(row(rl, first)), { state: 'LIVE', reason: 'PROFILE_LIVE_BADGE_AND_ROOM_PAGE_IDENTITY', scope: 'REGISTERED_ROOM_LIVE_ANCHOR',
   profileId: true, roomId: true, badge: true, roomHttp: 200, titleEmpty: true,
-  roomSignals: { httpOk: true, titleEmpty: false, titleExact: true, metaExact: true, ownerLinkExact: true } });
+  roomSignals: { httpOk: true, titleEmpty: false, titleExact: true, metaExact: true, ownerLinkExact: true , rawPresent: false, rawWebRidExact: false, rawOwnerExact: false, rawAnchorExact: false, rawStatus: null } });
 assert.deepEqual(pick(row(rl, second)), { state: 'UNKNOWN', reason: 'NO_LIVE_BADGE_NOT_PROOF_OF_OFFLINE', scope: 'NO_OWNER_HEADER_LIVE_ANCHOR',
   profileId: true, badge: false, titleEmpty: true, ...noRoom });
 // FOREIGN_BADGE: a live link to ANOTHER room (alone, or next to the registered one) is never visited and
@@ -54,7 +54,17 @@ const rte = json('ROOM_TITLE_EMPTY', 'receipt.json');
 assert.deepEqual(json('ROOM_TITLE_EMPTY', 'server-log.json'), ['profile:first', 'room:first', 'profile:second']);
 assert.deepEqual(pick(row(rte, first)), { state: 'UNKNOWN', reason: 'LIVE_BADGE_BUT_ROOM_PAGE_NOT_CROSS_VERIFIED', scope: 'REGISTERED_ROOM_LIVE_ANCHOR',
   profileId: true, roomId: false, badge: true, roomHttp: 200, titleEmpty: true,
-  roomSignals: { httpOk: true, titleEmpty: true, titleExact: false, metaExact: true, ownerLinkExact: true } });
+  roomSignals: { httpOk: true, titleEmpty: true, titleExact: false, metaExact: true, ownerLinkExact: true , rawPresent: false, rawWebRidExact: false, rawOwnerExact: false, rawAnchorExact: false, rawStatus: null } });
+// R3.26 RAW_ROOM: the room page never renders (as on the real site with only the core CDNs allowed), but its
+// raw HTML names this account as owner and anchor of exactly this room with status 2 -> LIVE.
+const rr = json('RAW_ROOM', 'receipt.json');
+assert.equal(read('RAW_ROOM', 'probe-exit.txt').trim(), '0');
+assert.deepEqual(json('RAW_ROOM', 'server-log.json'), ['profile:first', 'room:first', 'profile:second']);
+assert.deepEqual(pick(row(rr, first)), { state: 'LIVE', reason: 'PROFILE_LIVE_BADGE_AND_ROOM_RAW_HTML_IDENTITY', scope: 'REGISTERED_ROOM_LIVE_ANCHOR',
+  profileId: true, roomId: true, badge: true, roomHttp: 200, titleEmpty: true,
+  roomSignals: { httpOk: true, titleEmpty: true, titleExact: false, metaExact: false, ownerLinkExact: false,
+    rawPresent: true, rawWebRidExact: true, rawOwnerExact: true, rawAnchorExact: true, rawStatus: 2 } });
+assert.equal(row(rr, second).state, 'UNKNOWN');
 // Private calibration record (checked inside the sealed step, reduced to booleans): ancestry chains only,
 // letters-only labels, the registered room flagged, the owner link found on the room page.
 const shapeAll = json('REAL_LAYOUT', 'private-shape.json'), shape = shapeAll.rows;
@@ -128,7 +138,7 @@ const dailyCli = spawnSync(process.execPath, [path.join(root, 'probes/r325/daily
 assert.equal(dailyCli.status, 0, dailyCli.stderr);
 fs.writeFileSync(path.join(work, 'daily-r325.txt'), dailyCli.stdout);
 assert.doesNotMatch(html2, /<script|src=|href=|https?:\/\//i);
-const ALL = ['NORMAL', 'FORBIDDEN_FIRST', ...R323];
+const ALL = ['NORMAL', 'FORBIDDEN_FIRST', ...R323, 'RAW_ROOM'];
 const outputs = ALL.flatMap(s => ['receipt.json', 'probe-stdout.txt', 'server-log.json', 'private-shape.json'].map(f => read(s, f)))
   .concat(fs.readFileSync(path.join(ledgerDir, 'state.json'), 'utf8'), html, fs.readFileSync(path.join(ledger2Dir, 'state.json'), 'utf8'), html2, dailyCli.stdout);
 for (const o of outputs) for (const x of needles) assert.ok(!o.includes(x), 'registry identifier leaked into an output');
@@ -147,4 +157,5 @@ console.log('R322_SEALED_E2E ' + JSON.stringify({
   roomTitleEmpty: rte.checked.map(r => [r.key, r.state, r.reason]),
   stopEvidence: f.stopEvidence, ledgerObservations: ledger.observations.length + ledger2.observations.length,
   sessionClues: summary.sessions.length + summary2.sessions.length,
+  rawRoom: rr.checked.map(r => [r.key, r.state, r.reason]),
   daily: daily2.map(d => [d.key, d.date, d.status, d.evidence, d.verifiedSamples]), result: 'PASS' }));
