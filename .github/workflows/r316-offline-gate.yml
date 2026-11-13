@@ -10,7 +10,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with: { persist-credentials: false }
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - name: R3.16 dedicated tests
@@ -21,8 +23,10 @@ jobs:
         run: node --test tests/r319/*.test.mjs
       - name: R3.20 Gemini P1/P2/P3 adversarial tests (offline only)
         run: node --test tests/r320/network-identity-offline.test.mjs
+      - name: R3.21 Claude+Gemini review regressions (offline only)
+        run: node --test tests/r321/*.test.mjs
       - name: Full repository regression
-        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs
+        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs tests/r321/*.test.mjs
       - name: Workflow YAML syntax (every workflow file)
         run: |
           python3 - <<'PY'
@@ -41,7 +45,7 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install chromium --with-deps
-          R320_BROWSER_SMOKE=1 node --test tests/r320/browser-redirect.test.mjs
+          R320_BROWSER_SMOKE=1 node --test tests/r320/browser-redirect.test.mjs tests/r321/claude-browser-offline.test.mjs
       - name: Privacy scan of tracked public files
         run: |
           set -euo pipefail
@@ -49,3 +53,21 @@ jobs:
           ! git grep -nE 'bound_session_key"?\s*:\s*"[A-Za-z0-9]' -- . ':!tests/**'
           ! git grep -nE 'live_room_id=[0-9]' -- docs
           echo "privacy scan: no private key, no session key value, no internal ids in docs"
+      - name: Export exact PR-head tracked source snapshot for offline independent review
+        if: success() && startsWith(github.event.pull_request.head.ref, 'fix/r321-')
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/r321-review-source
+          git archive --format=zip HEAD -o /tmp/r321-review-source/R321_Full_PR_Head_Source.zip
+          git rev-parse HEAD > /tmp/r321-review-source/COMMIT_SHA.txt
+          sha256sum /tmp/r321-review-source/R321_Full_PR_Head_Source.zip > /tmp/r321-review-source/SHA256SUMS.txt
+          cat /tmp/r321-review-source/COMMIT_SHA.txt
+          cat /tmp/r321-review-source/SHA256SUMS.txt
+      - name: Upload exact PR-head full source ZIP and hashes (7 days)
+        if: success() && startsWith(github.event.pull_request.head.ref, 'fix/r321-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: r321-full-source-${{ github.event.pull_request.head.sha }}
+          path: /tmp/r321-review-source/
+          retention-days: 7
+          if-no-files-found: error
