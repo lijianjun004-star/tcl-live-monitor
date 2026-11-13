@@ -118,6 +118,8 @@ export function decideDouyin(profile, room, t, { offlineRuleValidated = false, s
   if (challenged) return { ...out, reason: 'PUBLIC_GUEST_ACCESS_CHALLENGED' };
   if (!pid) return { ...out, reason: 'PROFILE_IDENTITY_NOT_VERIFIED' };
   if (observedRoomId) {
+    // Stale profile live badge cannot override the actual main player's ended state.
+    if (rid && ENDED_RE.test(String(room?.mainPlayerEndedText || ''))) return { ...out, state: 'UNKNOWN', reason: 'LIVE_BADGE_BUT_MAIN_PLAYER_ENDED' };
     if (rid) return { ...out, state: 'LIVE', reason: roomIdChanged ? 'LIVE_ROOM_ID_CHANGED' : 'PROFILE_LIVE_BADGE_AND_ROOM_PAGE_IDENTITY' };
     return { ...out, reason: 'LIVE_BADGE_BUT_ROOM_PAGE_NOT_CROSS_VERIFIED' };
   }

@@ -38,9 +38,10 @@ const allowedCoreCdn = new Map();
 await ctx.route('**/*', route => guardedRoute(route,{
   approvedCoreStatic,
   isStopped:()=>Boolean(stopped),
-  stop:reason=>{
+  stop:(reason,evidence=null)=>{
     if(stopped) return;
     stopped={key:activeKey || 'PRE_NAVIGATION',reason};
+    stopEvidence=evidence;
     for(const page of ctx.pages()) void page.close().catch(()=>{});
   },
   tallyAllowed:(info,why)=>{
@@ -61,7 +62,7 @@ await ctx.route('**/*', route => guardedRoute(route,{
 }));
 // Browser route() cannot intercept WebSockets; explicitly terminate WebSocket sessions.
 await ctx.routeWebSocket(/.*/, ws => { blocked.set('websocket', (blocked.get('websocket') || 0) + 1); ws.close(); });
-let stopped = null; const pub = [], priv = [];
+let stopped = null, stopEvidence = null; const pub = [], priv = [];
 let activeKey = null;
 // A 401/403/429 from ANY page response is an access-limit signal, not just
 // from the top-level navigation. Close pages to prevent further browsing.
@@ -93,10 +94,10 @@ async function snap(url) {
         douyinIdsInPage: [...text.matchAll(/抖音号[:：]\s*([A-Za-z0-9._-]{3,32})/g)].map(m => m[1]),
         liveRoomAnchors: [...document.querySelectorAll('a[href]')].filter(a => /^https:\/\/live\.douyin\.com\/\d/.test(a.href))
           .map(a => ({ href: a.href,
-            ownerScoped: Boolean(a.closest('[data-e2e="user-info"], [data-e2e="profile-header"], [data-e2e="author-info"], main header')),
+            ownerScoped: Boolean(a.closest('[data-e2e="user-info"], [data-e2e="profile-header"], [data-e2e="author-info"]')),
             text: (a.innerText || a.textContent || '').replace(/\s+/g, ' ').slice(0, 60) })).slice(0, 15),
         ownerProfileLinks: [...document.querySelectorAll('a[href^="https://www.douyin.com/user/"]')]
-          .filter(a=>a.closest('[data-e2e="anchor-info"], [data-e2e="room-owner"], main header'))
+          .filter(a=>a.closest('[data-e2e="anchor-info"], [data-e2e="room-owner"]'))
           .map(a=>a.href).slice(0,5),
         mainPlayerEndedText: document.querySelector('[data-e2e="player-ended"], [data-e2e="live-ended"]')?.textContent?.trim().slice(0,120) || '' };
     });
@@ -148,12 +149,13 @@ try {
   await fs.writeFile('out/r316-private/rpa.json', JSON.stringify({ at: new Date().toISOString(), priv }));
   for (const p of pub) console.log('R316_RPA ' + JSON.stringify(p));
   console.log('R316_RPA_STOPPED ' + JSON.stringify(stopped));
+  console.log('R321_STOP_EVIDENCE ' + JSON.stringify(stopEvidence));
   console.log('R316_RPA_BLOCKED ' + JSON.stringify(Object.fromEntries([...blocked].sort((a,b)=>b[1]-a[1]).slice(0,40))));
   console.log('R319_CORE_CDN_ALLOWED ' + JSON.stringify(Object.fromEntries([...allowedCoreCdn].sort((a,b)=>b[1]-a[1]))));
   // Retain a SANITIZED, account-key-only summary as a short-lived GitHub artifact.
   await fs.writeFile('out/r316-rpa-public.json', JSON.stringify({
     schemaVersion:319, mode:approvedCoreStatic ? 'APPROVED_TWO_CORE_CDNS_JS_CSS_ONE_PASS' : 'DEFAULT_BLOCKED_ONE_PASS', at:new Date().toISOString(),
-    checked:pub, stopped,
+    checked:pub, stopped, stopEvidence,
     approvedCoreCdnCount:Object.fromEntries([...allowedCoreCdn].sort((a,b)=>b[1]-a[1])),
     blockedHostsAndTypes:Object.fromEntries([...blocked].sort((a,b)=>b[1]-a[1]).slice(0,40)),
     formalOpeningRatePercent:null, formalFullDurationRatePercent:null,
