@@ -1,3 +1,4 @@
+# SPENT and disarmed after its single run 43467235170; any new live run needs a new arming commit.
 name: R3.26 Douyin approved raw-HTML room identity verification - ONE PASS
 # Explicit user approval 2026-11-14 00:47 (Beijing, "run until it works", at most 3 runs): same scope as R3.23 (two approved accounts, one pass,
 # mobile viewport, no login, only the two core CDNs for JS/CSS, stop at once on 403 / verification / login
@@ -15,11 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   rpa:
-    if: >-
-      github.event_name == 'push' && github.run_attempt == 1 &&
-      github.ref == 'refs/heads/experiment/r326-douyin-rawroom-once-20261114' &&
-      github.event.before == 'b0f7362c8898918973640ec0d34742d68642d623' &&
-      contains(github.event.head_commit.message, '[r326-rawroom-once]')
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -36,7 +33,6 @@ jobs:
       - name: Run ONE approved read-only pass (two pre-registered accounts, own live rooms only)
         env:
           R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS
-          R319_CORE_CDN_APPROVED_ONCE: TWO_APPROVED_CDNS_JS_CSS_ONLY
         run: node probes/r316/douyin-rpa-two-once.mjs
       - name: Print sanitized public receipt (account keys and booleans only)
         if: always() && hashFiles('out/r316-rpa-public.json') != ''
