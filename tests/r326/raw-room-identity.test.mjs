@@ -54,3 +54,17 @@ test('decideDouyin: unrendered room page + raw identity + status 2 -> LIVE (stri
   assert.equal(decideDouyin({ ...profile, finalPath: '/user/OTHER' }, room(ok), t, strict).state, 'UNKNOWN');
   assert.equal(decideDouyin(profile, room(ok), t).state, 'UNKNOWN');
 });
+
+test('private skeleton: key names kept, every string value and digit masked', async () => {
+  const { roomStoreSkeleton } = await import('../../probes/lib/douyin.mjs');
+  const sk = roomStoreSkeleton(pace(store()));
+  assert.equal(sk.occurrences, 1);
+  assert.match(sk.samples[0], /"roomStore":\{"roomInfo":\{"room":\{"id_str":"S","status":9/);
+  assert.match(sk.anchor.join(' '), /"web_rid":"S","anchor":\{"id_str":"S","sec_uid":"S"/);
+  assert.doesNotMatch(JSON.stringify([sk.samples, sk.owner, sk.anchor]), /SYNTH|SECRET|xxxx|[0-8]/);
+  assert.deepEqual(roomStoreSkeleton(undefined), { occurrences: 0, samples: [], owner: [], anchor: [] });
+});
+test('deeper escaping (JSON string inside a JSON string) is still read', () => {
+  const twice = `<script>x=${JSON.stringify(JSON.stringify(JSON.stringify(store())))}</script>`;
+  assert.deepEqual(rawRoomEvidence(twice, t, RID), ok);
+});

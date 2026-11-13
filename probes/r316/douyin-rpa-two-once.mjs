@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { decideDouyin, profileIdentityEvidence, roomIdentityEvidence, documentShape, rawRoomEvidence, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
+import { decideDouyin, profileIdentityEvidence, roomIdentityEvidence, documentShape, rawRoomEvidence, roomStoreSkeleton, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
 import { CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
 import { guardedRoute, disableUnroutedChannels, hostClass } from '../r320/network-guard.mjs';
 
@@ -137,7 +137,7 @@ async function snap(url, target = null, roomId = null) {
     const f = new URL(page.url());
     // Never truncate below a real profile path: approved accounts have 82-char /user/<secUid> paths and
     // identity needs an EXACT final path (R3.18). finalPath goes to the encrypted private record only.
-    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 256), ...data, structure, doc, raw: rawRoom };
+    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 256), ...data, structure, doc, raw: rawRoom, skeleton: target && roomId ? roomStoreSkeleton(html) : null };
   } catch (e) { return { httpStatus: null, navigationError: String(e?.name || 'NAV_ERROR').slice(0, 40) }; }
   finally { await page.close().catch(() => {}); }
 }
@@ -180,7 +180,7 @@ try {
       douyinIdsInPage: profile.douyinIdsInPage, liveRoomIds: ids, roomTitle: room?.title ?? null, roomMeta: room?.metaDescription?.slice(0, 120) ?? null,
       observedRoomId: d.observedRoomId ?? null, decision: d,
       profileStructure: profile.structure ?? null, roomStructure: room?.structure ?? null,
-      profileDoc: profile.doc ?? null, roomDoc: room?.doc ?? null });
+      profileDoc: profile.doc ?? null, roomDoc: room?.doc ?? null, roomSkeleton: room?.skeleton ?? null });
     await new Promise(r => setTimeout(r, 5000));
   }
 } finally {

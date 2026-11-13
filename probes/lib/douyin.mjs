@@ -157,12 +157,16 @@ export function rawRoomEvidence(html, t, roomId) {
   let decoded = '';
   const rd = /<script[^>]*\bid=["']RENDER_DATA["'][^>]*>([\s\S]*?)<\/script>/i.exec(raw);
   if (rd) { try { decoded = decodeURIComponent(rd[1]); } catch { decoded = ''; } }
-  const text = (raw + '\n' + decoded).replace(/\\"/g, '"');
-  const start = text.indexOf('"roomStore"');
-  if (start < 0) return out;
-  const win = text.slice(start, start + 600000);
-  const room = /"roomInfo"\s*:\s*\{[\s\S]{0,400}?"room"\s*:\s*\{\s*"id_str"\s*:\s*"\d{5,24}"\s*,\s*"status"\s*:\s*(\d{1,2})(?!\d)/.exec(win);
+  // Streamed chunks nest JSON in JS strings, possibly more than once: drop any backslashes before a quote.
+  const text = (raw + '\n' + decoded).replace(/\\+"/g, '"');
+  // Any roomStore occurrence may be the data one (others can be code or chunk names): take the first
+  // that is directly followed by roomInfo.room{id_str,status}.
+  const ROOM = /"roomStore"\s*:\s*\{[\s\S]{0,600}?"roomInfo"\s*:\s*\{[\s\S]{0,600}?"room"\s*:\s*\{[\s\S]{0,200}?"status"\s*:\s*(\d{1,2})(?!\d)/g;
+  let room = null, start = -1;
+  for (const m of text.matchAll(ROOM)) { if (!/[{}]/.test(m[0].slice(m[0].lastIndexOf('"room"')).replace(/^"room"\s*:\s*\{/, '').replace(/"[^"]*"/g, ''))) { room = m; start = m.index; break; } }
   if (!room) return out;
+  const win = text.slice(start, start + 900000);
+  room = { 1: room[1], index: 0 };
   out.present = true; out.status = Number(room[1]);
   // The room object's own owner: the first owner object after the room starts.
   const owner = /"owner"\s*:\s*\{[^{}]{0,200}?"sec_uid"\s*:\s*"([^"]{1,200})"/.exec(win.slice(room.index));
@@ -172,6 +176,20 @@ export function rawRoomEvidence(html, t, roomId) {
   const mine = pairs.filter(m => m[1] === String(roomId));
   out.webRidExact = mine.length > 0;
   out.anchorExact = mine.length > 0 && mine.every(m => m[2] === sec);
+  return out;
+}
+/** PRIVATE (encrypted) record only: JSON key skeletons near each "roomStore", every value and digit masked. */
+export function roomStoreSkeleton(html) {
+  const text = (typeof html === 'string' ? html : '').replace(/\\+"/g, '"');
+  // Values cut by the slice edges are dropped too: leading fragment up to the first key, trailing open value.
+  const mask = x => x.replace(/^[^{]*?(?=[,{]"[A-Za-z_]+":)/, '').replace(/:\s*"[^"]*"/g, ':"S"').replace(/:\s*"[^"]*$/, ':"S').replace(/\d/g, '9').replace(/[^\x20-\x7e]/g, 'U');
+  const out = { occurrences: 0, samples: [], owner: [], anchor: [] };
+  for (let i = text.indexOf('"roomStore"'); i !== -1 && out.occurrences < 50; i = text.indexOf('"roomStore"', i + 1)) {
+    out.occurrences++;
+    if (out.samples.length < 6) out.samples.push(mask(text.slice(Math.max(0, i - 40), i + 260)));
+  }
+  for (const [k, arr] of [['"owner":{', out.owner], ['"anchor":{', out.anchor], ['"web_rid"', out.anchor]])
+    for (let i = text.indexOf(k), n = 0; i !== -1 && n < 3; i = text.indexOf(k, i + 1), n++) arr.push(mask(text.slice(Math.max(0, i - 60), i + 200)));
   return out;
 }
 /** True only when every raw-HTML identity signal holds for the room that was actually checked. */
