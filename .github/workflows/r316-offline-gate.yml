@@ -25,8 +25,18 @@ jobs:
         run: node --test tests/r320/network-identity-offline.test.mjs
       - name: R3.21 Claude+Gemini review regressions (offline only)
         run: node --test tests/r321/*.test.mjs
+      - name: R3.22 observation ledger and offline view tests
+        run: node --test tests/r322/*.test.mjs
+      - name: R3.23 live-path calibration tests from approved real run (offline only)
+        run: node --test tests/r323/*.test.mjs
+      - name: R3.24 raw-HTML calibration diagnostics tests (offline only)
+        run: node --test tests/r324/*.test.mjs
+      - name: R3.25 daily "broadcast today?" and replay diagnostics tests (offline only)
+        run: node --test tests/r325/*.test.mjs
+      - name: R3.26 raw-HTML room identity tests (offline only)
+        run: node --test tests/r326/*.test.mjs
       - name: Full repository regression
-        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs tests/r321/*.test.mjs
+        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs tests/r321/*.test.mjs tests/r322/*.test.mjs tests/r323/*.test.mjs tests/r324/*.test.mjs tests/r325/*.test.mjs tests/r326/*.test.mjs
       - name: Workflow YAML syntax (every workflow file)
         run: |
           python3 - <<'PY'
@@ -45,7 +55,19 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install chromium --with-deps
-          R320_BROWSER_SMOKE=1 node --test tests/r320/browser-redirect.test.mjs tests/r321/claude-browser-offline.test.mjs
+          R320_BROWSER_SMOKE=1 node --test tests/r320/browser-redirect.test.mjs tests/r321/claude-browser-offline.test.mjs tests/r323/structure-browser.test.mjs tests/r325/replay-browser.test.mjs
+      - name: R3.22/R3.23 sealed end-to-end - real probe to receipt to ledger, 5 scenarios (loopback only, no external network)
+        # Runs probes/r316/douyin-rpa-two-once.mjs against a loopback stand-in inside a NEW network namespace
+        # that is checked to have no route out before the probe starts (tests/r322/e2e/run-sealed-e2e.sh).
+        run: sh tests/r322/e2e/run-sealed-e2e.sh /tmp/r322-sealed-e2e
+      - name: Upload sealed end-to-end synthetic receipts, ledger and page (7 days)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r322-sealed-e2e-synthetic-${{ github.event.pull_request.head.sha }}
+          path: /tmp/r322-sealed-e2e/
+          retention-days: 7
+          if-no-files-found: error
       - name: Privacy scan of tracked public files
         run: |
           set -euo pipefail
@@ -60,7 +82,7 @@ jobs:
           mkdir -p /tmp/r321-review-source
           git archive --format=zip HEAD -o /tmp/r321-review-source/R321_Full_PR_Head_Source.zip
           git rev-parse HEAD > /tmp/r321-review-source/COMMIT_SHA.txt
-          sha256sum /tmp/r321-review-source/R321_Full_PR_Head_Source.zip > /tmp/r321-review-source/SHA256SUMS.txt
+          (cd /tmp/r321-review-source && sha256sum R321_Full_PR_Head_Source.zip > SHA256SUMS.txt)
           cat /tmp/r321-review-source/COMMIT_SHA.txt
           cat /tmp/r321-review-source/SHA256SUMS.txt
       - name: Upload exact PR-head full source ZIP and hashes (7 days)
