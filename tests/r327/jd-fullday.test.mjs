@@ -35,6 +35,7 @@ test('late start and early end are both counted against the rate', () => {
 test('without a valid 08:00 snapshot only a range is reported, never a single rate', () => {
   const r = computeDay(D, { morning: snap(bj(D, '10:30'), 200, bj(D, '10:29')), final: fin(1030, bj(D, '23:59')) });
   assert.deepEqual([r.method, r.ratePercent, r.rangePercent, r.liveByWindowStart], ['RANGE_ONLY_NO_0800_SNAPSHOT', null, [57.3, 100], null]);
+  assert.deepEqual(r.routineAssumedRangePercent, [94.8, 100]);   // relies on the stated routine; labelled as an estimate
   const n = computeDay(D, { morning: snap(bj(D, '08:04'), 74, bj(D, '08:03')), final: null });
   assert.deepEqual([n.method, n.ratePercent, n.rangePercent, n.liveByWindowStart], ['NO_FINAL_READING', null, null, true]);
   // inconsistent numbers (morning count above the final count) fall back to the range

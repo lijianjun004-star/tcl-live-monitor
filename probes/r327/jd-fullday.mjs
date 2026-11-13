@@ -31,7 +31,7 @@ export function computeDay(date, { morning = null, final = null } = {}) {
   if (!DATE.test(date) || !Number.isFinite(dayStart(date))) throw new Error('DATE_INVALID');
   const s = dayStart(date), w0 = s + WINDOW.startHour * 3600e3, w1 = s + WINDOW.endHour * 3600e3, req = WINDOW.requiredMinutes;
   const out = { date, requiredMinutes: req, method: 'NO_FINAL_READING', inWindowMinutes: null, ratePercent: null,
-    rangePercent: null, liveByWindowStart: null, lastMinuteBeijing: null, reachedWindowEnd: null, assumedContinuousMinutes: null, totalDayMinutes: null };
+    rangePercent: null, liveByWindowStart: null, lastMinuteBeijing: null, reachedWindowEnd: null, assumedContinuousMinutes: null, totalDayMinutes: null, routineAssumedRangePercent: null };
   const hasMorning = isMorningSnapshot(date, morning);
   if (hasMorning) {
     const lm = tsOrNull(morning.latestMinuteAt);
@@ -58,6 +58,9 @@ export function computeDay(date, { morning = null, final = null } = {}) {
   // No usable 08:00 snapshot: only bounds. Up to 480 minutes of the day lie before the window.
   out.method = 'RANGE_ONLY_NO_0800_SNAPSHOT';
   out.rangePercent = [pct(total - 480), pct(total)];
+  // Narrower estimate that RELIES on the stated routine (start 07:00-08:00, end 24:00-01:00): at most
+  // 120 minutes of the day lie outside the window. An estimate, not a measurement.
+  out.routineAssumedRangePercent = [pct(total - 120), pct(total)];
   return out;
 }
 
