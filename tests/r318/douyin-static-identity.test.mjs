@@ -87,7 +87,7 @@ test('RPA never visits an unverified profile live-room link, and cannot use opt-
   const s=fs.readFileSync('probes/r316/douyin-rpa-two-once.mjs','utf8');
   assert.match(s,/profileEvidence\.verified\)/);
   assert.match(s,/serviceWorkers: 'block'/);
-  assert.match(s,/classifyDouyinResource\(/);
+  assert.match(s,/guardedRoute\(/);
   assert.doesNotMatch(s,/approvedCoreStatic:\s*true/);
   assert.match(s,/ctx\.routeWebSocket/);
 });
