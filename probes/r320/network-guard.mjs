@@ -1,6 +1,6 @@
 /**
  * R3.20 fail-closed browser network guard.
- * The route handler MUST NOT call route.continue(): Chromium follows its 3xx
+ * The route handler MUST NOT use browser route continuation: Chromium follows its 3xx
  * redirects without re-entering Playwright routing.
  * route.fetch({ maxRedirects: 0 }) obtains only the first HTTP response;
  * a redirect is aborted BEFORE its headers ever reach the browser.
