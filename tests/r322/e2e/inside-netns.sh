@@ -18,6 +18,8 @@ R316_RPA_ONCE=TWO_ACCOUNTS_ONE_PASS NODE_EXTRA_CA_CERTS="$WORK/cert.pem" timeout
 echo $? > "$WORK/$SCEN/probe-exit.txt"
 set -e
 cp out/r316-rpa-public.json "$WORK/$SCEN/receipt.json"
+# Shape of the private calibration record as counts/booleans only (no values leave this step).
+"$NODE" "$ROOT/tests/r322/e2e/private-shape.mjs" out/r316-private/rpa.json > "$WORK/$SCEN/private-shape.json" || echo '{"error":true}' > "$WORK/$SCEN/private-shape.json"
 rm -rf out/r316-private          # plaintext private page data never leaves this step
 [ "$HAD_OUT" = 1 ] || rm -rf out
 kill -TERM $SRV; wait $SRV || true

@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { decideDouyin, profileIdentityEvidence, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
+import { decideDouyin, profileIdentityEvidence, roomIdentityEvidence, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
 import { CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
 import { guardedRoute, disableUnroutedChannels } from '../r320/network-guard.mjs';
 
@@ -82,7 +82,7 @@ ctx.on('response', response => {
     reason: redirectToAccessGate ? 'ACCESS_GATE_REDIRECT_RESOURCE' : 'HTTP_' + code + '_RESOURCE' };
   for (const page of ctx.pages()) void page.close().catch(() => {});
 });
-async function snap(url) {
+async function snap(url, target = null) {
   const page = await ctx.newPage();
   try {
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
@@ -101,10 +101,28 @@ async function snap(url) {
           .map(a=>a.href).slice(0,5),
         mainPlayerEndedText: document.querySelector('[data-e2e="player-ended"], [data-e2e="live-ended"]')?.textContent?.trim().slice(0,120) || '' };
     });
+    // Private-only calibration aid, kept in the encrypted record with the rest of priv: tag names and
+    // data-e2e labels (letters only) of the ancestors of every live link and of every link back to THIS
+    // account's own profile. The page returns room numbers/paths, Node reduces them to booleans here,
+    // so no text, ids or other accounts' links are stored. A separate call keeps the identity extractor
+    // above byte-identical, and nothing is passed into the page.
+    const raw = await page.evaluate(() => {
+      const label = n => n.tagName.toLowerCase() + (n.getAttribute('data-e2e') ? '[' + n.getAttribute('data-e2e').replace(/[^A-Za-z_-]/g, '').slice(0, 40) + ']' : '');
+      const chain = el => { const out = []; for (let n = el.parentElement, i = 0; n && i < 12; n = n.parentElement, i++) out.push(label(n)); return out; };
+      const links = [...document.querySelectorAll('a[href]')];
+      return {
+        live: links.map(a => ({ a, m: /^https:\/\/live\.douyin\.com\/(\d+)/.exec(a.href) })).filter(x => x.m).slice(0, 15)
+          .map(({ a, m }) => ({ room: m[1], liveText: (a.innerText || a.textContent || '').includes('直播中'), ancestry: chain(a) })),
+        users: links.filter(a => a.href.startsWith('https://www.douyin.com/user/')).slice(0, 60)
+          .map(a => { try { return { path: new URL(a.href).pathname, ancestry: chain(a) }; } catch { return null; } }).filter(Boolean) };
+    }).catch(() => null);
+    const structure = raw && target ? {
+      liveAnchors: raw.live.map(x => ({ registeredRoom: x.room === String(target.roomId ?? ''), liveText: x.liveText, ancestry: x.ancestry })),
+      ownerLinks: raw.users.filter(x => x.path === new URL(target.profileUrl).pathname).slice(0, 10).map(x => ({ ancestry: x.ancestry })) } : null;
     const f = new URL(page.url());
     // Never truncate below a real profile path: approved accounts have 82-char /user/<secUid> paths and
     // identity needs an EXACT final path (R3.18). finalPath goes to the encrypted private record only.
-    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 256), ...data };
+    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 256), ...data, structure };
   } catch (e) { return { httpStatus: null, navigationError: String(e?.name || 'NAV_ERROR').slice(0, 40) }; }
   finally { await page.close().catch(() => {}); }
 }
@@ -117,15 +135,15 @@ try {
     activeKey = t.key;
     const at = new Date().toISOString();
     if (stopped) { pub.push({ key: t.key, at, state: 'NOT_RUN', reason: 'STOPPED_AFTER_ACCESS_LIMIT' }); continue; }
-    const profile = await snap(t.profileUrl);
+    const profile = await snap(t.profileUrl, t);
     let reasonStop = stopped?.reason || stopOf(profile), room = null;
     // A live badge on an UNVERIFIED profile is not permission to visit its room.
     const profileEvidence = profileIdentityEvidence(profile, { ...t, profileUrl: t.profileUrl });
     if (!reasonStop && !stopped && profileEvidence.verified) {
-      const scope=liveAnchorScope(profile);
+      const scope=liveAnchorScope(profile, t);
       if (scope.roomId) {
         await new Promise(r => setTimeout(r, 5000));
-        if(!stopped) { room = await snap(`https://live.douyin.com/${scope.roomId}`); reasonStop = stopped?.reason || stopOf(room); }
+        if(!stopped) { room = await snap(`https://live.douyin.com/${scope.roomId}`, t); reasonStop = stopped?.reason || stopOf(room); }
       }
     }
     let d;
@@ -136,13 +154,16 @@ try {
     pub.push({ key: t.key, at, profileHttp: profile.httpStatus ?? null, roomHttp: room?.httpStatus ?? null,
       profileIdentityVerified: d.profileIdentityVerified === true, liveBadgeSeen: ids.length > 0,
       roomIdentityVerified: d.roomPageIdentityVerified === true,
-      ownerAnchorScope: liveAnchorScope(profile).scope,
+      ownerAnchorScope: liveAnchorScope(profile, t).scope,
       profileSignals: { titleExact: profileEvidence.titleExact, idExact: profileEvidence.idExact,
-        finalUrlExact: profileEvidence.finalUrlExact, multipleVisibleIds: profileEvidence.multipleVisibleIds },
+        finalUrlExact: profileEvidence.finalUrlExact, multipleVisibleIds: profileEvidence.multipleVisibleIds,
+        titleEmpty: String(profile.title || '').trim() === '' },
+      roomSignals: room ? (({ httpOk, titleEmpty, titleExact, metaExact, ownerLinkExact }) => ({ httpOk, titleEmpty, titleExact, metaExact, ownerLinkExact }))(roomIdentityEvidence(room, t)) : null,
       state: d.state, reason: d.reason, stop: reasonStop });
     priv.push({ key: t.key, at, profileTitle: profile.title, finalHost: profile.finalHost, finalPath: profile.finalPath,
       douyinIdsInPage: profile.douyinIdsInPage, liveRoomIds: ids, roomTitle: room?.title ?? null, roomMeta: room?.metaDescription?.slice(0, 120) ?? null,
-      observedRoomId: d.observedRoomId ?? null, decision: d });
+      observedRoomId: d.observedRoomId ?? null, decision: d,
+      profileStructure: profile.structure ?? null, roomStructure: room?.structure ?? null });
     await new Promise(r => setTimeout(r, 5000));
   }
 } finally {

@@ -27,8 +27,10 @@ jobs:
         run: node --test tests/r321/*.test.mjs
       - name: R3.22 observation ledger and offline view tests
         run: node --test tests/r322/*.test.mjs
+      - name: R3.23 live-path calibration tests from approved real run (offline only)
+        run: node --test tests/r323/*.test.mjs
       - name: Full repository regression
-        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs tests/r321/*.test.mjs tests/r322/*.test.mjs
+        run: node --test tests/*.test.mjs tests/r315/*.test.mjs tests/r316/*.test.mjs tests/r318/*.test.mjs tests/r319/*.test.mjs tests/r320/*.test.mjs tests/r321/*.test.mjs tests/r322/*.test.mjs tests/r323/*.test.mjs
       - name: Workflow YAML syntax (every workflow file)
         run: |
           python3 - <<'PY'
@@ -47,8 +49,8 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install chromium --with-deps
-          R320_BROWSER_SMOKE=1 node --test tests/r320/browser-redirect.test.mjs tests/r321/claude-browser-offline.test.mjs
-      - name: R3.22 sealed end-to-end - unchanged probe to receipt to ledger (loopback only, no external network)
+          R320_BROWSER_SMOKE=1 node --test tests/r320/browser-redirect.test.mjs tests/r321/claude-browser-offline.test.mjs tests/r323/structure-browser.test.mjs
+      - name: R3.22/R3.23 sealed end-to-end - real probe to receipt to ledger, 5 scenarios (loopback only, no external network)
         # Runs probes/r316/douyin-rpa-two-once.mjs against a loopback stand-in inside a NEW network namespace
         # that is checked to have no route out before the probe starts (tests/r322/e2e/run-sealed-e2e.sh).
         run: sh tests/r322/e2e/run-sealed-e2e.sh /tmp/r322-sealed-e2e

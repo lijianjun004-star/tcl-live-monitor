@@ -14,7 +14,7 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=r322-sealed-e2e \
 cp /etc/hosts "$WORK/hosts.bak"
 trap '$SUDO cp "$WORK/hosts.bak" /etc/hosts' EXIT
 printf '127.0.0.1 www.douyin.com live.douyin.com lf-douyin-pc-web.douyinstatic.com lf-douyin-pc-web-back.douyinstatic.com\n' | $SUDO tee -a /etc/hosts >/dev/null
-for SCEN in NORMAL FORBIDDEN_FIRST; do
+for SCEN in NORMAL FORBIDDEN_FIRST REAL_LAYOUT FOREIGN_BADGE ROOM_TITLE_EMPTY; do
   mkdir -p "$WORK/$SCEN"
   $SUDO env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME="$WORK" PLAYWRIGHT_BROWSERS_PATH="$PWB" \
     NODE="$NODE" ROOT="$ROOT" WORK="$WORK" SCEN="$SCEN" unshare --net sh "$ROOT/tests/r322/e2e/inside-netns.sh"

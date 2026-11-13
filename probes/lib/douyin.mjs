@@ -55,13 +55,20 @@ export function profileIdentity(p, t) {
  * Only one anchor explicitly scoped to the account OWNER profile header may be
  * explored, and the resulting room must independently confirm owner identity.
  */
-export function liveAnchorScope(profile) {
+export function liveAnchorScope(profile, target) {
   const ownerAnchors=(profile?.liveRoomAnchors || [])
     .filter(a=>a?.ownerScoped===true);
   const ids=liveAnchorRoomIds({...profile,liveRoomAnchors:ownerAnchors});
-  if(ids.length===0) return {scope:'NO_OWNER_HEADER_LIVE_ANCHOR',roomId:null};
-  if(ids.length!==1) return {scope:'AMBIGUOUS_OWNER_LIVE_ANCHORS',roomId:null};
-  return {scope:'OWNER_HEADER_LIVE_ANCHOR',roomId:ids[0]};
+  if(ids.length>1) return {scope:'AMBIGUOUS_OWNER_LIVE_ANCHORS',roomId:null};
+  if(ids.length===1) return {scope:'OWNER_HEADER_LIVE_ANCHOR',roomId:ids[0]};
+  // R3.23 (real run 43449924435): the owner's own "直播中" link sat outside the guessed owner
+  // containers. Second, independent evidence: the WHOLE verified page shows exactly one live room
+  // and it is THIS approved account's registered room. That can never lead to another account's
+  // room, and the room page must still confirm the owner before LIVE.
+  const all=liveAnchorRoomIds(profile);
+  const registered=target?.roomId ? String(target.roomId) : null;
+  if(registered && all.length===1 && all[0]===registered) return {scope:'REGISTERED_ROOM_LIVE_ANCHOR',roomId:registered};
+  return {scope:'NO_OWNER_HEADER_LIVE_ANCHOR',roomId:null};
 }
 
 function strictRoomOwnerVerified(room, target) {
@@ -91,6 +98,15 @@ export function liveAnchorRoomIds(p) {
   return ids;
 }
 
+/** Booleans only, for the public receipt: which room-page identity signal held. */
+export function roomIdentityEvidence(r, t) {
+  const title = String(r?.title || '');
+  return { httpOk: r?.httpStatus === 200, titleEmpty: title.trim() === '',
+    titleExact: title === `${t?.accountName}的抖音直播间 - 抖音直播`,
+    metaExact: String(r?.metaDescription || '').startsWith(`欢迎来到${t?.accountName}的抖音直播间`),
+    ownerLinkExact: strictRoomOwnerVerified(r, t) };
+}
+
 export function roomIdentity(r, t) {
   return r?.httpStatus === 200 && !CHALLENGE_RE.test(`${r.title} ${r.bodyExcerpt}`) && !LOGIN_GATE_RE.test(String(r.bodyExcerpt || ''))
     && r.title === `${t.accountName}的抖音直播间 - 抖音直播`
@@ -105,7 +121,7 @@ export function decideDouyin(profile, room, t, { offlineRuleValidated = false, s
   const challenged = CHALLENGE_RE.test(`${profile?.title} ${profile?.bodyExcerpt}`) || CHALLENGE_RE.test(`${room?.title} ${room?.bodyExcerpt}`);
   const profileEvidence = profileIdentityEvidence(profile, t);
   const pid = profileEvidence.verified;
-  const ownerScope=liveAnchorScope(profile);
+  const ownerScope=liveAnchorScope(profile, t);
   const anchors = pid ? (strictRoomOwner ? (ownerScope.roomId ? [ownerScope.roomId] : []) : liveAnchorRoomIds(profile)) : [];
   const observedRoomId = anchors[0] || null;
   const roomPageUrlMatches = !observedRoomId || !room?.finalHost || (
@@ -123,6 +139,9 @@ export function decideDouyin(profile, room, t, { offlineRuleValidated = false, s
     if (rid) return { ...out, state: 'LIVE', reason: roomIdChanged ? 'LIVE_ROOM_ID_CHANGED' : 'PROFILE_LIVE_BADGE_AND_ROOM_PAGE_IDENTITY' };
     return { ...out, reason: 'LIVE_BADGE_BUT_ROOM_PAGE_NOT_CROSS_VERIFIED' };
   }
+  // A live link IS on the verified page but could not be tied to this account: say so (it is not
+  // "no live badge"), never visit or count it.
+  if (strictRoomOwner && liveAnchorRoomIds(profile).length > 0) return { ...out, reason: 'LIVE_BADGE_OUTSIDE_OWNER_SCOPE' };
   // No live badge on a verified profile. Absence alone is not offline proof.
 // Never infer ended from the full body excerpt: unrelated recommendations may say '已下播'.
   const endedText = ENDED_RE.exec(String(room?.mainPlayerEndedText || ''))?.[0] || null;
