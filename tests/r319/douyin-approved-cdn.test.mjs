@@ -54,7 +54,7 @@ test('R319: runner requires exact once flag and preserves service-worker and WS 
   assert.match(s,/R316_RPA_ONCE !== 'TWO_ACCOUNTS_ONE_PASS'/);
   assert.match(s,/R319_CORE_CDN_APPROVED_ONCE === CDN_FLAG/);
   assert.match(s,/R319_CDN_FLAG_INVALID/);
-  assert.match(s,/approvedCoreStatic \}/);
+  assert.match(s,/approvedCoreStatic,/);
   assert.match(s,/serviceWorkers: 'block'/);
   assert.match(s,/ctx\.routeWebSocket\(/);
   assert.match(s,/const approved = new Map\(/);
@@ -80,15 +80,16 @@ test('R319: workflow is one-push-only; no cron, dispatch or elevated permissions
   const s=wf();
   assert.match(s,/branches: \[experiment\/r319-douyin-core-cdn-approved-once-20261113\]/);
   assert.match(s,/paths: \['\.github\/workflows\/r319-douyin-approved-cdn-once.yml'\]/);
-  assert.match(s,/github\.run_attempt == 1/);
-  assert.match(s,/\[r319-cdn-rpa-once\]/);
+  // User authorization was consumed; even a revert/push must not rerun RPA.
+  assert.match(s,/if: \$\{\{ false \}\}/);
+  assert.doesNotMatch(s,/github\.run_attempt == 1/);
   assert.doesNotMatch(s,/\bschedule:|\bworkflow_dispatch:/);
   assert.match(s,/permissions:\n  contents: read/);
   assert.match(s,/persist-credentials: false/);
 });
 test('R319: CDN approval is exclusively injected in the guarded single RPA workflow step',()=>{
   const s=wf();
-  assert.match(s,/R319_CORE_CDN_APPROVED_ONCE: TWO_APPROVED_CDNS_JS_CSS_ONLY/);
+  assert.doesNotMatch(s,/R319_CORE_CDN_APPROVED_ONCE: TWO_APPROVED_CDNS_JS_CSS_ONLY/);
   assert.match(s,/R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS/);
   assert.match(s,/node --test tests\/r318\/douyin-static-identity\.test\.mjs tests\/r319\/douyin-approved-cdn\.test\.mjs/);
   assert.match(s,/retention-days: 7/);

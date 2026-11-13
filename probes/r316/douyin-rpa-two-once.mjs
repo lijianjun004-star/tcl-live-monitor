@@ -7,8 +7,9 @@
  */
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { decideDouyin, profileIdentityEvidence, liveAnchorRoomIds, CHALLENGE_RE } from '../lib/douyin.mjs';
-import { classifyDouyinResource, CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
+import { decideDouyin, profileIdentityEvidence, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
+import { CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
+import { guardedRoute, disableUnroutedChannels } from '../r320/network-guard.mjs';
 
 if (process.env.R316_RPA_ONCE !== 'TWO_ACCOUNTS_ONE_PASS') throw Error('R316_RPA_GUARD_REQUIRED');
 // Explicitly approved, once-only experimental scope. Any misspelled flag fails closed.
@@ -27,28 +28,37 @@ const selected = targets.map(t => {
 const STOP_PATH = /(login|passport|verify|captcha|sso)/i;
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN', serviceWorkers: 'block' });
+await ctx.addInitScript(disableUnroutedChannels);
 // Explicit network boundary: only public GET/HEAD on douyin.com; block subresource streams,
 // non-GET verbs, third-party hosts, WebSockets and media. Never send account credentials.
 const blocked = new Map(); // report only domain/type aggregates; never paths or cookies
 const allowedCoreCdn = new Map();
-await ctx.route('**/*', route => {
-  const req = route.request(), u = new URL(req.url());
-  const verdict = classifyDouyinResource(
-    { url:req.url(), method:req.method(), resourceType:req.resourceType() },
-    { approvedCoreStatic }
-  );
-  if (verdict.allow) {
-    if (verdict.reason === 'EXPLICITLY_APPROVED_CORE_STATIC') {
-      const k = u.hostname + ':' + req.resourceType();
-      allowedCoreCdn.set(k, (allowedCoreCdn.get(k) || 0) + 1);
-    }
-    return route.continue();
+// Every network request is fetched ONLY once with maxRedirects=0.
+// Never route.continue: that leaks redirected second hops to Chromium.
+await ctx.route('**/*', route => guardedRoute(route,{
+  approvedCoreStatic,
+  isStopped:()=>Boolean(stopped),
+  stop:reason=>{
+    if(stopped) return;
+    stopped={key:activeKey || 'PRE_NAVIGATION',reason};
+    for(const page of ctx.pages()) void page.close().catch(()=>{});
+  },
+  tallyAllowed:(info,why)=>{
+    if(why !== 'EXPLICITLY_APPROVED_CORE_STATIC') return;
+    const u=new URL(info.url);
+    const key=u.hostname+':'+info.resourceType;
+    allowedCoreCdn.set(key,(allowedCoreCdn.get(key)||0)+1);
+  },
+  tallyBlocked:(info,why)=>{
+    let host='OTHER';
+    try {
+      const u=new URL(info.url);
+      if([...CORE_STATIC_CANDIDATES,...UNKNOWN_STATIC_CANDIDATES].includes(u.hostname)) host=u.hostname;
+    } catch {}
+    const key=host+':'+info.resourceType+':'+why;
+    blocked.set(key,(blocked.get(key)||0)+1);
   }
-  const named = [...CORE_STATIC_CANDIDATES, ...UNKNOWN_STATIC_CANDIDATES].includes(u.hostname);
-  const k = (named ? u.hostname : 'OTHER') + ':' + req.resourceType() + ':' + verdict.reason;
-  blocked.set(k, (blocked.get(k) || 0) + 1);
-  return route.abort('blockedbyclient');
-});
+}));
 // Browser route() cannot intercept WebSockets; explicitly terminate WebSocket sessions.
 await ctx.routeWebSocket(/.*/, ws => { blocked.set('websocket', (blocked.get('websocket') || 0) + 1); ws.close(); });
 let stopped = null; const pub = [], priv = [];
@@ -82,7 +92,13 @@ async function snap(url) {
         metaDescription: document.querySelector('meta[name="description"]')?.content || '',
         douyinIdsInPage: [...text.matchAll(/抖音号[:：]\s*([A-Za-z0-9._-]{3,32})/g)].map(m => m[1]),
         liveRoomAnchors: [...document.querySelectorAll('a[href]')].filter(a => /^https:\/\/live\.douyin\.com\/\d/.test(a.href))
-          .map(a => ({ href: a.href, text: (a.innerText || a.textContent || '').replace(/\s+/g, ' ').slice(0, 60) })).slice(0, 15) };
+          .map(a => ({ href: a.href,
+            ownerScoped: Boolean(a.closest('[data-e2e="user-info"], [data-e2e="profile-header"], [data-e2e="author-info"], main header')),
+            text: (a.innerText || a.textContent || '').replace(/\s+/g, ' ').slice(0, 60) })).slice(0, 15),
+        ownerProfileLinks: [...document.querySelectorAll('a[href^="https://www.douyin.com/user/"]')]
+          .filter(a=>a.closest('[data-e2e="anchor-info"], [data-e2e="room-owner"], main header'))
+          .map(a=>a.href).slice(0,5),
+        mainPlayerEndedText: document.querySelector('[data-e2e="player-ended"], [data-e2e="live-ended"]')?.textContent?.trim().slice(0,120) || '' };
     });
     const f = new URL(page.url());
     return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 80), ...data };
@@ -103,18 +119,21 @@ try {
     // A live badge on an UNVERIFIED profile is not permission to visit its room.
     const profileEvidence = profileIdentityEvidence(profile, { ...t, profileUrl: t.profileUrl });
     if (!reasonStop && !stopped && profileEvidence.verified) {
-      const ids = liveAnchorRoomIds(profile);
-      if (ids[0]) { await new Promise(r => setTimeout(r, 5000)); room = await snap(`https://live.douyin.com/${ids[0]}`); reasonStop = stopped?.reason || stopOf(room); }
+      const scope=liveAnchorScope(profile);
+      if (scope.roomId) {
+        await new Promise(r => setTimeout(r, 5000));
+        if(!stopped) { room = await snap(`https://live.douyin.com/${scope.roomId}`); reasonStop = stopped?.reason || stopOf(room); }
+      }
     }
     let d;
     if (reasonStop) { stopped ||= { key: t.key, reason: reasonStop }; d = { state: 'UNKNOWN', reason: 'STOPPED_' + reasonStop }; }
-    else if (profile.navigationError) d = { state: 'UNKNOWN', reason: 'PROFILE_NAVIGATION_ERROR' };
-    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined, profileUrl: t.profileUrl }); // registry room id, if previously verified
+    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined, profileUrl: t.profileUrl }, { strictRoomOwner: true }); // registry room id, if previously verified
     if (d.state === 'OFFLINE') d = { ...d, state: 'UNKNOWN', reason: 'OFFLINE_RULE_NOT_VALIDATED' };
     const ids = profile.navigationError ? [] : liveAnchorRoomIds(profile);
     pub.push({ key: t.key, at, profileHttp: profile.httpStatus ?? null, roomHttp: room?.httpStatus ?? null,
       profileIdentityVerified: d.profileIdentityVerified === true, liveBadgeSeen: ids.length > 0,
       roomIdentityVerified: d.roomPageIdentityVerified === true,
+      ownerAnchorScope: liveAnchorScope(profile).scope,
       profileSignals: { titleExact: profileEvidence.titleExact, idExact: profileEvidence.idExact,
         finalUrlExact: profileEvidence.finalUrlExact, multipleVisibleIds: profileEvidence.multipleVisibleIds },
       state: d.state, reason: d.reason, stop: reasonStop });

@@ -49,6 +49,35 @@ export function profileIdentity(p, t) {
   return profileIdentityEvidence(p,t).verified;
 }
 
+/**
+ * A live room number is session-specific, NOT a permanent account identity.
+ * A generic recommended-live anchor is never sufficient to visit another room.
+ * Only one anchor explicitly scoped to the account OWNER profile header may be
+ * explored, and the resulting room must independently confirm owner identity.
+ */
+export function liveAnchorScope(profile) {
+  const ownerAnchors=(profile?.liveRoomAnchors || [])
+    .filter(a=>a?.ownerScoped===true);
+  const ids=liveAnchorRoomIds({...profile,liveRoomAnchors:ownerAnchors});
+  if(ids.length===0) return {scope:'NO_OWNER_HEADER_LIVE_ANCHOR',roomId:null};
+  if(ids.length!==1) return {scope:'AMBIGUOUS_OWNER_LIVE_ANCHORS',roomId:null};
+  return {scope:'OWNER_HEADER_LIVE_ANCHOR',roomId:ids[0]};
+}
+
+function strictRoomOwnerVerified(room, target) {
+  if(!Array.isArray(room?.ownerProfileLinks)) return false;
+  try {
+    const exp=new URL(target?.profileUrl);
+    if(exp.protocol!=='https:' || exp.hostname!=='www.douyin.com') return false;
+    return room.ownerProfileLinks.some(raw=>{
+      try {
+        const u=new URL(raw);
+        return u.protocol==='https:' && u.hostname===exp.hostname && u.pathname===exp.pathname;
+      } catch { return false; }
+    });
+  } catch { return false; }
+}
+
 /** Room ids the verified profile marks as live right now. */
 export function liveAnchorRoomIds(p) {
   const ids = [];
@@ -72,19 +101,20 @@ export function roomIdentity(r, t) {
  * profile: page snapshot; room: snapshot of the room page actually checked
  * (observedRoomId if the profile pointed elsewhere, else configured roomId).
  */
-export function decideDouyin(profile, room, t, { offlineRuleValidated = false } = {}) {
+export function decideDouyin(profile, room, t, { offlineRuleValidated = false, strictRoomOwner = false } = {}) {
   const challenged = CHALLENGE_RE.test(`${profile?.title} ${profile?.bodyExcerpt}`) || CHALLENGE_RE.test(`${room?.title} ${room?.bodyExcerpt}`);
   const profileEvidence = profileIdentityEvidence(profile, t);
   const pid = profileEvidence.verified;
-  const anchors = pid ? liveAnchorRoomIds(profile) : [];
+  const ownerScope=liveAnchorScope(profile);
+  const anchors = pid ? (strictRoomOwner ? (ownerScope.roomId ? [ownerScope.roomId] : []) : liveAnchorRoomIds(profile)) : [];
   const observedRoomId = anchors[0] || null;
   const roomPageUrlMatches = !observedRoomId || !room?.finalHost || (
     room.finalHost === 'live.douyin.com' && room.finalPath === '/' + observedRoomId);
-  const rid = roomIdentity(room, t) && roomPageUrlMatches;
-  const roomIdChanged = !!observedRoomId && observedRoomId !== t.roomId;
+  const rid = roomIdentity(room, t) && roomPageUrlMatches && (!strictRoomOwner || strictRoomOwnerVerified(room,t));
+  const roomIdChanged = !!observedRoomId && !!t?.roomId && observedRoomId !== String(t.roomId);
   const out = { state: 'UNKNOWN', reason: null, profileIdentityVerified: pid, roomPageIdentityVerified: rid,
     observedRoomId, roomIdChanged, offlineCandidate: false,
-    signals: { profile: profileEvidence, roomPageUrlMatches } };
+    signals: { profile: profileEvidence, roomPageUrlMatches, ownerAnchorScope:strictRoomOwner ? ownerScope.scope : 'LEGACY' } };
   if (challenged) return { ...out, reason: 'PUBLIC_GUEST_ACCESS_CHALLENGED' };
   if (!pid) return { ...out, reason: 'PROFILE_IDENTITY_NOT_VERIFIED' };
   if (observedRoomId) {
@@ -92,7 +122,8 @@ export function decideDouyin(profile, room, t, { offlineRuleValidated = false } 
     return { ...out, reason: 'LIVE_BADGE_BUT_ROOM_PAGE_NOT_CROSS_VERIFIED' };
   }
   // No live badge on a verified profile. Absence alone is not offline proof.
-  const endedText = ENDED_RE.exec(String(room?.bodyExcerpt || ''))?.[0] || null;
+// Never infer ended from the full body excerpt: unrelated recommendations may say '已下播'.
+  const endedText = ENDED_RE.exec(String(room?.mainPlayerEndedText || ''))?.[0] || null;
   const fields = room?.statusFields || [];
   // Webcast room payloads commonly use status 4 for "ended" (unverified convention; candidate only).
   const passiveEnded = fields.some(f => /\.data.*\.status$/i.test(f.field) && Number(f.value) === 4);
