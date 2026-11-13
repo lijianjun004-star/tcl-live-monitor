@@ -1,0 +1,12 @@
+{
+  "maxPerRun": 2,
+  "targets": [
+    {
+      "key": "tcl-douyin-flagship"
+    },
+    {
+      "key": "tcl-douyin-air-direct"
+    }
+  ],
+  "note": "Only approved account keys from config/probe-targets.json; no copied secUid or unreviewed candidate."
+}
