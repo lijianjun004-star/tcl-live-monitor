@@ -68,3 +68,14 @@ test('deeper escaping (JSON string inside a JSON string) is still read', () => {
   const twice = `<script>x=${JSON.stringify(JSON.stringify(JSON.stringify(store())))}</script>`;
   assert.deepEqual(rawRoomEvidence(twice, t, RID), ok);
 });
+
+test('scheduled target sets: fixed files only, two approved scoring accounts each, no overlap', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('probes/r316/douyin-rpa-two-once.mjs', 'utf8');
+  assert.match(src, /if \(!Object\.hasOwn\(TARGET_SETS, targetSet\)\) throw Error\('R326_TARGET_SET_INVALID'\);/);
+  const reg = JSON.parse(fs.readFileSync('config/probe-targets.json', 'utf8')).douyin;
+  const a = JSON.parse(fs.readFileSync('config/r316-douyin-rpa-targets.json', 'utf8')), b = JSON.parse(fs.readFileSync('config/r326-douyin-targets-scoring-b.json', 'utf8'));
+  for (const set of [a, b]) { assert.equal(set.maxPerRun, 2); assert.equal(set.targets.length, 2);
+    for (const x of set.targets) { assert.deepEqual(Object.keys(x), ['key']); const e = reg.find(r => r.key === x.key); assert.ok(e?.scopeApproved === true && e?.scoringEligible === true && e?.roomId); } }
+  assert.equal(new Set([...a.targets, ...b.targets].map(x => x.key)).size, 4);
+});

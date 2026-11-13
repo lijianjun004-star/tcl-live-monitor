@@ -17,7 +17,11 @@ const CDN_FLAG = 'TWO_APPROVED_CDNS_JS_CSS_ONLY';
 if (process.env.R319_CORE_CDN_APPROVED_ONCE && process.env.R319_CORE_CDN_APPROVED_ONCE !== CDN_FLAG)
   throw Error('R319_CDN_FLAG_INVALID');
 const approvedCoreStatic = process.env.R319_CORE_CDN_APPROVED_ONCE === CDN_FLAG;
-const { targets, maxPerRun } = JSON.parse(await fs.readFile('config/r316-douyin-rpa-targets.json', 'utf8'));
+// R3.26: fixed, reviewed target sets only (never a free path). Each set holds at most two approved accounts.
+const TARGET_SETS = { '': 'config/r316-douyin-rpa-targets.json', SCORING_B: 'config/r326-douyin-targets-scoring-b.json' };
+const targetSet = process.env.R326_TARGET_SET || '';
+if (!Object.hasOwn(TARGET_SETS, targetSet)) throw Error('R326_TARGET_SET_INVALID');
+const { targets, maxPerRun } = JSON.parse(await fs.readFile(TARGET_SETS[targetSet], 'utf8'));
 const registry = JSON.parse(await fs.readFile('config/probe-targets.json', 'utf8'));
 if (!Array.isArray(targets) || targets.length > 2 || maxPerRun !== 2 || new Set(targets.map(t => t.key)).size !== targets.length) throw Error('RPA_TARGET_LIMIT');
 const approved = new Map((registry.douyin || []).filter(x => x.scopeApproved === true).map(x => [x.key, x]));
