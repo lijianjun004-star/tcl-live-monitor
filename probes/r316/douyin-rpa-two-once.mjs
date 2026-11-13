@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { decideDouyin, profileIdentityEvidence, liveAnchorRoomIds, CHALLENGE_RE } from '../lib/douyin.mjs';
+import { decideDouyin, profileIdentityEvidence, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
 import { CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
 import { guardedRoute, disableUnroutedChannels } from '../r320/network-guard.mjs';
 
@@ -92,7 +92,13 @@ async function snap(url) {
         metaDescription: document.querySelector('meta[name="description"]')?.content || '',
         douyinIdsInPage: [...text.matchAll(/抖音号[:：]\s*([A-Za-z0-9._-]{3,32})/g)].map(m => m[1]),
         liveRoomAnchors: [...document.querySelectorAll('a[href]')].filter(a => /^https:\/\/live\.douyin\.com\/\d/.test(a.href))
-          .map(a => ({ href: a.href, text: (a.innerText || a.textContent || '').replace(/\s+/g, ' ').slice(0, 60) })).slice(0, 15) };
+          .map(a => ({ href: a.href,
+            ownerScoped: Boolean(a.closest('[data-e2e="user-info"], [data-e2e="profile-header"], [data-e2e="author-info"], main header')),
+            text: (a.innerText || a.textContent || '').replace(/\s+/g, ' ').slice(0, 60) })).slice(0, 15),
+        ownerProfileLinks: [...document.querySelectorAll('a[href^="https://www.douyin.com/user/"]')]
+          .filter(a=>a.closest('[data-e2e="anchor-info"], [data-e2e="room-owner"], main header'))
+          .map(a=>a.href).slice(0,5),
+        mainPlayerEndedText: document.querySelector('[data-e2e="player-ended"], [data-e2e="live-ended"]')?.textContent?.trim().slice(0,120) || '' };
     });
     const f = new URL(page.url());
     return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 80), ...data };
@@ -113,17 +119,21 @@ try {
     // A live badge on an UNVERIFIED profile is not permission to visit its room.
     const profileEvidence = profileIdentityEvidence(profile, { ...t, profileUrl: t.profileUrl });
     if (!reasonStop && !stopped && profileEvidence.verified) {
-      const ids = liveAnchorRoomIds(profile);
-      if (ids[0]) { await new Promise(r => setTimeout(r, 5000)); room = await snap(`https://live.douyin.com/${ids[0]}`); reasonStop = stopped?.reason || stopOf(room); }
+      const scope=liveAnchorScope(profile);
+      if (scope.roomId) {
+        await new Promise(r => setTimeout(r, 5000));
+        if(!stopped) { room = await snap(`https://live.douyin.com/${scope.roomId}`); reasonStop = stopped?.reason || stopOf(room); }
+      }
     }
     let d;
     if (reasonStop) { stopped ||= { key: t.key, reason: reasonStop }; d = { state: 'UNKNOWN', reason: 'STOPPED_' + reasonStop }; }
-    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined, profileUrl: t.profileUrl }); // registry room id, if previously verified
+    else d = decideDouyin(profile, room, { accountName: t.accountName, displayDouyinId: t.displayDouyinId, roomId: t.roomId || undefined, profileUrl: t.profileUrl }, { strictRoomOwner: true }); // registry room id, if previously verified
     if (d.state === 'OFFLINE') d = { ...d, state: 'UNKNOWN', reason: 'OFFLINE_RULE_NOT_VALIDATED' };
     const ids = profile.navigationError ? [] : liveAnchorRoomIds(profile);
     pub.push({ key: t.key, at, profileHttp: profile.httpStatus ?? null, roomHttp: room?.httpStatus ?? null,
       profileIdentityVerified: d.profileIdentityVerified === true, liveBadgeSeen: ids.length > 0,
       roomIdentityVerified: d.roomPageIdentityVerified === true,
+      ownerAnchorScope: liveAnchorScope(profile).scope,
       profileSignals: { titleExact: profileEvidence.titleExact, idExact: profileEvidence.idExact,
         finalUrlExact: profileEvidence.finalUrlExact, multipleVisibleIds: profileEvidence.multipleVisibleIds },
       state: d.state, reason: d.reason, stop: reasonStop });
