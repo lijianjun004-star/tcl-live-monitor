@@ -65,12 +65,21 @@ test('Chromium: Worker/WebRTC/WebSocket constructors and sendBeacon are blocked 
     await page.goto('about:blank');
     const result=await page.evaluate(()=>{
       const keys=['Worker','SharedWorker','WebSocket','RTCPeerConnection','EventSource'];
+      const swPrototypeBlocked = (() => {
+        if (typeof ServiceWorkerContainer === 'undefined') return true;
+        const fn = ServiceWorkerContainer.prototype.register;
+        try { fn.call(navigator.serviceWorker, '/worker.js'); return false; } catch { return true; }
+      })();
       return { ctors:keys.map(k=>{
         try { new window[k]('blob://test');return false; } catch { return true; }
-      }),beacon:navigator.sendBeacon('/test','x') };
+      }),beacon:navigator.sendBeacon('/test','x'),
+        prototypeBeacon:Navigator.prototype.sendBeacon.call(navigator,'/test','x'),
+        swPrototypeBlocked };
     });
     assert.ok(result.ctors.every(Boolean));
     assert.equal(result.beacon,false);
+    assert.equal(result.prototypeBeacon,false);
+    assert.equal(result.swPrototypeBlocked,true);
     await ctx.close();
   } finally { await browser.close(); }
 });
