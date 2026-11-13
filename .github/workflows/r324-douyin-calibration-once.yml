@@ -1,0 +1,73 @@
+name: R3.24 Douyin approved calibration observation - ONE PASS
+# Explicit user approval 2026-11-13 23:35 (Beijing): same scope as R3.23 (two approved accounts, one pass,
+# mobile viewport, no login, only the two core CDNs for JS/CSS, stop at once on 403 / verification / login
+# redirect) plus: when an account's profile shows its own live room, open that room page once.
+# At most 4 pages (2 profiles + 2 own rooms). Single use: runs only for the push that moves this branch
+# from d9c7d5d to the marked commit; reruns and later pushes skip.
+on:
+  push:
+    branches: [experiment/r324-douyin-calibration-once-20261113]
+    paths: ['.github/workflows/r324-douyin-calibration-once.yml']
+permissions:
+  contents: read
+concurrency:
+  group: r324-douyin-calibration-once
+  cancel-in-progress: false
+jobs:
+  rpa:
+    if: >-
+      github.event_name == 'push' && github.run_attempt == 1 &&
+      github.ref == 'refs/heads/experiment/r324-douyin-calibration-once-20261113' &&
+      github.event.before == 'd9c7d5ddd668951d1f0575bde85ee647eaa037d5' &&
+      contains(github.event.head_commit.message, '[r324-calibration-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Offline guard, identity, live-path and ledger verification before any live request
+        run: node --test tests/r320/network-identity-offline.test.mjs tests/r321/claude-gemini-review.test.mjs tests/r322/*.test.mjs tests/r323/*.test.mjs
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: Run ONE approved read-only pass (two pre-registered accounts, own live rooms only)
+        env:
+          R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS
+          R319_CORE_CDN_APPROVED_ONCE: TWO_APPROVED_CDNS_JS_CSS_ONLY
+        run: node probes/r316/douyin-rpa-two-once.mjs
+      - name: Print sanitized public receipt (account keys and booleans only)
+        if: always() && hashFiles('out/r316-rpa-public.json') != ''
+        run: |
+          echo "R324_PUBLIC_RECEIPT $(tr -d '\n' < out/r316-rpa-public.json)"
+          node -e "const r=require('./out/r316-rpa-public.json');const p=r.checked.filter(x=>x.profileHttp!=null).length,q=r.checked.filter(x=>x.roomHttp!=null).length;console.log('R324_PAGE_COUNT '+JSON.stringify({profiles:p,rooms:q,total:p+q,withinApproved:p<=2&&q<=2}))"
+      - name: Import the real receipt into the R3.22 ledger and render the offline view
+        if: always() && hashFiles('out/r316-rpa-public.json') != ''
+        run: |
+          node probes/r322/import-receipt.mjs --receipt out/r316-rpa-public.json --state out/ledger/state.json --html out/ledger/index.html --evidence-kind real
+          node --input-type=module -e "import fs from 'node:fs'; import { buildSummary } from './probes/r322/observation-ledger.mjs'; const s = buildSummary(JSON.parse(fs.readFileSync('out/ledger/state.json','utf8'))); console.log('R324_LEDGER_SUMMARY ' + JSON.stringify({ rooms: s.rooms.map(r => [r.key, r.state, r.reason]), sessionClues: s.sessions.length }));"
+      - name: Encrypt private page evidence, never upload plaintext
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d out/r316-private || exit 0
+          tar czf p.tgz -C out r316-private && rm -rf out/r316-private
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in p.tgz -out p.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey probes/keys/analysis-pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out k.enc
+          rm -f p.tgz k.bin
+          echo "KEY_BEGIN"; base64 -w 0 k.enc; echo; echo "KEY_END"
+          echo "DATA_BEGIN"; base64 -w 0 p.enc; echo; echo "DATA_END"
+      - name: Save sanitized receipt, ledger and offline view (7 days)
+        if: always() && hashFiles('out/r316-rpa-public.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: r324-douyin-readonly-${{ github.run_id }}
+          path: |
+            out/r316-rpa-public.json
+            out/ledger/
+          retention-days: 7
+          if-no-files-found: error
