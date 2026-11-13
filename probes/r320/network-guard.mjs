@@ -14,7 +14,7 @@ const AUTH_PART = /(?:^|[./?&=_-])(login|logout|passport|verify|verification|cap
 export function isAccessGate(url) {
   try {
     const u = new URL(url);
-    return AUTH_PART.test(u.hostname) || AUTH_PART.test(u.pathname) || AUTH_PART.test(u.search);
+    return AUTH_PART.test(u.hostname) || AUTH_PART.test(decodeURIComponent(u.pathname)) || AUTH_PART.test(decodeURIComponent(u.search));
   } catch { return true; }
 }
 
