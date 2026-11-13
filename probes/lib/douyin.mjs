@@ -98,6 +98,48 @@ export function liveAnchorRoomIds(p) {
   return ids;
 }
 
+/**
+ * R3.24 calibration, PRIVATE (encrypted) record only. Shape of the RAW server HTML of a page, read
+ * before any page script runs: counts, small status integers and JSON key NAMES (letters/underscore)
+ * found just before each match. Never a value, id, name, title or URL.
+ */
+export function documentShape(html, t) {
+  const raw = typeof html === 'string' ? html : '';
+  let decoded = '';
+  const rd = /<script[^>]*\bid=["']RENDER_DATA["'][^>]*>([\s\S]*?)<\/script>/i.exec(raw);
+  if (rd) { try { decoded = decodeURIComponent(rd[1]); } catch { decoded = ''; } }
+  // Search the decoded payload instead of its encoded copy (no double counting); streamed payloads
+  // hold JSON inside JS string literals, so undo one level of quote escaping.
+  const text = ((decoded ? raw.replace(rd[0], '') : raw) + '\n' + decoded).replace(/\\"/g, '"');
+  const keysBefore = i => [...text.slice(Math.max(0, i - 300), i).matchAll(/"([A-Za-z_]{2,24})"\s*:/g)].map(m => m[1]).slice(-8);
+  const find = needle => {
+    const out = { count: 0, contexts: [] };
+    if (typeof needle !== 'string' || needle.length < 4) return out;
+    for (let i = text.indexOf(needle); i !== -1 && out.count < 200; i = text.indexOf(needle, i + needle.length)) {
+      out.count++;
+      if (out.contexts.length < 5) out.contexts.push(keysBefore(i));
+    }
+    return out;
+  };
+  let sec = '';
+  try { sec = new URL(t?.profileUrl).pathname.split('/').pop() || ''; } catch {}
+  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(raw)?.[1]?.trim() || '';
+  const meta = /<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)/i.exec(raw)?.[1] || '';
+  const name = String(t?.accountName || '');
+  return {
+    bytes: raw.length,
+    renderData: Boolean(rd), renderDataDecoded: decoded.length > 0,
+    paceScripts: (raw.match(/<script[^>]*>[^<]{0,80}__pace_f/g) || []).length,
+    titleTagEmpty: title === '', titleTagHasName: name.length > 0 && title.includes(name),
+    metaTagPresent: meta !== '', metaTagHasName: name.length > 0 && meta.includes(name),
+    secUid: find(sec), roomId: find(t?.roomId ? String(t.roomId) : ''),
+    displayId: find(t?.displayDouyinId ? String(t.displayDouyinId) : ''), accountName: find(name),
+    status: [...text.matchAll(/"((?:live_|room_)?status)"\s*:\s*(\d{1,2})(?!\d)/g)].slice(0, 16)
+      .map(m => ({ key: m[1], value: Number(m[2]), before: keysBefore(m.index) })),
+    endedText: ENDED_RE.test(raw + decoded), loginGateText: LOGIN_GATE_RE.test(raw + decoded),
+  };
+}
+
 /** Booleans only, for the public receipt: which room-page identity signal held. */
 export function roomIdentityEvidence(r, t) {
   const title = String(r?.title || '');

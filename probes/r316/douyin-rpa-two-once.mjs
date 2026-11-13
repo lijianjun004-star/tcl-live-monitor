@@ -7,9 +7,9 @@
  */
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { decideDouyin, profileIdentityEvidence, roomIdentityEvidence, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
+import { decideDouyin, profileIdentityEvidence, roomIdentityEvidence, documentShape, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
 import { CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
-import { guardedRoute, disableUnroutedChannels } from '../r320/network-guard.mjs';
+import { guardedRoute, disableUnroutedChannels, hostClass } from '../r320/network-guard.mjs';
 
 if (process.env.R316_RPA_ONCE !== 'TWO_ACCOUNTS_ONE_PASS') throw Error('R316_RPA_GUARD_REQUIRED');
 // Explicitly approved, once-only experimental scope. Any misspelled flag fails closed.
@@ -33,6 +33,7 @@ await ctx.addInitScript(disableUnroutedChannels);
 // non-GET verbs, third-party hosts, WebSockets and media. Never send account credentials.
 const blocked = new Map(); // report only domain/type aggregates; never paths or cookies
 const allowedCoreCdn = new Map();
+const blockedStaticHosts = new Map(); // PRIVATE record only (see tallyBlocked)
 // Every network request is fetched ONLY once with maxRedirects=0.
 // Never route.continue: that leaks redirected second hops to Chromium.
 await ctx.route('**/*', route => guardedRoute(route,{
@@ -54,7 +55,11 @@ await ctx.route('**/*', route => guardedRoute(route,{
     let host='OTHER';
     try {
       const u=new URL(info.url);
-      if([...CORE_STATIC_CANDIDATES,...UNKNOWN_STATIC_CANDIDATES].includes(u.hostname)) host=u.hostname;
+      // Public tally: a known candidate host, else only the fixed anonymous class (R3.24).
+      host=[...CORE_STATIC_CANDIDATES,...UNKNOWN_STATIC_CANDIDATES].includes(u.hostname) ? u.hostname : hostClass(info.url);
+      // PRIVATE (encrypted) only: hostnames, never paths, of blocked JS/CSS per page kind.
+      if(['script','stylesheet'].includes(info.resourceType) && (blockedStaticHosts.size < 40 || blockedStaticHosts.has(activePageKind+'|'+u.hostname)))
+        blockedStaticHosts.set(activePageKind+'|'+u.hostname,(blockedStaticHosts.get(activePageKind+'|'+u.hostname)||0)+1);
     } catch {}
     const key=host+':'+info.resourceType+':'+why;
     blocked.set(key,(blocked.get(key)||0)+1);
@@ -63,7 +68,7 @@ await ctx.route('**/*', route => guardedRoute(route,{
 // Browser route() cannot intercept WebSockets; explicitly terminate WebSocket sessions.
 await ctx.routeWebSocket(/.*/, ws => { blocked.set('websocket', (blocked.get('websocket') || 0) + 1); ws.close(); });
 let stopped = null, stopEvidence = null; const pub = [], priv = [];
-let activeKey = null;
+let activeKey = null, activePageKind = 'profile';
 // A 401/403/429 from ANY page response is an access-limit signal, not just
 // from the top-level navigation. Close pages to prevent further browsing.
 ctx.on('response', response => {
@@ -86,6 +91,8 @@ async function snap(url, target = null) {
   const page = await ctx.newPage();
   try {
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    // R3.24 calibration, PRIVATE only: the RAW server HTML reduced at once to counts and key names.
+    const doc = target && resp ? documentShape(await resp.text().catch(() => ''), target) : null;
     await page.waitForTimeout(6000);
     const data = await page.evaluate(() => {
       const text = document.body?.innerText || '';
@@ -122,7 +129,7 @@ async function snap(url, target = null) {
     const f = new URL(page.url());
     // Never truncate below a real profile path: approved accounts have 82-char /user/<secUid> paths and
     // identity needs an EXACT final path (R3.18). finalPath goes to the encrypted private record only.
-    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 256), ...data, structure };
+    return { httpStatus: resp?.status() ?? null, finalHost: f.hostname, finalPath: f.pathname.slice(0, 256), ...data, structure, doc };
   } catch (e) { return { httpStatus: null, navigationError: String(e?.name || 'NAV_ERROR').slice(0, 40) }; }
   finally { await page.close().catch(() => {}); }
 }
@@ -135,6 +142,7 @@ try {
     activeKey = t.key;
     const at = new Date().toISOString();
     if (stopped) { pub.push({ key: t.key, at, state: 'NOT_RUN', reason: 'STOPPED_AFTER_ACCESS_LIMIT' }); continue; }
+    activePageKind = 'profile';
     const profile = await snap(t.profileUrl, t);
     let reasonStop = stopped?.reason || stopOf(profile), room = null;
     // A live badge on an UNVERIFIED profile is not permission to visit its room.
@@ -143,7 +151,7 @@ try {
       const scope=liveAnchorScope(profile, t);
       if (scope.roomId) {
         await new Promise(r => setTimeout(r, 5000));
-        if(!stopped) { room = await snap(`https://live.douyin.com/${scope.roomId}`, t); reasonStop = stopped?.reason || stopOf(room); }
+        if(!stopped) { activePageKind = 'room'; room = await snap(`https://live.douyin.com/${scope.roomId}`, t); reasonStop = stopped?.reason || stopOf(room); }
       }
     }
     let d;
@@ -163,13 +171,15 @@ try {
     priv.push({ key: t.key, at, profileTitle: profile.title, finalHost: profile.finalHost, finalPath: profile.finalPath,
       douyinIdsInPage: profile.douyinIdsInPage, liveRoomIds: ids, roomTitle: room?.title ?? null, roomMeta: room?.metaDescription?.slice(0, 120) ?? null,
       observedRoomId: d.observedRoomId ?? null, decision: d,
-      profileStructure: profile.structure ?? null, roomStructure: room?.structure ?? null });
+      profileStructure: profile.structure ?? null, roomStructure: room?.structure ?? null,
+      profileDoc: profile.doc ?? null, roomDoc: room?.doc ?? null });
     await new Promise(r => setTimeout(r, 5000));
   }
 } finally {
   await browser.close();
   await fs.mkdir('out/r316-private', { recursive: true });
-  await fs.writeFile('out/r316-private/rpa.json', JSON.stringify({ at: new Date().toISOString(), priv }));
+  await fs.writeFile('out/r316-private/rpa.json', JSON.stringify({ at: new Date().toISOString(), priv,
+    blockedStaticHosts: Object.fromEntries([...blockedStaticHosts].sort((a,b)=>b[1]-a[1])) }));
   for (const p of pub) console.log('R316_RPA ' + JSON.stringify(p));
   console.log('R316_RPA_STOPPED ' + JSON.stringify(stopped));
   console.log('R321_STOP_EVIDENCE ' + JSON.stringify(stopEvidence));

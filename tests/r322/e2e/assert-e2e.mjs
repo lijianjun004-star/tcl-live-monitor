@@ -57,14 +57,24 @@ assert.deepEqual(pick(row(rte, first)), { state: 'UNKNOWN', reason: 'LIVE_BADGE_
   roomSignals: { httpOk: true, titleEmpty: true, titleExact: false, metaExact: true, ownerLinkExact: true } });
 // Private calibration record (checked inside the sealed step, reduced to booleans): ancestry chains only,
 // letters-only labels, the registered room flagged, the owner link found on the room page.
-const shape = json('REAL_LAYOUT', 'private-shape.json');
+const shapeAll = json('REAL_LAYOUT', 'private-shape.json'), shape = shapeAll.rows;
 const sf = shape.find(x => x.key === first), ss = shape.find(x => x.key === second);
 assert.deepEqual(sf.profile.liveAnchors, [{ registeredRoom: true, liveText: true, insideLiveEntry: true, insideUserInfo: false, labelsSafe: true }]);
 assert.deepEqual(sf.profile.keys, ['liveAnchors', 'ownerLinks']);
 assert.deepEqual(sf.profile.anchorKeys, ['ancestry', 'liveText', 'registeredRoom']);
 assert.deepEqual(sf.room.ownerLinks, [{ insideRoomOwner: true, insideUserInfo: false, labelsSafe: true }]);
 assert.deepEqual([ss.profile.liveAnchors, ss.room], [[], null]);
-const fshape = json('FOREIGN_BADGE', 'private-shape.json');
+// R3.24 raw server HTML shape (private, reduced to booleans): RENDER_DATA and streamed chunks both parsed;
+// owner id found under owner.sec_uid, room id under web_rid, live/ended status read; hostnames of
+// blocked JS/CSS recorded per page kind, never paths.
+const DOC_FIELDS = 'accountName,bytes,displayId,endedText,loginGateText,metaTagHasName,metaTagPresent,paceScripts,renderData,renderDataDecoded,roomId,secUid,status,titleTagEmpty,titleTagHasName';
+assert.deepEqual(sf.roomDoc, { renderData: true, paceScripts: 0, titleTagEmpty: false, secUidUnderOwnerKey: true, roomIdUnderWebRid: true, statusValues: [2], keysOk: true, fields: DOC_FIELDS });
+assert.deepEqual([sf.profileDoc.renderData, sf.profileDoc.statusValues, sf.profileDoc.keysOk, ss.roomDoc], [false, [], true, null]);
+assert.deepEqual(shapeAll.hosts, { synthetic: ['room|static.synthetic-cdn.test'], keysOk: true, countsOk: true });
+const rteShape = json('ROOM_TITLE_EMPTY', 'private-shape.json');
+assert.deepEqual(rteShape.rows.find(x => x.key === first).roomDoc, { renderData: false, paceScripts: 1, titleTagEmpty: true, secUidUnderOwnerKey: true, roomIdUnderWebRid: true, statusValues: [4], keysOk: true, fields: DOC_FIELDS });
+assert.deepEqual(json('NORMAL', 'private-shape.json').hosts, { synthetic: [], keysOk: true, countsOk: true });
+const fshape = json('FOREIGN_BADGE', 'private-shape.json').rows;
 assert.deepEqual(fshape.find(x => x.key === second).profile.liveAnchors.map(x => x.registeredRoom), [true, false]);
 assert.deepEqual(fshape.find(x => x.key === first).profile.liveAnchors.map(x => x.registeredRoom), [false]);
 
