@@ -1,4 +1,5 @@
 name: R3.19 Douyin approved core CDN public guest observation - ONE PASS
+# Explicit user-approved single-use live verification, 2026-11-13; do not rerun.
 on:
   push:
     branches: [experiment/r319-douyin-core-cdn-approved-once-20261113]
