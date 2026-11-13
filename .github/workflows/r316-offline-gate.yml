@@ -48,6 +48,18 @@ jobs:
           npm install --no-save playwright@1.56.1
           npx playwright install chromium --with-deps
           R320_BROWSER_SMOKE=1 node --test tests/r320/browser-redirect.test.mjs tests/r321/claude-browser-offline.test.mjs
+      - name: R3.22 sealed end-to-end - unchanged probe to receipt to ledger (loopback only, no external network)
+        # Runs probes/r316/douyin-rpa-two-once.mjs against a loopback stand-in inside a NEW network namespace
+        # that is checked to have no route out before the probe starts (tests/r322/e2e/run-sealed-e2e.sh).
+        run: sh tests/r322/e2e/run-sealed-e2e.sh /tmp/r322-sealed-e2e
+      - name: Upload sealed end-to-end synthetic receipts, ledger and page (7 days)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r322-sealed-e2e-synthetic-${{ github.event.pull_request.head.sha }}
+          path: /tmp/r322-sealed-e2e/
+          retention-days: 7
+          if-no-files-found: error
       - name: Privacy scan of tracked public files
         run: |
           set -euo pipefail
