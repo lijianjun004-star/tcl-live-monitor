@@ -1,7 +1,7 @@
 name: R3.23 Douyin approved public guest observation - ONE PASS
 # Explicit user approval 2026-11-13 23:08 (Beijing): two approved accounts, one pass, mobile viewport,
 # no login, only the two core CDNs for JS/CSS, stop at once on 403 / verification / login redirect.
-# Single use: runs only for the push that moves this branch from 1f8bb9a to the marked commit.
+# SPENT and disarmed after its single run 43449924435; any new live run needs a new explicit approval.
 on:
   push:
     branches: [experiment/r323-douyin-approved-once-20261113]
@@ -13,11 +13,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   rpa:
-    if: >-
-      github.event_name == 'push' && github.run_attempt == 1 &&
-      github.ref == 'refs/heads/experiment/r323-douyin-approved-once-20261113' &&
-      github.event.before == '1f8bb9ab869d1f825d90a67a5bfe866978918b3e' &&
-      contains(github.event.head_commit.message, '[r323-rpa-once]')
+    # SPENT: the single approved run was 43449924435 (2026-11-13). Permanently disarmed.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -34,7 +31,6 @@ jobs:
       - name: Run ONE approved read-only pass (two pre-registered accounts at most)
         env:
           R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS
-          R319_CORE_CDN_APPROVED_ONCE: TWO_APPROVED_CDNS_JS_CSS_ONLY
         run: node probes/r316/douyin-rpa-two-once.mjs
       - name: Print sanitized public receipt (account keys and booleans only)
         if: always() && hashFiles('out/r316-rpa-public.json') != ''
