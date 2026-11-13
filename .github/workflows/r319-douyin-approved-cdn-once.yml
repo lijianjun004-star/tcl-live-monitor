@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   rpa:
-    # An explicit one-time commit marker is required; manual reruns must skip.
-    if: github.event_name == 'push' && github.run_attempt == 1 && contains(github.event.head_commit.message, '[r319-cdn-rpa-once]')
+    # DISABLED: one-time authorization exhausted; no PR or push may visit live sources.
+    if: ${{ false }} # R3.19 authorization consumed; indefinitely disarmed pending new explicit approval
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -30,7 +30,6 @@ jobs:
       - name: Run ONE approved read-only pass (two pre-registered accounts at most)
         env:
           R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS
-          R319_CORE_CDN_APPROVED_ONCE: TWO_APPROVED_CDNS_JS_CSS_ONLY
         run: node probes/r316/douyin-rpa-two-once.mjs
       - name: Encrypt private page evidence, never upload plaintext
         if: always()
