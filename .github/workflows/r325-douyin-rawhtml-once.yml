@@ -2,8 +2,8 @@ name: R3.25 Douyin approved replay and raw-HTML diagnostic observation - ONE PAS
 # Explicit user approval 2026-11-14 00:38 (Beijing): same scope as R3.23 (two approved accounts, one pass,
 # mobile viewport, no login, only the two core CDNs for JS/CSS, stop at once on 403 / verification / login
 # redirect) plus: when an account's profile shows its own live room, open that room page once.
-# At most 4 pages (2 profiles + 2 own rooms). Single use: runs only for the push that moves this branch
-# from e4af205 to the marked commit; reruns and later pushes skip.
+# At most 4 pages (2 profiles + 2 own rooms). 
+# SPENT and disarmed after its single run 43464891978; any new live run needs a new explicit approval.
 on:
   push:
     branches: [experiment/r325-douyin-rawhtml-once-20261114]
@@ -15,11 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   rpa:
-    if: >-
-      github.event_name == 'push' && github.run_attempt == 1 &&
-      github.ref == 'refs/heads/experiment/r325-douyin-rawhtml-once-20261114' &&
-      github.event.before == 'e4af205ac30de3e716708465bba046e38bc9eed8' &&
-      contains(github.event.head_commit.message, '[r325-rawhtml-once]')
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -36,7 +32,6 @@ jobs:
       - name: Run ONE approved read-only pass (two pre-registered accounts, own live rooms only)
         env:
           R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS
-          R319_CORE_CDN_APPROVED_ONCE: TWO_APPROVED_CDNS_JS_CSS_ONLY
         run: node probes/r316/douyin-rpa-two-once.mjs
       - name: Print sanitized public receipt (account keys and booleans only)
         if: always() && hashFiles('out/r316-rpa-public.json') != ''
