@@ -54,7 +54,7 @@ test('R319: runner requires exact once flag and preserves service-worker and WS 
   assert.match(s,/R316_RPA_ONCE !== 'TWO_ACCOUNTS_ONE_PASS'/);
   assert.match(s,/R319_CORE_CDN_APPROVED_ONCE === CDN_FLAG/);
   assert.match(s,/R319_CDN_FLAG_INVALID/);
-  assert.match(s,/approvedCoreStatic \}/);
+  assert.match(s,/approvedCoreStatic,/);
   assert.match(s,/serviceWorkers: 'block'/);
   assert.match(s,/ctx\.routeWebSocket\(/);
   assert.match(s,/const approved = new Map\(/);
