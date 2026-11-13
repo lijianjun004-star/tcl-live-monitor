@@ -40,7 +40,7 @@ test('douyin: no badge alone is UNKNOWN, never OFFLINE', () => {
 });
 
 test('douyin: ended text + status 4 is only a candidate until rule validated', () => {
-  const r = room({ bodyExcerpt: '直播已结束', statusFields: [{ field: '$.data.data[0].status', value: 4 }] });
+  const r = room({ bodyExcerpt: '侧边栏推荐：其他主播已下播', mainPlayerEndedText: '直播已结束', statusFields: [{ field: '$.data.data[0].status', value: 4 }] });
   const c = decideDouyin(profile(), r, dy);
   assert.equal(c.state, 'UNKNOWN'); assert.equal(c.offlineCandidate, true);
   assert.equal(decideDouyin(profile(), r, dy, { offlineRuleValidated: true }).state, 'OFFLINE');

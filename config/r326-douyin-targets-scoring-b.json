@@ -1,0 +1,12 @@
+{
+  "note": "R3.26 scheduled daily check: the other two scoring-eligible approved Douyin accounts. Keys only.",
+  "maxPerRun": 2,
+  "targets": [
+    {
+      "key": "tcl-douyin-tv-official-live"
+    },
+    {
+      "key": "tcl-douyin-tv-corporate"
+    }
+  ]
+}
