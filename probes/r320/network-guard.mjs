@@ -92,7 +92,11 @@ export function disableUnroutedChannels() {
     try { Object.defineProperty(window,key,{value:blocked,configurable:false,writable:false}); } catch {}
   }
   try { Object.defineProperty(navigator,'sendBeacon',{value:()=>false,configurable:false,writable:false}); } catch {}
+  try { Object.defineProperty(Navigator.prototype,'sendBeacon',{value:()=>false,configurable:false,writable:false}); } catch {}
   try {
+    if(typeof ServiceWorkerContainer !== 'undefined') {
+      Object.defineProperty(ServiceWorkerContainer.prototype,'register',{value:blocked,configurable:false,writable:false});
+    }
     if('serviceWorker' in navigator) {
       Object.defineProperty(navigator.serviceWorker,'register',{value:blocked,configurable:false,writable:false});
     }
