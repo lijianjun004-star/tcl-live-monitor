@@ -1,4 +1,4 @@
-name: Douyin daily broadcast check (4 scoring accounts, read-only public guest)
+name: Douyin daily broadcast check (4 scoring + 3 monitor-only accounts, read-only public guest)
 # User approval 2026-11-14 01:04 (Beijing): merge to main and sample on a schedule, every 2 hours in the
 # daytime, the 4 scoring accounts first. Public guest only: mobile viewport, no login, no cookies supplied,
 # only the two core CDNs for JS/CSS, at most 2 pages per account (profile + its own live room).
@@ -56,7 +56,7 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install chromium --with-deps
-      - name: One read-only pass over the 4 scoring accounts (two fixed sets of two)
+      - name: One read-only pass over the 7 registered accounts (fixed sets of at most two)
         if: steps.gate.outputs.skip != 'true'
         env:
           R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS
@@ -73,6 +73,9 @@ jobs:
           stopped=0
           pass a "" || stopped=1
           if [ "$stopped" = 0 ]; then sleep 5; pass b SCORING_B || stopped=1; fi
+          # R3.29: three approved monitor-only accounts that have a registered room (not scoring).
+          if [ "$stopped" = 0 ]; then sleep 5; pass c MONITOR_C || stopped=1; fi
+          if [ "$stopped" = 0 ]; then sleep 5; pass d MONITOR_D || stopped=1; fi
           if [ "$stopped" = 1 ]; then
             node -e "require('fs').writeFileSync('out/ledger/cooldown.json',JSON.stringify({stoppedAt:new Date().toISOString()}))"
             echo "::warning::Douyin access limit or stop condition: this run stopped at once; no live request for the next 24 hours. This is missing sampling, NOT evidence of OFFLINE."

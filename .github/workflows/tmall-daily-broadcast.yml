@@ -1,0 +1,94 @@
+name: Tmall/Taobao daily broadcast check (registered shops, read-only public guest)
+# User instruction 2026-11-14 08:19 (Beijing): complete Tmall/Taobao, full permission, run until it works.
+# Public guest live page only: mobile viewport, no login, no cookies supplied, no signature forging; it
+# reads the live-detail JSON the page itself requests. One page per shop, every 2 hours in the daytime.
+# Stops at once on verification / login / access-limit signals, then stays away for 24 hours.
+# "Not seen in samples" is never "did not broadcast". No scoring, no penalties.
+on:
+  schedule:
+    - cron: '47 0-16/2 * * *'   # 08:47 to 00:47 Beijing time, every 2 hours (GitHub cron is best effort)
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: tmall-daily-broadcast
+  cancel-in-progress: false
+jobs:
+  check:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Offline tests before any live request
+        run: node --test tests/r329/*.test.mjs tests/r322/*.test.mjs tests/r325/*.test.mjs
+      - name: Restore the previous 7-day ledger (latest successful run of this workflow)
+        run: |
+          mkdir -p out/ledger prev
+          ID=$(gh run list --workflow tmall-daily-broadcast.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty' || true)
+          if [ -n "$ID" ] && gh run download "$ID" -n tmall-daily-ledger -D prev; then
+            if [ -f prev/state.json ]; then cp prev/state.json out/ledger/state.json; fi
+            if [ -f prev/cooldown.json ]; then cp prev/cooldown.json out/ledger/cooldown.json; fi
+          fi
+          if [ -f out/ledger/state.json ] && ! node probes/r325/daily-report.mjs out/ledger/state.json > /dev/null; then
+            echo "::warning::previous ledger failed validation and was not used; starting a new one"
+            rm -f out/ledger/state.json
+          fi
+          echo "restored: $([ -f out/ledger/state.json ] && echo yes || echo no)"
+      - name: Cooldown gate (24 hours without any live request after an access limit)
+        id: gate
+        run: |
+          node -e "
+          const fs=require('fs');let skip=false,why='none';
+          try{const c=JSON.parse(fs.readFileSync('out/ledger/cooldown.json','utf8'));const age=Date.now()-Date.parse(c.stoppedAt);
+            if(Number.isFinite(age)&&age>=0&&age<24*3600e3){skip=true;why='ACCESS_LIMIT_COOLDOWN';}
+            else fs.rmSync('out/ledger/cooldown.json');}catch{}
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'skip='+skip+'\n');console.log(JSON.stringify({skip,why}));"
+      - name: Install pinned Playwright Chromium
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: One read-only pass over the registered Tmall/Taobao shops
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          R329_TMALL_ONCE: REGISTERED_SHOPS_ONE_PASS
+        run: |
+          set +e; node probes/r329/tmall-daily-once.mjs; code=$?; set -e
+          test -f out/tmall-receipt.json || { echo "::error::probe produced no receipt"; exit 1; }
+          node probes/r322/import-receipt.mjs --receipt out/tmall-receipt.json --state out/ledger/state.json --html out/ledger/index.html --platform tmall --evidence-kind real
+          if [ "$code" != 0 ]; then
+            node -e "require('fs').writeFileSync('out/ledger/cooldown.json',JSON.stringify({stoppedAt:new Date().toISOString()}))"
+            echo "::warning::Tmall/Taobao access limit or stop condition: this run stopped at once; no live request for the next 24 hours. This is missing sampling, NOT evidence of OFFLINE."
+          fi
+      - name: Daily result (shop keys, dates, statuses and sample times only)
+        if: always() && hashFiles('out/ledger/state.json') != ''
+        run: |
+          node probes/r325/daily-report.mjs out/ledger/state.json | tee out/daily.txt
+          node -e "
+          const fs=require('fs');
+          const L=fs.readFileSync('out/daily.txt','utf8').split('\n').filter(l=>l.startsWith('R325_DAILY {\"')).map(l=>JSON.parse(l.slice(11)));
+          let last={};try{for(const r of JSON.parse(fs.readFileSync('out/tmall-receipt.json','utf8')).checked) last[r.key]=r;}catch{}
+          const s={BROADCAST_SEEN:'已开播',NOT_SEEN_IN_SAMPLES:'采样中未见开播（不等于没播）',UNKNOWN:'无法判断'};
+          const now={LIVE:'在播',OFFLINE:'接口显示未开播',UNKNOWN:'无法判断',NOT_RUN:'未执行'};
+          const t=x=>x?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(x)):'—';
+          const rows=L.map(d=>'| '+[d.date,d.key,s[d.status],d.firstSeenAt?t(d.firstSeenAt)+'–'+t(d.lastSeenAt):'—',d.verifiedSamples,d.latestDay&&last[d.key]?now[last[d.key].state]+(last[d.key].sourceStartTime?'（本场开始 '+t(last[d.key].sourceStartTime)+'）':''):'—'].join(' | ')+' |');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,['## 天猫/淘宝每日开播（北京时间）','','每天按 06:00 到次日 06:00 计算：凌晨 0–6 点看到的在播算前一天那一场。','','| 日期 | 店铺 | 结果 | 看到在播（采样时刻） | 核验采样次数 | 本次状态 |','|---|---|---|---|---|---|',...rows,''].join('\n'));"
+      - name: Save the 7-day ledger, offline view and cooldown marker
+        if: always() && hashFiles('out/ledger/state.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmall-daily-ledger
+          path: |
+            out/ledger/state.json
+            out/ledger/index.html
+            out/ledger/cooldown.json
+          retention-days: 7
+          if-no-files-found: error
