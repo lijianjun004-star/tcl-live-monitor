@@ -18,7 +18,8 @@ if (process.env.R319_CORE_CDN_APPROVED_ONCE && process.env.R319_CORE_CDN_APPROVE
   throw Error('R319_CDN_FLAG_INVALID');
 const approvedCoreStatic = process.env.R319_CORE_CDN_APPROVED_ONCE === CDN_FLAG;
 // R3.26: fixed, reviewed target sets only (never a free path). Each set holds at most two approved accounts.
-const TARGET_SETS = { '': 'config/r316-douyin-rpa-targets.json', SCORING_B: 'config/r326-douyin-targets-scoring-b.json' };
+const TARGET_SETS = { '': 'config/r316-douyin-rpa-targets.json', SCORING_B: 'config/r326-douyin-targets-scoring-b.json',
+  MONITOR_C: 'config/r329-douyin-targets-monitor-c.json', MONITOR_D: 'config/r329-douyin-targets-monitor-d.json' };
 const targetSet = process.env.R326_TARGET_SET || '';
 if (!Object.hasOwn(TARGET_SETS, targetSet)) throw Error('R326_TARGET_SET_INVALID');
 const { targets, maxPerRun } = JSON.parse(await fs.readFile(TARGET_SETS[targetSet], 'utf8'));

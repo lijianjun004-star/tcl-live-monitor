@@ -1,0 +1,12 @@
+{
+  "note": "R3.29 scheduled daily check: approved monitor-only Douyin accounts with a registered room (not scoring). Keys only.",
+  "maxPerRun": 2,
+  "targets": [
+    {
+      "key": "tcl-douyin-ac-flagship"
+    },
+    {
+      "key": "tcl-douyin-groupbuy"
+    }
+  ]
+}
