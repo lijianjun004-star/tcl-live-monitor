@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { importReceipt, buildDailyBroadcast, buildSummary, beijingDay } from '../../probes/r322/observation-ledger.mjs';
+import { importReceipt, buildDailyBroadcast, buildSummary, beijingDay, broadcastDay } from '../../probes/r322/observation-ledger.mjs';
 import { renderLedger } from '../../probes/r322/render-ledger.mjs';
 import { documentShape } from '../../probes/lib/douyin.mjs';
 
@@ -66,10 +66,14 @@ test('daily status per account and Beijing day: seen / not seen in samples / unk
   for (const x of Object.values(d)) assert.equal(x.latestDay, true);
 });
 
-test('Beijing day boundary and the latest-day flag', () => {
+test('broadcast day runs 06:00 to 06:00 Beijing time: after-midnight sightings belong to the previous day', () => {
   assert.equal(beijingDay('2026-11-13T15:59:59Z'), '2026-11-13');
   assert.equal(beijingDay('2026-11-13T16:00:01Z'), '2026-11-14');
-  const l = ledgerOf(receipt('2026-11-13T16:00:30Z', [badge('acct-a', '2026-11-13T15:59:59Z'), row('acct-a', '2026-11-13T16:00:01Z')]));
+  assert.equal(broadcastDay('2026-11-13T17:11:00Z'), '2026-11-13');   // 01:11 Beijing on 11-14 -> the 11-13 session
+  assert.equal(broadcastDay('2026-11-13T21:59:59Z'), '2026-11-13');   // 05:59:59
+  assert.equal(broadcastDay('2026-11-13T22:00:00Z'), '2026-11-14');   // 06:00:00
+  assert.equal(broadcastDay('2026-11-13T22:30:00Z'), '2026-11-14');
+  const l = ledgerOf(receipt('2026-11-14T00:00:30Z', [badge('acct-a', '2026-11-13T17:11:00Z'), row('acct-a', '2026-11-14T00:00:01Z')]));
   assert.deepEqual(buildDailyBroadcast(l).map(x => [x.date, x.status, x.latestDay]),
     [['2026-11-14', 'NOT_SEEN_IN_SAMPLES', true], ['2026-11-13', 'BROADCAST_SEEN', false]]);
 });

@@ -86,7 +86,7 @@ jobs:
           const s={BROADCAST_SEEN:'已开播',NOT_SEEN_IN_SAMPLES:'采样中未见开播（不等于没播）',UNKNOWN:'无法判断'};
           const t=x=>x?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(x)):'—';
           const rows=L.map(d=>'| '+[d.date,d.key,s[d.status],d.firstSeenAt?t(d.firstSeenAt)+'–'+t(d.lastSeenAt):'—',d.verifiedSamples].join(' | ')+' |');
-          require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY,['## 抖音每日开播（北京时间）','','| 日期 | 账号 | 结果 | 看到在播（采样时刻） | 核验采样次数 |','|---|---|---|---|---|',...rows,''].join('\n'));"
+          require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY,['## 抖音每日开播（北京时间）','','每天按 06:00 到次日 06:00 计算：凌晨 0–6 点看到的在播算前一天那一场。','','| 日期 | 账号 | 结果 | 看到在播（采样时刻） | 核验采样次数 |','|---|---|---|---|---|',...rows,''].join('\n'));"
       - name: Encrypt private page evidence, never upload plaintext
         if: always()
         shell: bash

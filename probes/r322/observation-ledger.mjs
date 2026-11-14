@@ -136,7 +136,13 @@ export function beijingDay(isoAt) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(isoAt));
 }
 /**
- * R3.25 "did this account broadcast today?" per account and Beijing day.
+ * R3.28 broadcast day (user rule 2026-11-14): a sighting between 00:00 and 06:00 Beijing time belongs to the
+ * PREVIOUS day's session (streams run past midnight; the next session starts after a gap).
+ */
+export const BROADCAST_DAY_START_HOUR = 6;
+export function broadcastDay(isoAt) { return beijingDay(new Date(Date.parse(isoAt) - BROADCAST_DAY_START_HOUR * 3600e3).toISOString()); }
+/**
+ * R3.25 "did this account broadcast today?" per account and broadcast day (06:00 to 06:00 Beijing time).
  * BROADCAST_SEEN: at least one sample showed it live (strongest evidence reported).
  * NOT_SEEN_IN_SAMPLES: verified samples exist but none showed it live. NOT proof that it did not broadcast:
  *   a session between samples can be missed.
@@ -145,10 +151,10 @@ export function beijingDay(isoAt) {
 export function buildDailyBroadcast(ledger) {
   const valid = readLedger(ledger);
   if (!valid) fail();
-  const latestDay = beijingDay(valid.latestAt);
+  const latestDay = broadcastDay(valid.latestAt);
   const groups = new Map();
   for (const r of valid.observations) {
-    const id = `${r.platform}:${r.key}:${beijingDay(r.at)}`;
+    const id = `${r.platform}:${r.key}:${broadcastDay(r.at)}`;
     if (!groups.has(id)) groups.set(id, []);
     groups.get(id).push(r);
   }
@@ -159,7 +165,7 @@ export function buildDailyBroadcast(ledger) {
     const dual = rows.filter(r => r.state === 'LIVE');            // ledger LIVE already needs both identities
     const badge = rows.filter(r => r.ownRoomLiveBadge === true);
     const seen = [...new Set([...dual, ...badge])].sort((a, b) => a.at.localeCompare(b.at));
-    const date = beijingDay(rows[0].at);
+    const date = broadcastDay(rows[0].at);
     days.push({ platform: rows[0].platform, key: rows[0].key, date,
       status: seen.length ? 'BROADCAST_SEEN' : verified.length ? 'NOT_SEEN_IN_SAMPLES' : 'UNKNOWN',
       evidence: dual.length ? 'PROFILE_AND_ROOM_PAGE_IDENTITY' : badge.length ? 'PROFILE_OWN_ROOM_LIVE_BADGE' : null,
