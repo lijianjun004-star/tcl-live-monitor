@@ -30,9 +30,16 @@ The workflow writes a sanitized `tmall-top-official-query` artifact and summary.
 - Only registered account metadata is retained. Raw business JSON, broadcaster names, money metrics, playback signatures, URLs, application keys, secrets, and signed requests are not written to artifacts.
 - Source status describes the requested session. A replay does not prove the account has no newer live session. This API does not automatically discover future content IDs.
 - The official page specifies `end_time` in milliseconds but does not explicitly state the unit of `start_time`. The adapter preserves raw values and does not compute exact live duration before independent time calibration.
+- First-response diagnostics: every identity-verified observation carries a `shape` that states how the platform actually encoded `status`, `room_status`, `stream_status`, `start_time` and `end_time`, including for sessions rejected as `INVALID_SESSION_STATUS` or `INVALID_SESSION_TIMES`. A time field is described by its form (`ABSENT`, `NULL`, `INTEGER`, `INTEGER_ZERO`, `NUMERIC_STRING`, `STRING_OTHER`, and so on), its digit count, and `unitEvidence` (`LIKELY_SECONDS` for 10 digits, `LIKELY_MILLISECONDS` for 13, otherwise `INCONCLUSIVE`). The status fields are recorded only as short numeric tokens, and any other value is `OTHER`. Values of unexpected content are never echoed, and observations that failed account matching carry `shape: null`.
+- `unitEvidence` is evidence only. `startTimeUnit` stays `UNVERIFIED`, no duration is computed, and the strict LIVE rule is unchanged: a LIVE session whose `end_time` is not the integer 0 remains `UNKNOWN`. The `shape` only makes the reason visible so the rule can be revisited from a real response.
+- A platform error response records `apiErrorCode` and, when it is a short machine identifier, `apiSubCode`. Human-readable messages are never read or stored. Code 50 is classified as `TOP_PARAMETER_ERROR` only when its sub code is `isv.invalid-parameter`, the example the official error page shows; any other code 50 stays `TOP_API_ERROR`.
 - This integration is not yet wired into the production daily rate. Real application permissions, account/content mapping, timing semantics, future-session discovery, and coverage must be verified first.
 
 Exit codes: `0` all requested session metadata verified; `2` blocked prerequisites or inputs; `3` network/platform/business rejection; `4` incomplete or unverified metadata; `1` unexpected CLI failure.
+
+## Related manual probes
+
+Finding the content `live_id` values is the open problem this query cannot solve itself. Two further manual, structure-only probes (70809 for a registered-account to live ID mapping, 69002 for a day's session list) are described in [r334-tmall-top-explore.md](r334-tmall-top-explore.md). They share the same credentials, transport and safety rules.
 
 ## Sources
 

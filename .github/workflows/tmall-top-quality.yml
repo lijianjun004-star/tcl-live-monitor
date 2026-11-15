@@ -1,0 +1,24 @@
+name: Tmall official TOP client - offline verification
+# Offline tests only: no secrets, no requests to Taobao, no schedule, no ledger writes.
+on:
+  pull_request:
+    paths:
+      - 'probes/r334/**'
+      - 'tests/r334/**'
+      - 'config/probe-targets.json'
+      - '.github/workflows/tmall-top-*.yml'
+permissions:
+  contents: read
+jobs:
+  offline-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Official TOP client, structure probes and public-page classifiers (no requests to Taobao)
+        run: node --test tests/r334/*.test.mjs

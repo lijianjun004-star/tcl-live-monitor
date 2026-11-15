@@ -1,0 +1,106 @@
+name: Tmall official TOP structure probe (manual, one request)
+# Structure-only exploration of two official discovery candidates, using only an existing owned application.
+# The receipt records response structure and where registered accounts appear; it stores no titles, covers,
+# stream URLs, products, prices or values of other accounts.
+# No web-page requests, merchant session, CAPTCHA, schedule, retries, or production ledger writes.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'venue = alibaba.taobao.live.recommend.alipay.query for the registered accounts; contents = taobao.live.contents.query for one date'
+        required: true
+        type: choice
+        options:
+          - venue
+          - contents
+      query_date:
+        description: 'contents only: yyyymmdd in Beijing time, not in the future. Empty = yesterday.'
+        required: false
+        type: string
+        default: ''
+      start:
+        description: 'contents only: start index (0-1000000). Empty = 0.'
+        required: false
+        type: string
+        default: ''
+      page_size:
+        description: 'contents only: page size (1-100). Empty = 20.'
+        required: false
+        type: string
+        default: ''
+      scene:
+        description: 'venue only, optional: scene (letters, digits, . _ -), for example the official example value'
+        required: false
+        type: string
+        default: ''
+      live_source:
+        description: 'venue only, optional: live_source (letters, digits, . _ -)'
+        required: false
+        type: string
+        default: ''
+      rule_code:
+        description: 'venue only, optional: recommend_rule_code (letters, digits, . _ -)'
+        required: false
+        type: string
+        default: ''
+      venue_count:
+        description: 'venue only, optional: n (1-100)'
+        required: false
+        type: string
+        default: ''
+      venue_page:
+        description: 'venue only, optional: s (1-1000)'
+        required: false
+        type: string
+        default: ''
+      authorized_query:
+        description: Authorize one official read request if the application credentials are configured
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: tmall-top-explore
+  cancel-in-progress: false
+jobs:
+  explore:
+    if: github.ref == 'refs/heads/main' && inputs.authorized_query
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Offline official-client regression tests
+        run: node --test tests/r334/tmall-top*.test.mjs
+      - name: Check prerequisites, then send at most one official request
+        env:
+          R334_TOP_EXPLORE: AUTHORIZED_STRUCTURE_READ
+          R334_TOP_MODE: ${{ inputs.mode }}
+          R334_TOP_QUERY_DATE: ${{ inputs.query_date }}
+          R334_TOP_START: ${{ inputs.start }}
+          R334_TOP_PAGE_SIZE: ${{ inputs.page_size }}
+          R334_TOP_SCENE: ${{ inputs.scene }}
+          R334_TOP_LIVE_SOURCE: ${{ inputs.live_source }}
+          R334_TOP_RULE_CODE: ${{ inputs.rule_code }}
+          R334_TOP_VENUE_COUNT: ${{ inputs.venue_count }}
+          R334_TOP_VENUE_PAGE: ${{ inputs.venue_page }}
+          TOP_APP_KEY: ${{ secrets.TOP_APP_KEY }}
+          TOP_APP_SECRET: ${{ secrets.TOP_APP_SECRET }}
+          TAOBAO_APP_KEY: ${{ secrets.TAOBAO_APP_KEY }}
+          TAOBAO_APP_SECRET: ${{ secrets.TAOBAO_APP_SECRET }}
+          TMALL_APP_KEY: ${{ secrets.TMALL_APP_KEY }}
+          TMALL_APP_SECRET: ${{ secrets.TMALL_APP_SECRET }}
+          TB_APP_KEY: ${{ secrets.TB_APP_KEY }}
+          TB_APP_SECRET: ${{ secrets.TB_APP_SECRET }}
+        run: node probes/r334/tmall-top-explore-once.mjs
+      - name: Save sanitized structure receipt, including blocked prerequisites
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmall-top-explore
+          path: out/tmall-top-explore-receipt.json
+          retention-days: 7
+          if-no-files-found: warn
