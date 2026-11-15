@@ -49,6 +49,7 @@ jobs:
           R329_TMALL_ONCE: REGISTERED_SHOPS_ONE_PASS
           R334_TMALL_SINGLE_TARGET: ${{ inputs.target }}
         run: |
+          test -n "$R334_TMALL_SINGLE_TARGET" || { echo "A single registered target is required"; exit 1; }
           set +e
           node probes/r329/tmall-daily-once.mjs
           code=$?
