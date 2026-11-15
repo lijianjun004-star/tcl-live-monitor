@@ -1,0 +1,54 @@
+name: Tmall official TOP live metadata query (manual, one request)
+# Uses only an existing owned application and genuine content live_ids.
+# No web-page requests, merchant session, CAPTCHA, schedule, retries, or production ledger writes.
+on:
+  workflow_dispatch:
+    inputs:
+      live_ids:
+        description: Genuine content live_ids, comma-separated (1-30); never accountId or roomNumber. Optional for preflight.
+        required: false
+        type: string
+        default: ''
+      authorized_query:
+        description: Authorize one official read query if credentials and genuine IDs are configured
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: tmall-top-official-query
+  cancel-in-progress: false
+jobs:
+  query:
+    if: github.ref == 'refs/heads/main' && inputs.authorized_query
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Offline official-client regression tests
+        run: node --test tests/r334/tmall-top*.test.mjs
+      - name: Check prerequisites, then send at most one official query
+        env:
+          R334_TOP_ONCE: AUTHORIZED_OFFICIAL_READ
+          R334_TOP_LIVE_IDS: ${{ inputs.live_ids || vars.TOP_LIVE_IDS || vars.TAOBAO_LIVE_IDS }}
+          TOP_APP_KEY: ${{ secrets.TOP_APP_KEY }}
+          TOP_APP_SECRET: ${{ secrets.TOP_APP_SECRET }}
+          TAOBAO_APP_KEY: ${{ secrets.TAOBAO_APP_KEY }}
+          TAOBAO_APP_SECRET: ${{ secrets.TAOBAO_APP_SECRET }}
+          TMALL_APP_KEY: ${{ secrets.TMALL_APP_KEY }}
+          TMALL_APP_SECRET: ${{ secrets.TMALL_APP_SECRET }}
+          TB_APP_KEY: ${{ secrets.TB_APP_KEY }}
+          TB_APP_SECRET: ${{ secrets.TB_APP_SECRET }}
+        run: node probes/r334/tmall-top-once.mjs
+      - name: Save sanitized official query receipt, including blocked prerequisites
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmall-top-official-query
+          path: out/tmall-top-receipt.json
+          retention-days: 7
+          if-no-files-found: warn
