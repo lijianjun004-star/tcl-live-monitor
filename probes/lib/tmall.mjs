@@ -16,6 +16,16 @@ export function parseJSONOrJSONP(raw) {
 }
 
 const clean = x => String(x ?? '').replace(/\s+/g, '').trim();
+// Only the API's explicit numeric enums are meaningful. Number(null),
+// Number('') and Number(false) all produce 0 and must never prove OFFLINE.
+const statusEnum = (value, maximum) => {
+  if (typeof value === 'number') return Number.isInteger(value) && value >= 0 && value <= maximum ? value : null;
+  if (typeof value === 'string' && /^[012]$/.test(value)) {
+    const status = Number(value);
+    return status <= maximum ? status : null;
+  }
+  return null;
+};
 
 export function classifyTmall(payload, target) {
   const ret = Array.isArray(payload?.ret) ? payload.ret.filter(x => typeof x === 'string').slice(0, 3) : [];
@@ -28,8 +38,8 @@ export function classifyTmall(payload, target) {
     return { state: 'UNKNOWN', reason: 'IDENTITY_MISMATCH', observed };
   if (target.roomNumber && String(target.roomNumber) !== roomNumber) return { state: 'UNKNOWN', reason: 'ROOM_MISMATCH', observed };
   if (String(d.roomNum ?? '') !== roomNumber) return { state: 'UNKNOWN', reason: 'CONFLICTING_ROOM_NUMBERS', observed };
-  const room = Number(d.roomStatus), stream = Number(d.streamStatus);
-  if (![0, 1, 2].includes(room) || ![0, 1].includes(stream))
+  const room = statusEnum(d.roomStatus, 2), stream = statusEnum(d.streamStatus, 1);
+  if (room === null || stream === null)
     return { state: 'UNKNOWN', reason: 'UNRECOGNIZED_STATUS', observed, roomStatus: d.roomStatus, streamStatus: d.streamStatus };
   const liveId = String(d.liveId ?? '');
   const base = { state: 'UNKNOWN', reason: 'AMBIGUOUS_STATUS', observed, roomStatus: room, streamStatus: stream,
