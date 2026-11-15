@@ -4,7 +4,15 @@ const ID_OK_REASONS = new Set(['AMBIGUOUS_STATUS', 'UNRECOGNIZED_STATUS']);
 // Signals that the platform wants verification / is limiting access: stop the whole run at once.
 const LIMIT = /RGV587|USER_VALIDATE|ILLEGAL_ACCESS|FLOW_LIMIT|TRAFFIC_LIMIT|SESSION_EXPIRED|NEED_LOGIN/i;
 export const isAccessLimit = v => Array.isArray(v?.apiRet) && v.apiRet.some(x => LIMIT.test(String(x)));
-export const isLimitUrl = url => { try { const h = new URL(url).hostname; return /(^|\.)login\.(taobao|tmall)\.com$/.test(h) || /punish|captcha|sec\.taobao/i.test(url); } catch { return false; } };
+export const isLimitUrl = url => {
+  try {
+    const u = new URL(url), h = u.hostname.replace(/\.$/, '');
+    if (!['https:', 'http:'].includes(u.protocol) || !/(^|\.)(taobao|tmall)\.com$/.test(h)) return false;
+    return /(^|\.)login\.(?:m\.)?(taobao|tmall)\.com$/.test(h)
+      || /(^|\.)sec\.taobao\.com$/.test(h)
+      || /punish|captcha|_____tmd_____/i.test(u.pathname + u.search);
+  } catch { return false; }
+};
 const token = x => { const s = String(x || '').toUpperCase().replace(/[^A-Z0-9_]/g, '_').slice(0, 100); return /^[A-Z]/.test(s) ? s : 'UNSPECIFIED'; };
 export function toReceiptRow(key, at, verdict) {
   const v = verdict || { state: 'UNKNOWN', reason: 'NO_LIVE_DETAIL_RESPONSE' };

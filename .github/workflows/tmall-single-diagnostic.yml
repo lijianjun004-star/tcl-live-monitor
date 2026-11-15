@@ -1,0 +1,77 @@
+name: Tmall single-shop manual diagnostic (no production ledger)
+# One explicitly authorized recheck, including during a production cooldown.
+# No schedule, no automatic retries, no production ledger writes or cooldown changes.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Registered shop key (one shop only)
+        required: true
+        type: choice
+        options:
+          - tcl-group
+          - tmall-tcl-tv-official
+          - tmall-tcl-ac-official
+          - tmall-tcl-smarthome
+          - tmall-ffalcon-tv
+          - tmall-rayneo-ar
+          - tmall-tcl-lighting
+          - tmall-tcl-outdoor
+          - tmall-tcl-zhengpin-dealer
+      authorized_recheck:
+        description: Explicitly authorize this single recheck; verification still stops the request
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: tmall-daily-broadcast
+  cancel-in-progress: false
+jobs:
+  diagnostic:
+    if: github.ref == 'refs/heads/main' && inputs.authorized_recheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Offline regression tests
+        run: node --test tests/r334/*.test.mjs tests/r329/*.test.mjs tests/r322/*.test.mjs tests/r325/*.test.mjs
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: Read one registered public guest page, stop on verification
+        env:
+          R329_TMALL_ONCE: REGISTERED_SHOPS_ONE_PASS
+          R334_TMALL_SINGLE_TARGET: ${{ inputs.target }}
+        run: |
+          test -n "$R334_TMALL_SINGLE_TARGET" || { echo "A single registered target is required"; exit 1; }
+          set +e
+          node probes/r329/tmall-daily-once.mjs
+          code=$?
+          set -e
+          test -f out/tmall-receipt.json || exit 1
+          if [ "$code" != 0 ] && [ "$code" != 3 ]; then exit "$code"; fi
+          node -e '
+          const fs = require("fs");
+          const r = JSON.parse(fs.readFileSync("out/tmall-receipt.json", "utf8"));
+          if (r.checked.length !== 1) throw Error("SINGLE_TARGET_EXPECTED");
+          const row = r.checked[0];
+          const verified = row.state === "LIVE" && row.profileIdentityVerified && row.roomIdentityVerified;
+          const result = {target: row.key, state: row.state, reason: row.reason, stopped: r.stopped, verifiedLive: verified};
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "## Actual diagnostic result\n\n```json\n" + JSON.stringify(result, null, 2) + "\n```\n\nWorkflow success does not mean live data was obtained.\n");
+          console.log("R334_RESULT " + JSON.stringify(result));'
+      - name: Save sanitized receipt and passive endpoint diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmall-single-diagnostic
+          path: |
+            out/tmall-receipt.json
+            out/tmall-diagnostics.json
+          retention-days: 7
+          if-no-files-found: warn
