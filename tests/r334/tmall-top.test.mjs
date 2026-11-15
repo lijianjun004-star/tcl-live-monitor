@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { beijingTimestamp, signTopRequest, runTopBatch } from '../../probes/r334/tmall-top.mjs';
+import { beijingTimestamp, signTopRequest, runTopBatch, fieldShape, enumToken } from '../../probes/r334/tmall-top.mjs';
 
 const now = new Date('2026-11-16T00:00:00Z');
 const env = { TOP_APP_KEY: 'SYNTHETIC_KEY', TOP_APP_SECRET: 'SYNTHETIC_SECRET' };
@@ -144,7 +144,8 @@ test('output whitelist excludes names, monetary data, media URLs, signatures and
   assert.equal(result.status, 'VERIFIED');
   assert.doesNotMatch(JSON.stringify(result), /PRIVATE_|private\.example|SYNTHETIC_KEY|SYNTHETIC_SECRET|sign=|router\/rest|duration/i);
   assert.deepEqual(Object.keys(result.observations[0]).sort(), ['liveId', 'sourceState', 'reason', 'identityVerified',
-    'startTimeRaw', 'startTimeUnit', 'endTimeRaw', 'endTimeUnit', 'key', 'accountId'].sort());
+    'startTimeRaw', 'startTimeUnit', 'endTimeRaw', 'endTimeUnit', 'key', 'accountId', 'shape'].sort());
+  assert.deepEqual(Object.keys(result.observations[0].shape).sort(), ['deletionStatus', 'roomStatus', 'streamStatus', 'startTime', 'endTime'].sort());
 });
 
 test('HTTP failures, redirect rejection and timeouts send one request with static redacted reasons', async () => {
@@ -184,4 +185,88 @@ test('HTTP and declared-length rejections cancel the unused response body', asyn
     assert.equal(result.status, 'REJECTED'); assert.equal(cancelled, true);
     assert.equal(result.reason, status === 200 ? 'RESPONSE_TOO_LARGE' : 'HTTP_REJECTED');
   }
+});
+
+test('identity-verified sessions record how status and time fields were encoded, without values', async () => {
+  const live = await run(payload([record()]));
+  assert.deepEqual(live.observations[0].shape, {
+    deletionStatus: '100', roomStatus: '1', streamStatus: '1',
+    startTime: { form: 'INTEGER', digits: 13, unitEvidence: 'LIKELY_MILLISECONDS' },
+    endTime: { form: 'INTEGER_ZERO', digits: null, unitEvidence: null },
+  });
+  // A LIVE session whose end_time is not 0 is still rejected, but the receipt now says what the platform sent.
+  for (const [overrides, form] of [[{ end_time: null }, 'NULL'], [{ end_time: undefined }, 'ABSENT'], [{ end_time: '' }, 'STRING_OTHER'],
+    [{ end_time: -1 }, 'NUMBER_NEGATIVE'], [{ end_time: 1.5 }, 'NUMBER_FRACTIONAL'], [{ end_time: true }, 'BOOLEAN'],
+    [{ end_time: [] }, 'ARRAY'], [{ end_time: {} }, 'OBJECT'], [{ end_time: '0' }, 'NUMERIC_STRING_ZERO']]) {
+    const result = await run(payload([record(overrides)]));
+    const row = result.observations[0];
+    assert.equal(row.shape.endTime.form, form, form);
+    if (form === 'NUMERIC_STRING_ZERO') assert.equal(row.sourceState, 'LIVE');
+    else { assert.equal(row.reason, 'INVALID_SESSION_TIMES', form); assert.equal(row.sourceState, 'UNKNOWN'); assert.equal(row.endTimeRaw, null); }
+    assert.equal(row.identityVerified, true); assert.equal(row.startTimeUnit, 'UNVERIFIED');
+  }
+  // Shapes are also kept for sessions rejected earlier for status reasons, and never for unmatched accounts.
+  const deleted = await run(payload([record({ status: -1, start_time: null })]));
+  assert.equal(deleted.observations[0].reason, 'SESSION_DELETED'); assert.equal(deleted.observations[0].shape.deletionStatus, '-1');
+  assert.equal(deleted.observations[0].shape.startTime.form, 'NULL');
+  const mixed = await run(payload([record({ room_status: 1, stream_status: 0 })]));
+  assert.equal(mixed.observations[0].reason, 'INVALID_SESSION_STATUS');
+  assert.deepEqual([mixed.observations[0].shape.roomStatus, mixed.observations[0].shape.streamStatus], ['1', '0']);
+  const foreign = await run(payload([record({ account_id: 7654321 })]));
+  assert.equal(foreign.observations[0].shape, null);
+  const missing = await run(payload([]));
+  assert.equal(missing.observations[0].shape, null);
+});
+
+test('digit counts give evidence for the time unit but never verify it or produce a duration', async () => {
+  for (const [value, form, digits, evidence] of [
+    [1794787200, 'INTEGER', 10, 'LIKELY_SECONDS'], ['1794787200', 'NUMERIC_STRING', 10, 'LIKELY_SECONDS'],
+    [1794787200000, 'INTEGER', 13, 'LIKELY_MILLISECONDS'], ['1794787200000', 'NUMERIC_STRING', 13, 'LIKELY_MILLISECONDS'],
+    [179478720, 'INTEGER', 9, 'INCONCLUSIVE'], [1794787200000000, 'INTEGER', 16, 'INCONCLUSIVE'],
+    ['01794787200', 'STRING_OTHER', null, null], ['1794787200 ', 'STRING_OTHER', null, null], [9007199254740993, 'NUMBER_UNSAFE', null, null]]) {
+    const result = await run(payload([record({ room_status: 2, stream_status: 0, start_time: value, end_time: 1794790800000 })]));
+    const row = result.observations[0];
+    assert.deepEqual(row.shape.startTime, { form, digits, unitEvidence: evidence }, String(value));
+    assert.equal(row.startTimeUnit, 'UNVERIFIED'); assert.equal(row.endTimeUnit, 'MILLISECONDS');
+  }
+  const replay = await run(payload([record({ room_status: 2, stream_status: 0, start_time: 1794787200, end_time: 1794790800000 })]));
+  assert.equal(replay.status, 'VERIFIED');
+  assert.doesNotMatch(JSON.stringify(replay), /duration|elapsed|length/i);
+});
+
+test('field shapes and status tokens never echo unexpected values', async () => {
+  const result = await run(payload([record({ status: 100, room_status: 'PRIVATE_ENUM', stream_status: { secret: 'PRIVATE_NESTED' },
+    start_time: 'PRIVATE_START', end_time: ['PRIVATE_END'] })]));
+  const row = result.observations[0];
+  assert.equal(row.sourceState, 'UNKNOWN'); assert.equal(row.reason, 'INVALID_SESSION_STATUS');
+  assert.deepEqual(row.shape, { deletionStatus: '100', roomStatus: 'OTHER', streamStatus: 'OTHER',
+    startTime: { form: 'STRING_OTHER', digits: null, unitEvidence: null }, endTime: { form: 'ARRAY', digits: null, unitEvidence: null } });
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE_/);
+  assert.equal(enumToken(true), 'TRUE'); assert.equal(enumToken(false), 'FALSE'); assert.equal(enumToken(12345), 'OTHER');
+  assert.equal(enumToken('LIVING'), 'OTHER'); assert.equal(enumToken('LIVING', true), 'LIVING'); assert.equal(enumToken('see https://x.example', true), 'OTHER');
+  assert.deepEqual(fieldShape(Symbol('x')), { form: 'OTHER', digits: null, unitEvidence: null });
+});
+
+test('platform error 50 is a parameter error only for the documented sub code, and sub codes are sanitized', async () => {
+  const known = await run({ error_response: { code: 50, msg: 'PRIVATE_MESSAGE', sub_code: 'isv.invalid-parameter', sub_msg: 'PRIVATE_DETAIL live_ids=123' } });
+  assert.equal(known.reason, 'TOP_PARAMETER_ERROR'); assert.equal(known.status, 'REJECTED'); assert.equal(known.exitCode, 3);
+  assert.equal(known.apiErrorCode, 50); assert.equal(known.apiSubCode, 'isv.invalid-parameter');
+  assert.doesNotMatch(JSON.stringify(known), /PRIVATE/);
+  const suffixed = await run({ error_response: { code: '50', sub_code: 'isv.invalid-parameter:live_ids' } });
+  assert.equal(suffixed.reason, 'TOP_PARAMETER_ERROR'); assert.equal(suffixed.apiSubCode, 'isv.invalid-parameter:live_ids');
+  for (const sub of ['isv.invalid-parameters', 'isv.something-else', 'accesscontrol.limited']) {
+    const other = await run({ error_response: { code: 50, sub_code: sub } });
+    assert.equal(other.reason, 'TOP_API_ERROR', sub); assert.equal(other.apiSubCode, sub);
+  }
+  for (const sub of ['bad value with spaces', 'https://secret.example/?sign=PRIVATE_TOKEN', 'isv.invalid-parameter=PRIVATE_TOKEN',
+    '1isv.invalid-parameter', 'x'.repeat(81), 12345, null, ['isv.invalid-parameter'], { code: 'isv.invalid-parameter' }]) {
+    const dropped = await run({ error_response: { code: 50, sub_code: sub } });
+    assert.equal(dropped.reason, 'TOP_API_ERROR'); assert.equal('apiSubCode' in dropped, false);
+    assert.doesNotMatch(JSON.stringify(dropped), /PRIVATE_TOKEN|secret\.example/);
+  }
+  // The sub code never changes how other platform codes are classified.
+  const permission = await run({ error_response: { code: 11, sub_code: 'isv.invalid-parameter' } });
+  assert.equal(permission.reason, 'TOP_PERMISSION_DENIED'); assert.equal(permission.apiSubCode, 'isv.invalid-parameter');
+  assert.equal((await run({ error_response: { code: 50 } })).reason, 'TOP_API_ERROR');
+  assert.equal('apiSubCode' in (await run({ error_response: { code: 7 } })), false);
 });
