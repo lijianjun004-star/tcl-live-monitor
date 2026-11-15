@@ -20,8 +20,9 @@ const ACCOUNT_FIELDS = new Set(['accountid', 'anchorid', 'broadcasterid', 'autho
 const LIVE_ID_FIELDS = new Set(['liveid', 'roomid', 'roomnumber', 'roomno', 'liveroomid', 'topicid', 'contentid', 'feedid']);
 const ENUM_FIELDS = new Set(['roomstatus', 'streamstatus', 'livestatus', 'livestate', 'pushstatus', 'pushstreamstatus',
   'status', 'state', 'type', 'livetype', 'source', 'livesource']);
-const ENVELOPE_FIELDS = new Set(['success', 'msgcode', 'errorcode', 'errcode', 'resultcode', 'code', 'totalcount',
-  'total', 'count', 'size', 'hasmore', 'hasnext', 'pagesize', 'pageno', 'start', 'nextstart']);
+// 70809's official response has is_success and buiness_code (sic) beside data; 69002's has success and msg_code in model.
+const ENVELOPE_FIELDS = new Set(['success', 'issuccess', 'msgcode', 'errorcode', 'errcode', 'resultcode', 'code', 'buinesscode',
+  'businesscode', 'totalcount', 'total', 'count', 'size', 'hasmore', 'hasnext', 'pagesize', 'pageno', 'start', 'nextstart']);
 const TIME_FIELD = /time|date|duration/;
 
 const TRUNCATED = Symbol('truncated');
@@ -112,25 +113,39 @@ const idToken = (value, registered) => {
   return id === null ? fieldShape(value).form : registered.has(id) ? id : 'OTHER_ACCOUNT';
 };
 
+// Whose values may a record contribute? A record with an account field that names an unregistered account (or one
+// that cannot be matched to a registered account) belongs to that account, and so does everything nested in it that
+// does not name a registered account itself. For such a record only the OTHER_ACCOUNT token is kept, never its
+// live, room, status or time values. Key names are normalized, so odd spellings of an account field still count.
+const hasAccountField = node => Object.keys(node).some(name => ACCOUNT_FIELDS.has(norm(name)));
+const namesOtherAccount = (node, registered) => Object.entries(node).some(([name, child]) => {
+  if (!ACCOUNT_FIELDS.has(norm(name))) return false;
+  const id = scalarId(child);
+  return id === null || !registered.has(id);
+});
+
 // The session record is the array element that holds the matched field. Only that record is summarized, and only
-// through allow-listed field names, so neighbouring sessions (other accounts) can never leak into a hit.
+// through allow-listed field names, so neighbouring sessions (other accounts) can never leak into a hit, and neither
+// can a nested record that belongs to another account (a co-host, a guest, a linked session).
 function summarize(holder, registered) {
   const out = { ids: {}, enums: {}, times: {} };
   const put = (bucket, path, value) => { if (Object.keys(out[bucket]).length < LIMITS.fields) out[bucket][path] = value; };
-  const walk = (node, rel, depth) => {
+  const walk = (node, rel, depth, inheritedOther) => {
+    const other = hasAccountField(node) ? namesOtherAccount(node, registered) : inheritedOther;
     for (const [name, child] of Object.entries(node)) {
       if (!KEY_OK.test(name)) continue;
       const path = rel ? `${rel}.${name}` : name, field = norm(name);
-      if (child instanceof Embedded) { if (record(child.value) && depth < 3) walk(child.value, `${path}.$json`, depth + 1); continue; }
-      if (record(child)) { if (depth < 3) walk(child, path, depth + 1); continue; }
+      if (child instanceof Embedded) { if (record(child.value) && depth < 3) walk(child.value, `${path}.$json`, depth + 1, other); continue; }
+      if (record(child)) { if (depth < 3) walk(child, path, depth + 1, other); continue; }
       if (Array.isArray(child) || child === TRUNCATED) continue;
-      if (ACCOUNT_FIELDS.has(field)) put('ids', path, idToken(child, registered));
-      else if (LIVE_ID_FIELDS.has(field) || (field === 'id' && depth === 0)) put('ids', path, scalarId(child) ?? fieldShape(child).form);
+      if (ACCOUNT_FIELDS.has(field)) { put('ids', path, idToken(child, registered)); continue; }
+      if (other) continue;
+      if (LIVE_ID_FIELDS.has(field) || (field === 'id' && depth === 0)) put('ids', path, scalarId(child) ?? fieldShape(child).form);
       if (ENUM_FIELDS.has(field)) put('enums', path, enumToken(child, true));
       if (TIME_FIELD.test(field)) put('times', path, fieldShape(child));
     }
   };
-  walk(holder, '', 0);
+  walk(holder, '', 0, false);
   return out;
 }
 
@@ -300,7 +315,7 @@ export async function runTopExplore({ mode, env = {}, options = {}, targets, fet
     registeredWithoutRecord: [...registered.values()].filter(target => !analysis.matchedKeys.has(target.key)).map(target => target.key),
     otherAccountCount: analysis.otherAccountCount, otherAccountCountCapped: analysis.otherAccountCountCapped, notes: NOTES });
   const entries = Object.entries(analysis.envelope);
-  if (entries.some(([path, value]) => /(^|\.)success$/.test(path) && value === false)) return finish('REJECTED', 'TOP_BUSINESS_REJECTED', 3);
+  if (entries.some(([path, value]) => /(^|\.)(is_)?success$/.test(path) && value === false)) return finish('REJECTED', 'TOP_BUSINESS_REJECTED', 3);
   if (entries.some(([path, value]) => /(^|\.)(error_?code|err_?code)$/i.test(path) && hasBusinessError(value))) return finish('REJECTED', 'TOP_BUSINESS_ERROR', 3);
   if (roots.length !== 1) return finish('PARTIAL', 'TOP_RESPONSE_ROOT_UNRECOGNIZED', 4);
   return finish('EXPLORED', 'STRUCTURE_RECORDED', 0);
