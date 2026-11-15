@@ -275,3 +275,51 @@ test('unsafe numeric IDs are reported by form, not guessed', async () => {
   assert.deepEqual(hit.times.start_time, { form: 'STRING_OTHER', digits: null, unitEvidence: null });
   assert.doesNotMatch(JSON.stringify(result), /PRIVATE|9007199254740/);
 });
+
+test('values of a nested record that names another account never enter a registered hit', async () => {
+  // A co-host or guest record inside a registered account's session is another account's data, however deeply it nests.
+  const coHost = await run('venue', venue([{ live_id: 111000000011, account_id: 1234567, live_info: { room_status: 1, stream_status: 1 },
+    anchor: { account_id: 1234567 },
+    co_host: { account_id: 9999999, live_id: 888888, status: 3, live_info: { room_status: 0, stream_status: 0, start_time: 1794787200 },
+      deep: { room_id: '9000009', type: 'PRIVATE_TYPE' } } }]));
+  const [hit] = coHost.registeredHits;
+  assert.equal(hit.ids.live_id, '111000000011'); assert.equal(hit.ids['anchor.account_id'], '1234567');
+  assert.deepEqual(Object.keys(hit.ids).filter(key => key.startsWith('co_host')), ['co_host.account_id']);
+  assert.equal(hit.ids['co_host.account_id'], 'OTHER_ACCOUNT');
+  assert.deepEqual(hit.enums, { 'live_info.room_status': '1', 'live_info.stream_status': '1' }); assert.deepEqual(hit.times, {});
+  assert.doesNotMatch(JSON.stringify(coHost), /(?<!\d)(888888|9000009|9999999|1794787200)(?!\d)|PRIVATE/);
+
+  // When the session record itself belongs to another account, only the nested record that names a registered account is read.
+  const guest = await run('venue', venue([{ live_id: 777000000001, account_id: 9999999, room_id: '9000010', status: 2,
+    partner: { account_id: 2345678, live_id: 777000000002, live_info: { room_status: 1, stream_status: 1 } } }]));
+  const [partner] = guest.registeredHits;
+  assert.equal(partner.key, 'synthetic-b');
+  assert.deepEqual(partner.ids, { account_id: 'OTHER_ACCOUNT', 'partner.account_id': '2345678', 'partner.live_id': '777000000002' });
+  assert.deepEqual(partner.enums, { 'partner.live_info.room_status': '1', 'partner.live_info.stream_status': '1' });
+  assert.doesNotMatch(JSON.stringify(guest), /(?<!\d)(777000000001|9000010|9999999)(?!\d)/);
+
+  // The same holds for JSON carried inside a string (with an oddly spelled account field) and for an account field whose value cannot be matched.
+  const embedded = await run('venue', venue([{ live_id: 111000000012, account_id: 3456789,
+    extra_json: JSON.stringify({ 'Account-ID': 9999998, live_id: 555000000001, status: 7 }),
+    unknown_owner: { account_id: { nested: 1 }, live_id: 555000000002, status: 8 } }]));
+  const [inner] = embedded.registeredHits;
+  assert.deepEqual(inner.ids, { live_id: '111000000012', account_id: '3456789' });
+  assert.deepEqual(inner.enums, {});
+  assert.doesNotMatch(JSON.stringify(embedded), /(?<!\d)(555000000001|555000000002|9999998)(?!\d)/);
+});
+
+test('official 70809 envelope: is_success and buiness_code are recorded and a false flag rejects the run', async () => {
+  const official = (flags, list = []) => ({ alibaba_taobao_live_recommend_alipay_query_response: { ...flags,
+    data: { alipay_venue_list: { alipay_venue_d_t_o: list } } } });
+  const root = 'alibaba_taobao_live_recommend_alipay_query_response';
+  const ok = await run('venue', official({ buiness_code: 0, is_success: true, error_message: 'PRIVATE_MESSAGE' }));
+  assert.equal(ok.status, 'EXPLORED'); assert.equal(ok.exitCode, 0);
+  assert.deepEqual(ok.envelope, { [`${root}.buiness_code`]: 0, [`${root}.is_success`]: true });
+  const failed = await run('venue', official({ buiness_code: 1, is_success: false, error_message: 'PRIVATE_MESSAGE' }, [venueItem()]));
+  assert.equal(failed.status, 'REJECTED'); assert.equal(failed.reason, 'TOP_BUSINESS_REJECTED'); assert.equal(failed.exitCode, 3);
+  assert.equal(failed.envelope[`${root}.is_success`], false); assert.equal(failed.envelope[`${root}.buiness_code`], 1);
+  assert.ok(failed.shape); assert.equal(failed.requestsSent, 1);
+  assert.doesNotMatch(JSON.stringify(failed), /PRIVATE_MESSAGE/);
+  // The platform text is never read, and a response without the flag keeps its earlier behaviour.
+  assert.equal((await run('venue', official({ buiness_code: 0 }))).status, 'EXPLORED');
+});
