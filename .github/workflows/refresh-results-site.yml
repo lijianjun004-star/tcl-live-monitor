@@ -39,12 +39,24 @@ jobs:
         env:
           # The owner stored the token under the name CLAUDECODE; either name works.
           RESULTS_DISPATCH_TOKEN: ${{ secrets.RESULTS_DISPATCH_TOKEN || secrets.CLAUDECODE }}
+          HAS_PRIMARY: ${{ secrets.RESULTS_DISPATCH_TOKEN != '' }}
+          HAS_FALLBACK: ${{ secrets.CLAUDECODE != '' }}
         run: |
           set -euo pipefail
           if [ -z "${RESULTS_DISPATCH_TOKEN:-}" ]; then
             echo "::notice::neither RESULTS_DISPATCH_TOKEN nor CLAUDECODE is set; the results site was not refreshed by this run."
             exit 0
           fi
+          # Shape only, never the value: which secret is used, its length, its kind, and whether it was
+          # pasted with spaces or line breaks (those are removed before use).
+          raw_len=${#RESULTS_DISPATCH_TOKEN}
+          RESULTS_DISPATCH_TOKEN=$(printf '%s' "$RESULTS_DISPATCH_TOKEN" | tr -d '[:space:]')
+          case "$RESULTS_DISPATCH_TOKEN" in
+            github_pat_*) kind=fine_grained ;;
+            ghp_*) kind=classic ;;
+            *) kind=not_a_github_token ;;
+          esac
+          echo "R334_TOKEN_SHAPE {\"primarySet\":$HAS_PRIMARY,\"fallbackSet\":$HAS_FALLBACK,\"rawLength\":$raw_len,\"length\":${#RESULTS_DISPATCH_TOKEN},\"kind\":\"$kind\"}"
           code=$(curl -sS -o resp.txt -w '%{http_code}' -X POST \
             -H "Authorization: Bearer ${RESULTS_DISPATCH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
