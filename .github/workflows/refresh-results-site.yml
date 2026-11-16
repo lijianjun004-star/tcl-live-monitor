@@ -15,23 +15,34 @@ on:
       - "JD fixed-window full-broadcast rate (08:00-24:00 Beijing, read-only)"
     types: [completed]
   workflow_dispatch:
-permissions: {}
+  # The two triggers below exist so GitHub parses this file on every change: a pull request shows a
+  # skipped run (the file is valid), and the merge to main runs the dispatch once as a self-check.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-results-site.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/refresh-results-site.yml'
+permissions:
+  contents: read
 concurrency:
   group: refresh-results-site
   cancel-in-progress: false
 jobs:
   dispatch:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' || github.event.workflow_run.head_branch == 'main'
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || (github.event_name != 'workflow_run' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
       - name: Ask tcl-live-results to publish once
         env:
-          RESULTS_DISPATCH_TOKEN: ${{ secrets.RESULTS_DISPATCH_TOKEN }}
+          # The owner stored the token under the name CLAUDECODE; either name works.
+          RESULTS_DISPATCH_TOKEN: ${{ secrets.RESULTS_DISPATCH_TOKEN || secrets.CLAUDECODE }}
         run: |
           set -euo pipefail
           if [ -z "${RESULTS_DISPATCH_TOKEN:-}" ]; then
-            echo "::notice::RESULTS_DISPATCH_TOKEN is not set; the results site was not refreshed by this run."
+            echo "::notice::neither RESULTS_DISPATCH_TOKEN nor CLAUDECODE is set; the results site was not refreshed by this run."
             exit 0
           fi
           code=$(curl -sS -o resp.txt -w '%{http_code}' -X POST \
