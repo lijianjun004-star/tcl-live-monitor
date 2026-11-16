@@ -10,7 +10,9 @@ name: Refresh results site after collection (dispatches publish.yml in tcl-live-
 on:
   workflow_run:
     workflows:
-      - "Douyin daily broadcast check (4 scoring + 3 monitor-only accounts, read-only public guest)"
+      # GitHub reads these names as glob patterns, where + is special; \+ matches the literal plus sign.
+      # Single quotes keep the backslash (a double-quoted YAML string would reject \+).
+      - 'Douyin daily broadcast check (4 scoring \+ 3 monitor-only accounts, read-only public guest)'
       - "Tmall/Taobao daily broadcast check (registered shops, read-only public guest)"
       - "JD fixed-window full-broadcast rate (08:00-24:00 Beijing, read-only)"
     types: [completed]
