@@ -2,7 +2,7 @@ name: Refresh results site after collection (dispatches publish.yml in tcl-live-
 # User instruction 2026-11-16 (Beijing): refresh the results site automatically when collection finishes,
 # so the refresh no longer depends on GitHub cron in the results repo or on any assistant session.
 # Runs only after a collection workflow on main has completed (success or failure, including runs that
-# skipped sampling during the 24-hour cooldown). It makes exactly one API call and nothing else:
+# skipped sampling during the 24-hour cooldown). Its helper makes exactly one dispatch API call:
 # POST workflow_dispatch for publish.yml in lijianjun004-star/tcl-live-results.
 # It never touches collection code, ledgers, cooldown markers, Douyin, Tmall/Taobao or JD.
 # Needs the repository secret RESULTS_DISPATCH_TOKEN (fine-grained token, tcl-live-results only,
@@ -23,9 +23,11 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/refresh-results-site.yml'
+      - 'scripts/dispatch-results.sh'
   pull_request:
     paths:
       - '.github/workflows/refresh-results-site.yml'
+      - 'scripts/dispatch-results.sh'
 permissions:
   contents: read
 concurrency:
@@ -37,43 +39,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
       - name: Ask tcl-live-results to publish once
+        id: results-dispatch
         env:
           # The owner stored the token under the name CLAUDECODE; either name works.
           RESULTS_DISPATCH_TOKEN: ${{ secrets.RESULTS_DISPATCH_TOKEN || secrets.CLAUDECODE }}
-          HAS_PRIMARY: ${{ secrets.RESULTS_DISPATCH_TOKEN != '' }}
-          HAS_FALLBACK: ${{ secrets.CLAUDECODE != '' }}
-        run: |
-          set -euo pipefail
-          if [ -z "${RESULTS_DISPATCH_TOKEN:-}" ]; then
-            echo "::notice::neither RESULTS_DISPATCH_TOKEN nor CLAUDECODE is set; the results site was not refreshed by this run."
-            exit 0
-          fi
-          # Shape only, never the value: which secret is used, its length, its kind, and whether it was
-          # pasted with spaces or line breaks (those are removed before use).
-
-          RESULTS_DISPATCH_TOKEN=$(printf '%s' "$RESULTS_DISPATCH_TOKEN" | tr -d '[:space:]')
-          case "$RESULTS_DISPATCH_TOKEN" in
-            github_pat_*) kind=fine_grained ;;
-            ghp_*) kind=classic ;;
-            *) kind=not_a_github_token ;;
-          esac
-          if [ "$kind" = not_a_github_token ]; then
-            echo "::notice::RESULTS_DISPATCH_TOKEN is not a GitHub personal access token; configure the repository secret. Publish was skipped."
-            exit 0
-          fi
-          code=$(curl -sS -o resp.txt -w '%{http_code}' -X POST \
-            -H "Authorization: Bearer ${RESULTS_DISPATCH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/lijianjun004-star/tcl-live-results/actions/workflows/publish.yml/dispatches \
-            -d '{"ref":"main"}')
-          if [ "$code" = 204 ]; then
-            echo "R334_RESULTS_REFRESH {\"dispatched\":true}"
-          else
-            echo "::notice::publish.yml dispatch was refused (HTTP $code). Check that RESULTS_DISPATCH_TOKEN is valid, covers tcl-live-results and has Actions read and write."
-            if [ "$code" = 401 ] || [ "$code" = 403 ]; then
-              exit 0
-            fi
-            exit 1
-          fi
+          RESULTS_COLLECTOR_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+          RESULTS_DISPATCH_RUN_ID: ${{ github.run_id }}
+        run: bash scripts/dispatch-results.sh

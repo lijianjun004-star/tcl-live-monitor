@@ -1,0 +1,25 @@
+name: Results dispatch offline regression
+on:
+  pull_request:
+    paths:
+      - 'scripts/dispatch-results.sh'
+      - 'tests/results-refresh.test.mjs'
+      - '.github/workflows/refresh-results-site.yml'
+      - '.github/workflows/results-dispatch-quality.yml'
+  push:
+    branches: ['fix/results-dispatch-status-20261116']
+permissions:
+  contents: read
+jobs:
+  dispatch-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bash -n scripts/dispatch-results.sh
+      - run: node --test tests/*.test.mjs tests/*/*.test.mjs
