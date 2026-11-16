@@ -1,0 +1,271 @@
+[
+  {
+    "id": "dev-public-demo",
+    "kind": "real_snapshot",
+    "html": "<html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Quotes to Scrape</title><link rel=\"stylesheet\" href=\"/static/bootstrap.min.css\"><link rel=\"stylesheet\" href=\"/static/main.css\"></head><body>\n    <div class=\"container\">\n        <div class=\"row header-box\">\n            <div class=\"col-md-8\">\n                <h1>\n                    <a href=\"/\" style=\"text-decoration: none\">Quotes to Scrape</a>\n                </h1>\n            </div>\n            <div class=\"col-md-4\">\n                <p>\n                \n                    <a href=\"/login\">Login</a>\n                \n                </p>\n            </div>\n        </div>\n    \n\n<div class=\"row\">\n    <div class=\"col-md-8\">\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“The world as we have created it is a process of our thinking. It cannot be changed without changing our thinking.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">Albert Einstein</small>\n        <a href=\"/author/Albert-Einstein\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"change,deep-thoughts,thinking,world\"><a class=\"tag\" href=\"/tag/change/page/1/\">change</a>\n            \n            <a class=\"tag\" href=\"/tag/deep-thoughts/page/1/\">deep-thoughts</a>\n            \n            <a class=\"tag\" href=\"/tag/thinking/page/1/\">thinking</a>\n            \n            <a class=\"tag\" href=\"/tag/world/page/1/\">world</a>\n            \n        </div>\n    </div>\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“It is our choices, Harry, that show what we truly are, far more than our abilities.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">J.K. Rowling</small>\n        <a href=\"/author/J-K-Rowling\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"abilities,choices\"><a class=\"tag\" href=\"/tag/abilities/page/1/\">abilities</a>\n            \n            <a class=\"tag\" href=\"/tag/choices/page/1/\">choices</a>\n            \n        </div>\n    </div>\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“There are only two ways to live your life. One is as though nothing is a miracle. The other is as though everything is a miracle.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">Albert Einstein</small>\n        <a href=\"/author/Albert-Einstein\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"inspirational,life,live,miracle,miracles\"><a class=\"tag\" href=\"/tag/inspirational/page/1/\">inspirational</a>\n            \n            <a class=\"tag\" href=\"/tag/life/page/1/\">life</a>\n            \n            <a class=\"tag\" href=\"/tag/live/page/1/\">live</a>\n            \n            <a class=\"tag\" href=\"/tag/miracle/page/1/\">miracle</a>\n            \n            <a class=\"tag\" href=\"/tag/miracles/page/1/\">miracles</a>\n            \n        </div>\n    </div>\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“The person, be it gentleman or lady, who has not pleasure in a good novel, must be intolerably stupid.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">Jane Austen</small>\n        <a href=\"/author/Jane-Austen\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"aliteracy,books,classic,humor\"><a class=\"tag\" href=\"/tag/aliteracy/page/1/\">aliteracy</a>\n            \n            <a class=\"tag\" href=\"/tag/books/page/1/\">books</a>\n            \n            <a class=\"tag\" href=\"/tag/classic/page/1/\">classic</a>\n            \n            <a class=\"tag\" href=\"/tag/humor/page/1/\">humor</a>\n            \n        </div>\n    </div>\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“Imperfection is beauty, madness is genius and it's better to be absolutely ridiculous than absolutely boring.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">Marilyn Monroe</small>\n        <a href=\"/author/Marilyn-Monroe\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"be-yourself,inspirational\"><a class=\"tag\" href=\"/tag/be-yourself/page/1/\">be-yourself</a>\n            \n            <a class=\"tag\" href=\"/tag/inspirational/page/1/\">inspirational</a>\n            \n        </div>\n    </div>\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“Try not to become a man of success. Rather become a man of value.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">Albert Einstein</small>\n        <a href=\"/author/Albert-Einstein\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"adulthood,success,value\"><a class=\"tag\" href=\"/tag/adulthood/page/1/\">adulthood</a>\n            \n            <a class=\"tag\" href=\"/tag/success/page/1/\">success</a>\n            \n            <a class=\"tag\" href=\"/tag/value/page/1/\">value</a>\n            \n        </div>\n    </div>\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“It is better to be hated for what you are than to be loved for what you are not.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">André Gide</small>\n        <a href=\"/author/Andre-Gide\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"life,love\"><a class=\"tag\" href=\"/tag/life/page/1/\">life</a>\n            \n            <a class=\"tag\" href=\"/tag/love/page/1/\">love</a>\n            \n        </div>\n    </div>\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“I have not failed. I've just found 10,000 ways that won't work.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">Thomas A. Edison</small>\n        <a href=\"/author/Thomas-A-Edison\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"edison,failure,inspirational,paraphrased\"><a class=\"tag\" href=\"/tag/edison/page/1/\">edison</a>\n            \n            <a class=\"tag\" href=\"/tag/failure/page/1/\">failure</a>\n            \n            <a class=\"tag\" href=\"/tag/inspirational/page/1/\">inspirational</a>\n            \n            <a class=\"tag\" href=\"/tag/paraphrased/page/1/\">paraphrased</a>\n            \n        </div>\n    </div>\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“A woman is like a tea bag; you never know how strong it is until it's in hot water.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">Eleanor Roosevelt</small>\n        <a href=\"/author/Eleanor-Roosevelt\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"misattributed-eleanor-roosevelt\"><a class=\"tag\" href=\"/tag/misattributed-eleanor-roosevelt/page/1/\">misattributed-eleanor-roosevelt</a>\n            \n        </div>\n    </div>\n\n    <div class=\"quote\" itemscope itemtype=\"http://schema.org/CreativeWork\">\n        <span class=\"text\" itemprop=\"text\">“A day without sunshine is like, you know, night.”</span>\n        <span>by <small class=\"author\" itemprop=\"author\">Steve Martin</small>\n        <a href=\"/author/Steve-Martin\">(about)</a>\n        </span>\n        <div class=\"tags\">\n            Tags:\n            <meta class=\"keywords\" itemprop=\"keywords\" content=\"humor,obvious,simile\"><a class=\"tag\" href=\"/tag/humor/page/1/\">humor</a>\n            \n            <a class=\"tag\" href=\"/tag/obvious/page/1/\">obvious</a>\n            \n            <a class=\"tag\" href=\"/tag/simile/page/1/\">simile</a>\n            \n        </div>\n    </div>\n\n    <nav><ul class=\"pager\"><li class=\"next\">\n                <a href=\"/page/2/\">Next <span aria-hidden=\"true\">→</span></a>\n            </li>\n            \n        </ul></nav></div>\n    <div class=\"col-md-4 tags-box\">\n        \n            <h2>Top Ten tags</h2>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 28px\" href=\"/tag/love/\">love</a>\n            </span>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 26px\" href=\"/tag/inspirational/\">inspirational</a>\n            </span>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 26px\" href=\"/tag/life/\">life</a>\n            </span>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 24px\" href=\"/tag/humor/\">humor</a>\n            </span>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 22px\" href=\"/tag/books/\">books</a>\n            </span>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 14px\" href=\"/tag/reading/\">reading</a>\n            </span>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 10px\" href=\"/tag/friendship/\">friendship</a>\n            </span>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 8px\" href=\"/tag/friends/\">friends</a>\n            </span>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 8px\" href=\"/tag/truth/\">truth</a>\n            </span>\n            \n            <span class=\"tag-item\">\n            <a class=\"tag\" style=\"font-size: 6px\" href=\"/tag/simile/\">simile</a>\n            </span>\n            \n        \n    </div>\n</div>\n\n    </div>\n    <footer class=\"footer\"><div class=\"container\">\n            <p class=\"text-muted\">\n                Quotes by: <a href=\"https://www.goodreads.com/quotes\">GoodReads.com</a>\n            </p>\n            <p class=\"copyright\">\n                Made with <span class=\"zyte\">❤</span> by <a class=\"zyte\" href=\"https://www.zyte.com\">Zyte</a>\n            </p>\n        </div>\n    </footer></body></html>",
+    "expected": [
+      {
+        "text": "“The world as we have created it is a process of our thinking. It cannot be changed without changing our thinking.”",
+        "author": "Albert Einstein",
+        "tags": [
+          "change",
+          "deep-thoughts",
+          "thinking",
+          "world"
+        ]
+      },
+      {
+        "text": "“It is our choices, Harry, that show what we truly are, far more than our abilities.”",
+        "author": "J.K. Rowling",
+        "tags": [
+          "abilities",
+          "choices"
+        ]
+      },
+      {
+        "text": "“There are only two ways to live your life. One is as though nothing is a miracle. The other is as though everything is a miracle.”",
+        "author": "Albert Einstein",
+        "tags": [
+          "inspirational",
+          "life",
+          "live",
+          "miracle",
+          "miracles"
+        ]
+      },
+      {
+        "text": "“The person, be it gentleman or lady, who has not pleasure in a good novel, must be intolerably stupid.”",
+        "author": "Jane Austen",
+        "tags": [
+          "aliteracy",
+          "books",
+          "classic",
+          "humor"
+        ]
+      },
+      {
+        "text": "“Imperfection is beauty, madness is genius and it's better to be absolutely ridiculous than absolutely boring.”",
+        "author": "Marilyn Monroe",
+        "tags": [
+          "be-yourself",
+          "inspirational"
+        ]
+      },
+      {
+        "text": "“Try not to become a man of success. Rather become a man of value.”",
+        "author": "Albert Einstein",
+        "tags": [
+          "adulthood",
+          "success",
+          "value"
+        ]
+      },
+      {
+        "text": "“It is better to be hated for what you are than to be loved for what you are not.”",
+        "author": "André Gide",
+        "tags": [
+          "life",
+          "love"
+        ]
+      },
+      {
+        "text": "“I have not failed. I've just found 10,000 ways that won't work.”",
+        "author": "Thomas A. Edison",
+        "tags": [
+          "edison",
+          "failure",
+          "inspirational",
+          "paraphrased"
+        ]
+      },
+      {
+        "text": "“A woman is like a tea bag; you never know how strong it is until it's in hot water.”",
+        "author": "Eleanor Roosevelt",
+        "tags": [
+          "misattributed-eleanor-roosevelt"
+        ]
+      },
+      {
+        "text": "“A day without sunshine is like, you know, night.”",
+        "author": "Steve Martin",
+        "tags": [
+          "humor",
+          "obvious",
+          "simile"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dev-structure-0",
+    "kind": "synthetic",
+    "html": "<html><body><article class=\"quote\"><blockquote class=\"text\">知识来自实践。</blockquote><cite class=\"author\">示例作者甲</cite><a class=\"tag\">学习</a><a class=\"tag\">实践</a></article><article class=\"quote\"><blockquote class=\"text\">Ask better questions &amp; test ideas.</blockquote><cite class=\"author\">Example B</cite><a class=\"tag\">research</a></article></body></html>",
+    "expected": [
+      {
+        "text": "知识来自实践。",
+        "author": "示例作者甲",
+        "tags": [
+          "学习",
+          "实践"
+        ]
+      },
+      {
+        "text": "Ask better questions & test ideas.",
+        "author": "Example B",
+        "tags": [
+          "research"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dev-structure-1",
+    "kind": "synthetic",
+    "html": "<html><body><article class=\"quote\"><blockquote class=\"text\">知识来<b>自实践。</b></blockquote><cite class=\"author\">示例作者甲</cite><a class=\"tag\">学习</a><a class=\"tag\">实践</a></article><article class=\"quote\"><blockquote class=\"text\"><b>Ask better questions &amp; test ideas.</b></blockquote><cite class=\"author\">Example B</cite><a class=\"tag\">research</a></article></body></html>",
+    "expected": [
+      {
+        "text": "知识来自实践。",
+        "author": "示例作者甲",
+        "tags": [
+          "学习",
+          "实践"
+        ]
+      },
+      {
+        "text": "Ask better questions & test ideas.",
+        "author": "Example B",
+        "tags": [
+          "research"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dev-structure-2",
+    "kind": "synthetic",
+    "html": "<html><body><article itemtype=\"https://schema.org/Quotation\"><blockquote itemprop=\"text\">知识来自实践。</blockquote><cite itemprop=\"author\">示例作者甲</cite><a itemprop=\"keywords\">学习</a><a itemprop=\"keywords\">实践</a></article><article itemtype=\"https://schema.org/Quotation\"><blockquote itemprop=\"text\">Ask better questions &amp; test ideas.</blockquote><cite itemprop=\"author\">Example B</cite><a itemprop=\"keywords\">research</a></article></body></html>",
+    "expected": [
+      {
+        "text": "知识来自实践。",
+        "author": "示例作者甲",
+        "tags": [
+          "学习",
+          "实践"
+        ]
+      },
+      {
+        "text": "Ask better questions & test ideas.",
+        "author": "Example B",
+        "tags": [
+          "research"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dev-structure-3",
+    "kind": "synthetic",
+    "html": "<html><body><article itemtype=\"https://schema.org/Quotation\"><blockquote itemprop=\"text\">知识来<b>自实践。</b></blockquote><cite itemprop=\"author\">示例作者甲</cite><a itemprop=\"keywords\">学习</a><a itemprop=\"keywords\">实践</a></article><article itemtype=\"https://schema.org/Quotation\"><blockquote itemprop=\"text\"><b>Ask better questions &amp; test ideas.</b></blockquote><cite itemprop=\"author\">Example B</cite><a itemprop=\"keywords\">research</a></article></body></html>",
+    "expected": [
+      {
+        "text": "知识来自实践。",
+        "author": "示例作者甲",
+        "tags": [
+          "学习",
+          "实践"
+        ]
+      },
+      {
+        "text": "Ask better questions & test ideas.",
+        "author": "Example B",
+        "tags": [
+          "research"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dev-structure-4",
+    "kind": "synthetic",
+    "html": "<html><body><article data-quote><blockquote data-field=\"text\">知识来自实践。</blockquote><cite data-field=\"author\">示例作者甲</cite><a data-field=\"tag\">学习</a><a data-field=\"tag\">实践</a></article><article data-quote><blockquote data-field=\"text\">Ask better questions &amp; test ideas.</blockquote><cite data-field=\"author\">Example B</cite><a data-field=\"tag\">research</a></article></body></html>",
+    "expected": [
+      {
+        "text": "知识来自实践。",
+        "author": "示例作者甲",
+        "tags": [
+          "学习",
+          "实践"
+        ]
+      },
+      {
+        "text": "Ask better questions & test ideas.",
+        "author": "Example B",
+        "tags": [
+          "research"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dev-structure-5",
+    "kind": "synthetic",
+    "html": "<html><body><article data-quote><blockquote data-field=\"text\">知识来<b>自实践。</b></blockquote><cite data-field=\"author\">示例作者甲</cite><a data-field=\"tag\">学习</a><a data-field=\"tag\">实践</a></article><article data-quote><blockquote data-field=\"text\"><b>Ask better questions &amp; test ideas.</b></blockquote><cite data-field=\"author\">Example B</cite><a data-field=\"tag\">research</a></article></body></html>",
+    "expected": [
+      {
+        "text": "知识来自实践。",
+        "author": "示例作者甲",
+        "tags": [
+          "学习",
+          "实践"
+        ]
+      },
+      {
+        "text": "Ask better questions & test ideas.",
+        "author": "Example B",
+        "tags": [
+          "research"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dev-structure-6",
+    "kind": "synthetic",
+    "html": "<html><body><article data-quote><blockquote >知识来自实践。</blockquote><cite >示例作者甲</cite><a data-field=\"tag\">学习</a><a data-field=\"tag\">实践</a></article><article data-quote><blockquote >Ask better questions &amp; test ideas.</blockquote><cite >Example B</cite><a data-field=\"tag\">research</a></article></body></html>",
+    "expected": [
+      {
+        "text": "知识来自实践。",
+        "author": "示例作者甲",
+        "tags": [
+          "学习",
+          "实践"
+        ]
+      },
+      {
+        "text": "Ask better questions & test ideas.",
+        "author": "Example B",
+        "tags": [
+          "research"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dev-optional-fields",
+    "kind": "synthetic",
+    "html": "<html><body><article class=\"quote\"><blockquote class=\"text\">dev quotation wi<b>th unknown author</b></blockquote></article></body></html>",
+    "expected": [
+      {
+        "text": "dev quotation with unknown author",
+        "author": "",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "id": "dev-empty",
+    "kind": "synthetic",
+    "html": "<html><body><h1>No quotations</h1></body></html>",
+    "expected": []
+  }
+]

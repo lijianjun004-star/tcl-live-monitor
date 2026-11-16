@@ -1,0 +1,23 @@
+name: Claude RSI Scrapling skill validation
+on:
+  pull_request:
+    paths:
+      - '.claude/skills/rsi-scrapling/**'
+      - 'CLAUDE.md'
+      - '.github/workflows/claude-skill-quality.yml'
+  push:
+    branches: ['feat/claude-rsi-scrapling-skill-20261116']
+permissions:
+  contents: read
+jobs:
+  validate-skill:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python .claude/skills/rsi-scrapling/scripts/skill.py validate
