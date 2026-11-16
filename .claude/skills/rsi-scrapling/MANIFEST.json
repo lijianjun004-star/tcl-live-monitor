@@ -1,0 +1,538 @@
+{
+  "name": "rsi-scrapling",
+  "version": "1.0.0",
+  "files": {
+    "SKILL.md": {
+      "bytes": 5159,
+      "sha256": "7653241db4b0757d5d35880abebc3881aee844f7b616145ffd0e7c8532b0e4ff"
+    },
+    "payload/benchmark/__init__.py": {
+      "bytes": 85,
+      "sha256": "3ba9e132ef93ee07c115575bae0ebd4e65c55f52fc16613b96628d6be9f46b28"
+    },
+    "payload/benchmark/candidates/nested.py": {
+      "bytes": 516,
+      "sha256": "35e22a89df29aac12f6ae422d11460837c16e101aabe4e2ba9df682fc1d11c34"
+    },
+    "payload/benchmark/candidates/robust.py": {
+      "bytes": 1255,
+      "sha256": "5334b61e5db185ad27428d15b8e97aa9dd92cfd5007526ef78fb68f3850178df"
+    },
+    "payload/benchmark/candidates/semantic.py": {
+      "bytes": 647,
+      "sha256": "5ccf35259603b7bacfc9bd8839bfd51806e29a28130c7c7c145f3b5b3dcbabf1"
+    },
+    "payload/benchmark/evaluator.py": {
+      "bytes": 3191,
+      "sha256": "c7d47e701e55e33ff401548f52fdf0cb5f306d87c02ab01a6990b28d6c4dffec"
+    },
+    "payload/benchmark/fixtures/dev-source.html": {
+      "bytes": 10603,
+      "sha256": "e933775ad85626e8b2929dfd37d1f55eb4b4c3214a536f8155b1fac63eb68915"
+    },
+    "payload/benchmark/fixtures/dev.json": {
+      "bytes": 20462,
+      "sha256": "a43a20e98484e97167024cf62ea89ce7fbedb5a20c310d4b35bc6ea763d700fd"
+    },
+    "payload/benchmark/fixtures/holdout-source.html": {
+      "bytes": 13198,
+      "sha256": "4e96b2d677b8be2b31e855dc10db8f502d0b6bf446016346b0f43a103646b8f4"
+    },
+    "payload/benchmark/fixtures/holdout.json": {
+      "bytes": 24282,
+      "sha256": "cd0056a7c46b7a6dc297d47c877cacfbbe3d452ad9c2454ced4122a86bf0e527"
+    },
+    "payload/benchmark/fixtures/sources.json": {
+      "bytes": 611,
+      "sha256": "0b338d764fca347abbac7bece9b755c31cae5de2229f136c75497feb21488afb"
+    },
+    "payload/benchmark/policy_candidate.py": {
+      "bytes": 1257,
+      "sha256": "e4fe64129955d08a69ea402d7f9f8bd4e480961e280fec9fb9386664083a59b0"
+    },
+    "payload/benchmark/prepare.py": {
+      "bytes": 4949,
+      "sha256": "99aacb4a9b29928c34bd3fe11dee4d751da6c60ded1a0968792e643b2a54d8bd"
+    },
+    "payload/benchmark/probe.py": {
+      "bytes": 2563,
+      "sha256": "9f6b40c930e64ebaf3425afa90cf1983c411093fb9d0cc494ea47b16df7324e6"
+    },
+    "payload/benchmark/problem.txt": {
+      "bytes": 654,
+      "sha256": "4247afccb95064a6c1463626cd8c63fdf4baadd8254b59d6b14c8c7c682996fb"
+    },
+    "payload/benchmark/run.py": {
+      "bytes": 8017,
+      "sha256": "8ca02ca15d618edcd52ac3c25ef6a381ccd56e671106a50e58f3f270cc0f87f2"
+    },
+    "payload/benchmark/runtime.py": {
+      "bytes": 1944,
+      "sha256": "8d7ada4e059d17c41806f718361c7064ae063849ac4ad10a13aff2d7eb14cfb9"
+    },
+    "payload/benchmark/seed.py": {
+      "bytes": 347,
+      "sha256": "b6bf08ec93ffb228c830b3a2762b69a80369f59acf644281858653b8393d8ec1"
+    },
+    "payload/benchmark/test_integration.py": {
+      "bytes": 3178,
+      "sha256": "3ff969485948c0b5f5e05878ac5ad16c6814407cfe51d6a933e8121819b59e81"
+    },
+    "payload/benchmark/worker.py": {
+      "bytes": 347,
+      "sha256": "f1e980efc190765fc13fc27a52e1dd369cb6d5f75c16a84c73e9e593251949ec"
+    },
+    "payload/collect.py": {
+      "bytes": 2702,
+      "sha256": "4d2c46ebcc80227828ebcbcfcff166593f53aa2e70f1283988f363ec5eda7dc1"
+    },
+    "payload/vendor/dream-rsi/.env.example": {
+      "bytes": 1141,
+      "sha256": "5d62818bc6f21198a36925c577b20c80182fbe0a776a22751b9f54cf3d891cd9"
+    },
+    "payload/vendor/dream-rsi/.gitignore": {
+      "bytes": 529,
+      "sha256": "237e18b2ce1197548446b9b9bb72ce4db1bdb0567fb29e7bc411a1c938676474"
+    },
+    "payload/vendor/dream-rsi/CONTRIBUTING.md": {
+      "bytes": 1067,
+      "sha256": "04b81de523b179ab5921b481b0e3315c285ca95bf4a7ed9949067a1c6b0d0bb3"
+    },
+    "payload/vendor/dream-rsi/LICENSE": {
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "payload/vendor/dream-rsi/README.md": {
+      "bytes": 14755,
+      "sha256": "f05fb9eee3d877b4d759c7f8e6a9e8fd7a8f824860edbfade48554fa1361718c"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/__init__.py": {
+      "bytes": 969,
+      "sha256": "466f0d38067a5b4feb4c31eb55ea18ebf859246fc88bbf9d11a9eada8ca96728"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/__main__.py": {
+      "bytes": 682,
+      "sha256": "a573a42d3c9ef0b5f15a6224a10754e3b4b5aa790e142560a88424a6e665312d"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/agents/__init__.py": {
+      "bytes": 1806,
+      "sha256": "c6f6a7df5340cd194346231fa921e4c1495a7b609346222645c4eaf51f9b8db7"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/agents/base.py": {
+      "bytes": 3364,
+      "sha256": "4b678a01494b9c906c6a2b22d5dd5e2265c2481358076a3e69154eefee4413f9"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/agents/claude.py": {
+      "bytes": 7030,
+      "sha256": "c45a50a8ca99b7a671349f9c370dfad4a136e8a14ef9244b6f2aca10eaf99920"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/agents/codex.py": {
+      "bytes": 5180,
+      "sha256": "8847a969b77139ac507241c033c64e3b318b75ebe9587cc19b743377d6820f04"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/agents/gemini.py": {
+      "bytes": 25924,
+      "sha256": "bb8c564ea29074189f7b966d8dd1444a9eb325d039bcba9cd44fd75149340d5a"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/cli/__init__.py": {
+      "bytes": 673,
+      "sha256": "d25b73000e2f823486a9bca34e7a315f9c3f6ad83e1b8dfab39af00bfc7c2b9c"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/cli/_common.py": {
+      "bytes": 2822,
+      "sha256": "559c7204365958220b5a54c49c26d5f8696beb769beadda818c08a6249cf408e"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/cli/evolve.py": {
+      "bytes": 6699,
+      "sha256": "4840ace83d875a9e76aab744963302332094c7109a0f22174c6cbf5afc92c8bd"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/cli/explore.py": {
+      "bytes": 7107,
+      "sha256": "87d65b6ee1c99b17c06881e7c2cbd6e95da965260c996638e5f5e5cdac3c2fa2"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/cli/learning.py": {
+      "bytes": 10375,
+      "sha256": "1dd7f20007994c0f1cb99b23c53bcb44d0b7fb10aef0a9dd43d5febc07a8cfe1"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/cli/main.py": {
+      "bytes": 2731,
+      "sha256": "70dfdd2335de8518291056260d16964a05d77a85c92c5e0ecd9b9f24204e895d"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/dotenv.py": {
+      "bytes": 2573,
+      "sha256": "65db087216e6149b7f3a2f62ef8892c40067e90c6286d26f0ea8bebafaf509aa"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/__init__.py": {
+      "bytes": 873,
+      "sha256": "7d7f79a0da45219be557900688870d9fdac63b40a998338d621b965eb69d3037"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/observation.py": {
+      "bytes": 1563,
+      "sha256": "272712517ed489e72118205e855f708c0fbe0644d8940d278a406f70bce4518a"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/runner.py": {
+      "bytes": 8995,
+      "sha256": "3d30f8c2c7be67df5c0eeac444bb5a97cd1ae2a54fda1a137424a5a82b6df85d"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/trace/__init__.py": {
+      "bytes": 1262,
+      "sha256": "32a23777db2f9b7aa65b9e289e6c611c7d8976c066a39f1ce40aa377e250ad30"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/trace/export.py": {
+      "bytes": 838,
+      "sha256": "6eb160bab22c3f36e9081dbb89b20d12460598ee2cb2ff0086b5938607dc2964"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/trace/raw.py": {
+      "bytes": 14919,
+      "sha256": "05ba123a3f609b9a481d8163cfdcb97243699174c2b0c57ad0278eea3a109966"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/trace/types.py": {
+      "bytes": 2528,
+      "sha256": "f4cc87f18914e5a9398e011da57c3c26f0b4706700455a206213ee53dbfb1d4a"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/trace_env.py": {
+      "bytes": 17331,
+      "sha256": "fc38c7eadcad03afc4cd072122e7cb93182eab638cb0c94e8b6b86a62e8bb770"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/trace_store.py": {
+      "bytes": 5788,
+      "sha256": "3ddb9dbfe631876cf6c738f72befeeea6dd37be0118a71235e91643fca9b76c7"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/env/types.py": {
+      "bytes": 3513,
+      "sha256": "d7d855fc7b2e8c1ef0139bdcd60cf018cfd742964e7706d99746adfa36e004d4"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/exploration/__init__.py": {
+      "bytes": 938,
+      "sha256": "5cabb83400cb73e32c0dd3ad8d591fbe0fd61af4ab780820303945eb707ddfad"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/exploration/config.py": {
+      "bytes": 2411,
+      "sha256": "fcbd6ab390589ca2610e2f2ac13e58a9e2ce40d70546426c79323adcc2c5381e"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/exploration/evaluate.py": {
+      "bytes": 6629,
+      "sha256": "9ae487f958e466f7be014d27c97633c4b75196245afcbd05b16c12768e4848d2"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/exploration/history_prune.py": {
+      "bytes": 5362,
+      "sha256": "369bc90190f6f2a6a9a288ea2fe9761c41d68773075d8673c45c737c35f315c6"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/exploration/history_seed.py": {
+      "bytes": 2788,
+      "sha256": "b52122af90d0c162cefc59df656fb1df8292e605bce53c794d4693c8ec883982"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/exploration/prompt.py": {
+      "bytes": 11137,
+      "sha256": "2f9bb52f731deed306231a01fc4a84749eab94ed4f04e69e56c0d46ee1056cdd"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/exploration/runner.py": {
+      "bytes": 6572,
+      "sha256": "2200f0d1bc4075e4457c7889d8f200e19b81d253be87bb83dc9162676626fca1"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/exploration/store.py": {
+      "bytes": 8051,
+      "sha256": "2062bdcb901101b65dac0047d7b0abaab0842577c1234330fe41fa762d580d3d"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/exploration/types.py": {
+      "bytes": 853,
+      "sha256": "4643ab323f204286263b87cb716c0f780d1c785d995b4ce0134368bc7b18ac59"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/__init__.py": {
+      "bytes": 836,
+      "sha256": "85249737c261bb77aea1aed2abcd234e3c1c79279312e4d3be37ae32fd649e2b"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/allocate.py": {
+      "bytes": 8069,
+      "sha256": "58affd9dbea8cdb9265ecc5d7b2d77d97c88ecefac64ee3dfa4c4a0b31f7a3f0"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/directions/__init__.py": {
+      "bytes": 1350,
+      "sha256": "cdd35b28143fd36d32fe7ffe039720ad73ec178af75fbf61a7a90abd26ea6f42"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/directions/collect.py": {
+      "bytes": 5750,
+      "sha256": "b48447530b13bf1bd0cc366423cdb695cb3c26e89ed47edd3e66523248588c5a"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/directions/context.py": {
+      "bytes": 9082,
+      "sha256": "968102d95826348faf5f334be5fffa1a0dbb0df5f23858105cede252cf3b91ad"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/directions/extract.py": {
+      "bytes": 4632,
+      "sha256": "58ad8bf41352304689ec7ed7dc17d90bff7481b76705385429ee2510e52c6f68"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/directions/metrics.py": {
+      "bytes": 1734,
+      "sha256": "5033569682520f14d98c24ad1ea10b95e9e05d0645e6384ca5b392b43cd43adf"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/directions/schema.py": {
+      "bytes": 10989,
+      "sha256": "132f51fd727c6eb29333dd1cebbc7b17cd1c4c50aa9e493c54e80c2a8f3ef8a9"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/directions/summarize.py": {
+      "bytes": 19049,
+      "sha256": "232fdc9610b110952a37eeb857860bbd68879cbd31391eee6053129e9d528719"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/directions/validate.py": {
+      "bytes": 7275,
+      "sha256": "f8d74a953bf11634c8c28c6d5cd4e07b15c7602e62ce57b1a41f8a73a200bb74"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/discover.py": {
+      "bytes": 13250,
+      "sha256": "8e203266d2f8dd6453161943054c4825eb2815fb801a8e079253263bdee6108f"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/heuristic_search/__init__.py": {
+      "bytes": 780,
+      "sha256": "1c3871b3998c554d9ffef422a1f5c19519207ae87d6d4e0e79040b7fc02c3e22"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/heuristic_search/discovered_sandbox.py": {
+      "bytes": 1837,
+      "sha256": "6b16d841b6e99e1dec84ddc4ab88b3bc5e302f4c960437b207a5d1eaa30547be"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/heuristic_search/eval.py": {
+      "bytes": 31365,
+      "sha256": "a7dd979919350dada6fae417545ae717815075815b28b351b02d5da2f60eebf4"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/heuristic_search/workflow.py": {
+      "bytes": 27698,
+      "sha256": "4c2c66e5e4c69c8e086e79bb80890d752e042d9df731d6ea8d23cdf5731ab44b"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/pipeline.py": {
+      "bytes": 11099,
+      "sha256": "0e381dc960d2f3a899f22aa5277eb1925e22964c26ce10e6e02ff83c78803f9b"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/learning/trace_pool.py": {
+      "bytes": 3302,
+      "sha256": "f1f3d8aac69c7f12dbab6689e6a2f86ce278934b4bb6f2322630ab41e068533e"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/orchestrate.py": {
+      "bytes": 23930,
+      "sha256": "5c192323bf3e3a17400734543294d79ca3686b985b2aa8c76383135d5909bb26"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/policy/__init__.py": {
+      "bytes": 2047,
+      "sha256": "1048a57a52ad85b1e6fd083d2fad8c655733a1c6becde847143fe3d895431098"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/policy/api.py": {
+      "bytes": 5809,
+      "sha256": "824750e7dbf0148c1be2055a20760443f0cc08a910f31a0625ef54c1eb145df4"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/policy/baseline.py": {
+      "bytes": 4094,
+      "sha256": "90be5be56e03970b7f50ebf4d31773a619db9e3bb21992951149f2ca81d2d6c6"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/policy/constants.py": {
+      "bytes": 1134,
+      "sha256": "cbcb6b160c26394046cf194c6be6b33fd0a99da04bf0ae0620ad61a4636cc04a"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/policy/discovered/method.template.py": {
+      "bytes": 2557,
+      "sha256": "c74c321df56030c5e4d3cc53b09c3ab4825d7026ab4e1f233b1860c360e41e2f"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/policy/grid_planning.py": {
+      "bytes": 8156,
+      "sha256": "3fcae6efdbc1e672593b2f6a494724eee11f33f15ab5f25a2a6f775545974658"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/policy/load.py": {
+      "bytes": 2461,
+      "sha256": "48facae858b7413484ffa37e62c0e11fa6d0ae893565bfd77c8a93281bec4f35"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/policy/observation_signal.py": {
+      "bytes": 2158,
+      "sha256": "d9bd42108b1e264b4167a4b658f9c0056ab9a36e3500f581108dea380235f86c"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/prompts/__init__.py": {
+      "bytes": 625,
+      "sha256": "88d56b4dcf87aa3644daaa8ac16b69f38c07bfc5437f5fe8b8524fa3f41427c0"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/prompts/direction_summarizer.txt": {
+      "bytes": 4348,
+      "sha256": "1a97408a53c92dcb248e71e93406241a617068bb8f5fd177236667cc6827bd2c"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/prompts/explore.txt": {
+      "bytes": 2198,
+      "sha256": "8f39a39e60211b47199866371cf7f2cac6d157feefceaa2b0c26cdef049fe7ad"
+    },
+    "payload/vendor/dream-rsi/dream_rsi/prompts/heuristic_proposer.txt": {
+      "bytes": 14827,
+      "sha256": "4422c2693141108bac043957f5451a5a9485edae7c1b81f0c61238d1a7b7a082"
+    },
+    "payload/vendor/dream-rsi/pyproject.toml": {
+      "bytes": 1040,
+      "sha256": "061e06cd6b680e21163aef16451ea51eccc888ec5e1852ac1c20cd7c19686167"
+    },
+    "payload/vendor/dream-rsi/scripts/common.sh": {
+      "bytes": 15198,
+      "sha256": "5eebdf86fd927f3d37caa6d55fc8f74d49f4f7bdd347a769406387b089431bf7"
+    },
+    "payload/vendor/dream-rsi/scripts/fetch_tasks.sh": {
+      "bytes": 3903,
+      "sha256": "1e86998826dbf08532845cf8783c2912cf146065810fbaf10270053798831bca"
+    },
+    "payload/vendor/dream-rsi/scripts/run_baseline.sh": {
+      "bytes": 4394,
+      "sha256": "18023195f4d4294332f933725453ddf4488a197bd6da45f6dc5efad71c865bee"
+    },
+    "payload/vendor/dream-rsi/scripts/run_dream_rsi.sh": {
+      "bytes": 4875,
+      "sha256": "f8273b5df7712429c1392efb92cfd84b77c3422e0cdf3f24f7854b25120d6db2"
+    },
+    "payload/vendor/dream-rsi/scripts/run_e0.sh": {
+      "bytes": 2911,
+      "sha256": "04556a6e0d5d224dc1f64d86b5cc5c220ec3c361e747ab02c2a072484cf02ed1"
+    },
+    "payload/vendor/dream-rsi/scripts/start_kernelbench_server.sh": {
+      "bytes": 1671,
+      "sha256": "f48f00dc338468e77f37ec73779cea2624b030f0cc7fbcfedc02df9a3946f4d2"
+    },
+    "payload/vendor/dream-rsi/tasks/README.md": {
+      "bytes": 4752,
+      "sha256": "b2efae4f3e675f804a3c4ee596d87755a963657594520847a933748cd4118305"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/README.md": {
+      "bytes": 5017,
+      "sha256": "2790812203849ae36c40df4c379dadfb0106b4395126c4643e20ae1b7d5a4a2f"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/kb_l1_40_layernorm/evaluator.py": {
+      "bytes": 6283,
+      "sha256": "9d5c607c2c47d806252a8afd729d43c05fabd6282427b1ff8156a3b209a6a575"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/kb_l1_40_layernorm/kb_l1_40_layernorm.triton": {
+      "bytes": 1908,
+      "sha256": "48a3d74ab80fde49ebd77da242e2bea66084aacb5aee1158510cbed72c06ae87"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/kb_l2_43_convmax/evaluator.py": {
+      "bytes": 6283,
+      "sha256": "9d5c607c2c47d806252a8afd729d43c05fabd6282427b1ff8156a3b209a6a575"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/kb_l2_43_convmax/kb_l2_43_convmax.triton": {
+      "bytes": 1920,
+      "sha256": "08e39d7825c73aafcfc78ae98e597e26c9fbd202a481d500614e1313050de514"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/kb_l2_8_convdiv/evaluator.py": {
+      "bytes": 6283,
+      "sha256": "9d5c607c2c47d806252a8afd729d43c05fabd6282427b1ff8156a3b209a6a575"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/kb_l2_8_convdiv/kb_l2_8_convdiv.triton": {
+      "bytes": 1935,
+      "sha256": "7ff9e311efff5e5994c51cc535296a99dbf746cfc204d50826e38b8a4dbddc90"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/kb_l3_11_vgg16/evaluator.py": {
+      "bytes": 6283,
+      "sha256": "9d5c607c2c47d806252a8afd729d43c05fabd6282427b1ff8156a3b209a6a575"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/kb_l3_11_vgg16/kb_l3_11_vgg16.triton": {
+      "bytes": 1896,
+      "sha256": "aa37293b203c3000b9886d1309cef61c68d6275d37f90a6f329eda34beb01265"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/server/launch_server.py": {
+      "bytes": 26616,
+      "sha256": "286fd3550fa6e4cc0545b8323d531040f0005508dd93f9bb8a4e1b2ada06a35a"
+    },
+    "payload/vendor/dream-rsi/tasks/kernelbench/server_info.yaml": {
+      "bytes": 724,
+      "sha256": "a765f54cc0e1d43b6dce7ba30bab9bbe00503797644c4ad6f64214ce256df298"
+    },
+    "payload/vendor/dream-rsi/tasks/lasso_path/README.md": {
+      "bytes": 2039,
+      "sha256": "1177fc3a94ad8c469008d7fcc2ac2263a19e23ed6168e3b86aca54ac364ffa5d"
+    },
+    "payload/vendor/dream-rsi/tasks/lasso_path/setup.sh": {
+      "bytes": 1604,
+      "sha256": "00d4f21615c8c896d35cd197950d62cb8d9328c4185e5d0624c48282b4d0e818"
+    },
+    "payload/vendor/dream-rsi/tests/conftest.py": {
+      "bytes": 8074,
+      "sha256": "afb334a28d7fccc386e61b4e09e5d8593b5187336ffc6c564d21ededccfba259"
+    },
+    "payload/vendor/dream-rsi/tests/test_baseline_champion_toggle.py": {
+      "bytes": 2681,
+      "sha256": "4e3764df49b785619694ebe3212195f1de282514ee6aa626cca0509fb9d539a8"
+    },
+    "payload/vendor/dream-rsi/tests/test_direction_live.py": {
+      "bytes": 6680,
+      "sha256": "97d3c22fa1b9cf69eb607e7b5437ac7ad28d67664405d18367d7b6dc049da23f"
+    },
+    "payload/vendor/dream-rsi/tests/test_directions.py": {
+      "bytes": 15335,
+      "sha256": "d4823db6a76944061284359c8fae6d9d8ef03c5c9d8f4dbd6e155e329312dcf1"
+    },
+    "payload/vendor/dream-rsi/tests/test_env.py": {
+      "bytes": 7110,
+      "sha256": "7533b464a52b2c7fdfbc81ed03f1e9d8062a9705e20ecb8fb513cc031a34d302"
+    },
+    "payload/vendor/dream-rsi/tests/test_explore.py": {
+      "bytes": 5796,
+      "sha256": "a6fb80e05f7013bc5fcf6b838d68cb22ee4083cf5b15f7df98449e49171c2762"
+    },
+    "payload/vendor/dream-rsi/tests/test_gemini.py": {
+      "bytes": 7425,
+      "sha256": "4c705885a1e4d0f5b4ce7e0c1a1f0cc297307bae7eaf194c1885afb67e1b22e5"
+    },
+    "payload/vendor/dream-rsi/tests/test_grid_planning.py": {
+      "bytes": 6972,
+      "sha256": "f813c64c98f264cc7c3c20152ad6207a79f3e749a4cf07041316d00248c9aeab"
+    },
+    "payload/vendor/dream-rsi/tests/test_history_and_pool.py": {
+      "bytes": 9955,
+      "sha256": "f8a049c8d885f0b2eb063e002be534789faff2864a82521e6cc855df5f3ccab1"
+    },
+    "payload/vendor/dream-rsi/tests/test_learning.py": {
+      "bytes": 27060,
+      "sha256": "9c61950cb61fd128f17e8465b13e6b5481a7d7df6c777785c303d7b518e40095"
+    },
+    "payload/vendor/dream-rsi/tests/test_policy.py": {
+      "bytes": 2451,
+      "sha256": "dd0d36fc55a271eaff62242f9393dd59e29f0fc1406140f49d31d5a395e68fab"
+    },
+    "payload/vendor/dream-rsi/tests/test_tasks.py": {
+      "bytes": 4001,
+      "sha256": "22f2267224f90519d9c1b94c5efb6815d3a99763c500fd6e1019873b33be78b7"
+    },
+    "payload/vendor/dream-rsi/tests/test_trace_raw.py": {
+      "bytes": 2207,
+      "sha256": "1c8aae40375fb0f966ad45b3f0a6cc6c86654eb6fd2cf496c5df9c5f9ba4a2cf"
+    },
+    "payload/vendor/dream-rsi/third_party/kernelbench/LICENSE": {
+      "bytes": 1143,
+      "sha256": "fb5917dd8e4476fa75e89ef6f03dccf07d4859636bc23c7db50e6c0413887b9e"
+    },
+    "payload/vendor/dream-rsi/third_party/kernelbench/METADATA": {
+      "bytes": 1133,
+      "sha256": "8ad36c984f246c7bc809191601579831e4ee42ffe10beb1befaa8869fe3bb275"
+    },
+    "payload/vendor/dream-rsi/third_party/kernelbench/README.md": {
+      "bytes": 947,
+      "sha256": "b64ee82f26cff963a75828b4ad73f31befc9d63170e1cae5c60e87fe66e52b65"
+    },
+    "payload/vendor/dream-rsi/third_party/kernelbench/kb_l1_40_layernorm/init_program.py": {
+      "bytes": 1009,
+      "sha256": "8d975d7cee6946513dcfb6ba84c971e53a890f9d9c6f0a4fb828904941f25975"
+    },
+    "payload/vendor/dream-rsi/third_party/kernelbench/kb_l2_43_convmax/init_program.py": {
+      "bytes": 1159,
+      "sha256": "e274319f222a8938fe0fe51c0f9093bedc7c90f00f1b684ba9be8f39e5db6b19"
+    },
+    "payload/vendor/dream-rsi/third_party/kernelbench/kb_l2_8_convdiv/init_program.py": {
+      "bytes": 1340,
+      "sha256": "80e0126cbb0f9287f7118cba2e8bfa73c1c3401b6f590e10bc240bdd0223d06a"
+    },
+    "payload/vendor/dream-rsi/third_party/kernelbench/kb_l3_11_vgg16/init_program.py": {
+      "bytes": 2963,
+      "sha256": "61f70e59d41e85a9b54fa9d060ef1aba3f144d2e4af5859ccba5f82f560a9c81"
+    },
+    "references/method.md": {
+      "bytes": 1482,
+      "sha256": "4713710058e9538c175e2e18fe8b39ac223d1e243409314b19b3258f8b2b653d"
+    },
+    "requirements.txt": {
+      "bytes": 45,
+      "sha256": "61f6236232ca07b5f01fbfb951485b4f149605f483e9f7ab20b7511e1ff898a0"
+    },
+    "scripts/skill.py": {
+      "bytes": 5800,
+      "sha256": "f90ce55ff1f9b93fe1964192bc08126d57196fdb31940146ef9a388d44701cb7"
+    }
+  }
+}

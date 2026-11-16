@@ -1,0 +1,14 @@
+{
+  "dev": {
+    "url": "https://quotes.toscrape.com/",
+    "captured_at": "2026-11-16T13:03:24.216254+00:00",
+    "sha256": "e933775ad85626e8b2929dfd37d1f55eb4b4c3214a536f8155b1fac63eb68915",
+    "annotation": "Original fixed selectors on unchanged demo page; count and required fields checked"
+  },
+  "holdout": {
+    "url": "https://quotes.toscrape.com/page/2/",
+    "captured_at": "2026-11-16T13:03:24.488248+00:00",
+    "sha256": "4e96b2d677b8be2b31e855dc10db8f502d0b6bf446016346b0f43a103646b8f4",
+    "annotation": "Original fixed selectors on unchanged demo page; count and required fields checked"
+  }
+}
