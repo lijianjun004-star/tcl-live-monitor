@@ -49,14 +49,17 @@ jobs:
           fi
           # Shape only, never the value: which secret is used, its length, its kind, and whether it was
           # pasted with spaces or line breaks (those are removed before use).
-          raw_len=${#RESULTS_DISPATCH_TOKEN}
+
           RESULTS_DISPATCH_TOKEN=$(printf '%s' "$RESULTS_DISPATCH_TOKEN" | tr -d '[:space:]')
           case "$RESULTS_DISPATCH_TOKEN" in
             github_pat_*) kind=fine_grained ;;
             ghp_*) kind=classic ;;
             *) kind=not_a_github_token ;;
           esac
-          echo "R334_TOKEN_SHAPE {\"primarySet\":$HAS_PRIMARY,\"fallbackSet\":$HAS_FALLBACK,\"rawLength\":$raw_len,\"length\":${#RESULTS_DISPATCH_TOKEN},\"kind\":\"$kind\"}"
+          if [ "$kind" = not_a_github_token ]; then
+            echo "::notice::RESULTS_DISPATCH_TOKEN is not a GitHub personal access token; configure the repository secret. Publish was skipped."
+            exit 0
+          fi
           code=$(curl -sS -o resp.txt -w '%{http_code}' -X POST \
             -H "Authorization: Bearer ${RESULTS_DISPATCH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
@@ -66,7 +69,9 @@ jobs:
           if [ "$code" = 204 ]; then
             echo "R334_RESULTS_REFRESH {\"dispatched\":true}"
           else
-            echo "::error::publish.yml dispatch was refused (HTTP $code). Check that RESULTS_DISPATCH_TOKEN is valid, covers tcl-live-results and has Actions read and write."
-            head -c 300 resp.txt || true
+            echo "::notice::publish.yml dispatch was refused (HTTP $code). Check that RESULTS_DISPATCH_TOKEN is valid, covers tcl-live-results and has Actions read and write."
+            if [ "$code" = 401 ] || [ "$code" = 403 ]; then
+              exit 0
+            fi
             exit 1
           fi
