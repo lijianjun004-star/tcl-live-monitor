@@ -1,5 +1,6 @@
 // TCL 京东店铺与房间的只读自动发现器。仅查询现有、已授权的运营平台 GET API。
 // 不保留主播姓名、成交额、session key、原始 body、Cookie 或 Token。
+import { sourceError } from './source-error.mjs';
 import { classifyTclOps, liveMinutesDelta } from './tcl-ops.mjs';
 
 export const SOURCE_ROUTES = Object.freeze({
@@ -145,7 +146,7 @@ export function networkReader(base, fetchFn=globalThis.fetch, timeoutMs=20000) {
     const url=new URL(path,root);
     if(params) for(const [k,v] of Object.entries(params)) url.searchParams.set(k,String(v));
     const response=await fetchFn(url, {method:'GET',redirect:'error',signal:AbortSignal.timeout(timeoutMs),headers:{accept:'application/json'}});
-    if(!response.ok) throw new Error('HTTP_ERROR');
+    if(!response.ok) throw new Error([401,403].includes(response.status)?'HTTP_ACCESS_DENIED':response.status===429?'HTTP_RATE_LIMITED':response.status>=500?'HTTP_SERVER_ERROR':'HTTP_ERROR');
     const length=Number(response.headers?.get?.('content-length'));
     if(Number.isFinite(length)&&length>MAX_RESPONSE_BYTES) throw new Error('BODY_TOO_LARGE');
     let body;
@@ -201,7 +202,7 @@ const validCalendarDate = date => {
 
 /** Bounded read-only discovery and state scan. Never writes to the source system. */
 export async function scanJdSource({reader, at=Date.now(), date=beijingDate(new Date(at)), previous=null,
-  concurrency=3, maxRooms=100, shardIndex=0, shardTotal=1}) {
+  concurrency=3, maxRooms=100, shardIndex=0, shardTotal=1, clock=()=>at}) {
   if(!validCalendarDate(date)) throw new Error('DATE_FORMAT_INVALID');
   if(!Number.isInteger(concurrency) || concurrency<1 || concurrency>5) throw new Error('CONCURRENCY_LIMIT');
   if (!Number.isInteger(shardIndex) || !Number.isInteger(shardTotal) || shardTotal<1 || shardTotal>16 || shardIndex<0 || shardIndex>=shardTotal)
@@ -209,10 +210,11 @@ export async function scanJdSource({reader, at=Date.now(), date=beijingDate(new 
   const response={schemaVersion:2,checkedAt:new Date(at).toISOString(),date,source:'TCL_OPS_READ_ONLY',
     catalogStatus:'UNKNOWN',roomListScope:'UNKNOWN',warnings:[],shopCount:null,rooms:[],summary:null,
     shard:{index:shardIndex,total:shardTotal},summaryScope:shardTotal===1?'ALL_SOURCE_ROOMS':'SHARD_ONLY',
-    discoveredRoomCount:null};
+    discoveredRoomCount:null,attemptedAt:new Date(at).toISOString(),completedAt:null, samplingStatus:'FAILED',errors:[]};
+  const finish=()=>{response.completedAt=new Date(clock()).toISOString();return response;};
   let normalized;
   try { normalized=normalizeRoomList(await reader(SOURCE_ROUTES.rooms), maxRooms); }
-  catch(e) { response.catalogStatus='UNAVAILABLE';response.warnings.push('ROOM_LIST_'+(e.message||'ERROR'));return response; }
+  catch(e) { response.catalogStatus='UNAVAILABLE';response.warnings.push('ROOM_LIST_'+sourceError(e));response.errors.push({stage:'CATALOG',code:sourceError(e)});return finish(); }
   response.warnings.push(...normalized.warnings);
   response.discoveredRoomCount=normalized.rooms.length;
   const selectedRooms=normalized.rooms.filter(r=>roomBelongsToShard(r.roomId,shardIndex,shardTotal));
@@ -233,12 +235,12 @@ export async function scanJdSource({reader, at=Date.now(), date=beijingDate(new 
       shopCatalogComplete=total!==null && total===allShops.length && !hasNext &&
         shops.length===allShops.filter(x=>isJD(x?.platform)).length;
       if(!shopCatalogComplete) response.warnings.push('SHOP_CATALOG_NOT_PROVEN_COMPLETE');
-    } catch{response.warnings.push('SHOPS_SCHEMA_UNVERIFIED');}
-  }else response.warnings.push('SHOPS_API_UNAVAILABLE');
+    } catch{response.warnings.push('SHOPS_SCHEMA_UNVERIFIED');response.errors.push({stage:'SHOPS',code:'INVALID_SCHEMA'});}
+  }else {response.warnings.push('SHOPS_API_UNAVAILABLE');response.errors.push({stage:'SHOPS',code:sourceError(shopsResult[0].reason)});}
   if(shopsResult[1].status==='fulfilled') {
     try{heartbeat=normalizeHeartbeats(shopsResult[1].value);}
-    catch{response.warnings.push('HEARTBEATS_SCHEMA_UNVERIFIED');}
-  }else response.warnings.push('HEARTBEATS_API_UNAVAILABLE');
+    catch{response.warnings.push('HEARTBEATS_SCHEMA_UNVERIFIED');response.errors.push({stage:'HEARTBEATS',code:'INVALID_SCHEMA'});}
+  }else {response.warnings.push('HEARTBEATS_API_UNAVAILABLE');response.errors.push({stage:'HEARTBEATS',code:sourceError(shopsResult[1].reason)});}
   const withShopId=normalized.rooms.filter(r=>r.shopId!==null);
   response.shopJoinStatus = withShopId.length===0 ? 'NO_ROOM_TO_SHOP_ID_JOIN' :
     withShopId.length===normalized.rooms.length ? 'ALL_ROOM_SHOP_IDS_PRESENT' : 'PARTIAL_ROOM_SHOP_IDS';
@@ -247,11 +249,12 @@ export async function scanJdSource({reader, at=Date.now(), date=beijingDate(new 
   response.rooms=await mapBounded(selectedRooms,concurrency,async room=>{
     let doc;
     try{doc=await reader(SOURCE_ROUTES.daily,{start_date:date,end_date:date,platform:'jd',live_room_id:room.roomId});}
-    catch{return {roomId:room.roomId,shopId:room.shopId,category:room.category,status:'UNKNOWN',reason:'DAILY_API_ERROR',captureBound:room.captureBound,categoryMappingConflict:room.categoryMappingConflict};}
+    catch(e){return {observedAt:null,sourceError:sourceError(e),roomId:room.roomId,shopId:room.shopId,category:room.category,status:'UNKNOWN',reason:'DAILY_API_ERROR',captureBound:room.captureBound,categoryMappingConflict:room.categoryMappingConflict};}
     const days=Array.isArray(doc?.days)?doc.days:Array.isArray(doc?.data?.days)?doc.data.days:null;
-    if(!days) return {roomId:room.roomId,shopId:room.shopId,category:room.category,status:'UNKNOWN',reason:'DAILY_SCHEMA_INVALID',captureBound:room.captureBound,categoryMappingConflict:room.categoryMappingConflict};
+    if(!days) return {observedAt:null,sourceError:'INVALID_DAILY_SCHEMA',roomId:room.roomId,shopId:room.shopId,category:room.category,status:'UNKNOWN',reason:'DAILY_SCHEMA_INVALID',captureBound:room.captureBound,categoryMappingConflict:room.categoryMappingConflict};
     const day=days.find(d=>d?.date===date) ?? null;
-    return evaluateRoom({room, day, heartbeatAt:heartbeat?.get(room.roomId)??null, heartbeatDataAvailable:heartbeat!==null, at, date, previous:previous?.rooms?.find(x=>x.roomId===room.roomId)??null});
+    const observed=clock();
+    return {...evaluateRoom({room, day, heartbeatAt:heartbeat?.get(room.roomId)??null, heartbeatDataAvailable:heartbeat!==null, at:observed, date, previous:previous?.rooms?.find(x=>x.roomId===room.roomId)??null}),observedAt:new Date(observed).toISOString()};
   });
   response.summary=scanSummary(response.rooms);
   const knownShops=new Set((shops??[]).map(s=>s.shopId));
@@ -263,7 +266,10 @@ export async function scanJdSource({reader, at=Date.now(), date=beijingDate(new 
     discoveredRoomCount:normalized.rooms.length, shopsWithUnresolvedRoomMapping:response.unmatchedShopIds?.length??null,
     roomCatalogComplete, shopCatalogComplete, roomShopLinksComplete,
     exhaustive:shardTotal===1 && roomCatalogComplete && shopCatalogComplete && roomShopLinksComplete};
-  return response;
+  for(const row of response.rooms)if(row.sourceError)response.errors.push({stage:'DAILY',roomId:row.roomId,code:row.sourceError});
+  response.errors.sort((a,b)=>(a.stage+String(a.roomId||'')).localeCompare(b.stage+String(b.roomId||'')));
+  response.samplingStatus=!response.rooms.length||response.rooms.every(r=>r.sourceError)?'FAILED':response.errors.length||response.warnings.length?'PARTIAL':'COMPLETE';
+  return finish();
 }
 
 /** Save just the minimal comparable state, not business metrics or raw API payloads. */
