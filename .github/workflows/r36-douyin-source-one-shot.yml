@@ -1,0 +1,33 @@
+name: R3.6 Douyin TCL OPS source schema (one-shot read-only)
+on:
+  push:
+    branches:
+      - experiment/r36-douyin-ops-rea-readonly-20261111
+    paths:
+      - '.github/workflows/r36-douyin-source-one-shot.yml'
+permissions:
+  contents: read
+jobs:
+  read-douyin-source-once:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/experiment/r36-douyin-ops-rea-readonly-20261111' && contains(github.event.head_commit.message, '[r36-source-qa-once]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      TCL_OPS_BASE_URL: http://101.96.215.251
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: One bounded existing-API read only (no login, no retry, no bypass)
+        run: node probes/r36/douyin-ops-qa.mjs
+      - name: Save aggregate schema ONLY - never raw shop/room/business data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r36-douyin-ops-safe-schema
+          path: r36-douyin-qa-safe.json
+          if-no-files-found: warn
+          retention-days: 7
