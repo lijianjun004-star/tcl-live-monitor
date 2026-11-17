@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111b2c">
+<title>TCL 京东直播巡检｜R2.1 只读验收面板</title>
+<style>
+:root{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#14253d;background:#f3f6fb;font-size:15px}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}
+header{background:#111b2c;color:#fff;padding:24px 20px 30px}
+.wrap{max-width:1050px;margin:auto}h1{font-size:25px;margin:5px 0 10px}
+.sub{color:#b6c7dc;line-height:1.7}main{padding:20px}
+.tag{display:inline-flex;align-items:center;border-radius:24px;padding:5px 10px;background:#30445f;color:white;font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:-24px 0 18px}
+.stat{padding:18px;background:white;box-shadow:0 6px 22px #0f26531a;border-radius:16px;min-width:0}
+.kpi{font-size:30px;font-weight:750;letter-spacing:-.6px}
+.label{color:#60718b;font-size:13px;margin-top:4px}
+.warning{border:1px solid #f4d99a;background:#fffaf0;border-radius:14px;padding:13px 15px;line-height:1.7;color:#81550d;margin-bottom:18px}
+.panel{background:white;border-radius:16px;padding:18px;margin:16px 0;box-shadow:0 3px 18px #0f26530b}
+.panel h2{margin:0 0 12px;font-size:18px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.file-label{cursor:pointer;background:#1d4ed8;color:white;border-radius:10px;padding:11px 16px;display:inline-flex;align-items:center}
+input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+button{border:1px solid #c9d3e2;background:white;padding:9px 14px;border-radius:10px;cursor:pointer;color:#1a3254}
+button.active{background:#182b47;color:white;border-color:#182b47}
+button:focus-visible,.file-label:focus-visible{outline:3px solid #99bcff;outline-offset:3px}
+#search{border:1px solid #cad5e5;border-radius:10px;padding:10px 13px;min-width:170px;flex:1;max-width:300px}
+.room-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.room{border:1px solid #e3e9f2;border-radius:12px;padding:15px;min-width:0}
+.room-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.room h3{font-size:16px;margin:0}.muted{color:#687b95;font-size:13px;line-height:1.6}
+.state{font-size:12px;border-radius:20px;padding:5px 9px;white-space:nowrap;background:#edf2f8;color:#526983}
+.state.live{background:#e3f6e8;color:#117d3b}.state.unknown{background:#edf2f8;color:#60738a}
+.meta{margin-top:8px;font-size:12px;color:#61748d;word-break:break-word}
+.note{font-size:12px;color:#697b92;line-height:1.75}
+a{color:#1d4ed8}
+footer{max-width:1050px;margin:0 auto;padding:0 20px 25px;color:#60718b;font-size:12px;line-height:1.7}
+#error{color:#bb2432;font-size:13px;min-height:1.4em;margin-top:6px}
+@media(max-width:690px){header{padding:22px 17px 36px}main{padding:15px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{padding:15px}.kpi{font-size:26px}.room-grid{grid-template-columns:1fr}h1{font-size:22px}.panel{padding:15px}.file-label{width:100%;justify-content:center}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<span class="tag">R2.1 · 只读验收版</span>
+<h1>TCL 京东直播间巡检</h1>
+<div class="sub">已发现内部直播间 · 真实来源观测 · 审慎统计<br>不自动下结论，不把直播间状态分布当成正式开播率</div>
+</div></header>
+<main class="wrap">
+<div class="stats" aria-label="状态汇总">
+<div class="stat"><div class="kpi" id="count">—</div><div class="label">发现内部房间</div></div>
+<div class="stat"><div class="kpi" id="live">—</div><div class="label">本次观测 LIVE</div></div>
+<div class="stat"><div class="kpi" id="unknown">—</div><div class="label">本次 UNKNOWN</div></div>
+<div class="stat"><div class="kpi" id="rate">—</div><div class="label">正式开播率（未核实）</div></div>
+</div>
+<div class="warning" role="status" id="warning">正在读取本地验收快照。真实开播率必须有已核实的排班分母、账号映射及上下播证据。</div>
+<section class="panel" aria-label="导入和核验说明">
+<h2>巡检数据</h2>
+<div class="actions">
+<label for="report" class="file-label" tabindex="0">导入最新巡检 JSON <input id="report" type="file" accept=".json,application/json"></label>
+<button type="button" id="download">导出当前可见记录 CSV</button>
+</div>
+<div id="error" role="alert" aria-live="polite"></div>
+<div class="note">导入 GitHub Actions 中 <code>r21-jd-one-shot-sanitized-evidence</code> 的 <code>r21-accepted.json</code>。文件仅在当前浏览器本地解析，不会上传到服务器。超过 15 分钟的快照自动标记为历史数据。</div>
+<div class="meta" id="timestamp"></div>
+</section>
+<section class="panel">
+<div class="actions" style="margin-bottom:12px">
+<strong style="flex:1">内部房间列表</strong>
+<button type="button" data-filter="ALL" class="active">全部</button>
+<button type="button" data-filter="LIVE">LIVE</button>
+<button type="button" data-filter="UNKNOWN">UNKNOWN</button>
+<input id="search" aria-label="按房间号和品类搜索" placeholder="搜索房间号 / 品类">
+</div>
+<div id="rooms" class="room-grid" aria-live="polite"></div>
+</section>
+<section class="panel">
+<h2>交付与限制</h2>
+<p class="muted">本页面可展示 TCL 运营系统只读巡检结果，尚未核实京东公开账号与排班的完整对应关系。真实 OFFLINE 规则、跨时间持续巡检和正式开播率未通过验收。7 个内部房间只代表本次已发现的范围；目录完整性仍有警告。</p>
+<p class="note">历史样本来源：<a href="https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42815377261" target="_blank" rel="noopener">2026-11-10 实际源巡检证据</a> · <a href="https://github.com/lijianjun004-star/tcl-live-monitor/pull/31" target="_blank" rel="noopener">R2.0 源码基线</a></p>
+</section>
+</main>
+<footer>只读模式 · 不自动发起京东平台请求 · 不收集 Cookie、密码、订单或主播个人资料。开播率与准时率需经过正式排班和身份映射复验后启用。</footer>
+<script>
+"use strict";
+const historical={
+ schema_version:21,readiness:"PARTIAL",reason:"INTEGRITY_WARNINGS",
+ checked_at:"2026-11-10T12:23:50.475Z",room_count:7,live:7,unknown:0,offline:0,
+ formal_opening_rate_percent:null,
+ catalog_complete_attested:false,
+ warnings:["源站房间目录尚未证明完整","品类与历史配置存在差异，待复核"],
+ rooms:[
+ ["1","1","空调","1"],["14","14","洗衣机","1"],["15","15","空调","ABSENT"],
+ ["16","17","全品类","ABSENT"],["17","18","电视","ABSENT"],["18","19","显示器","ABSENT"],["19","21","电视","1"]
+ ].map(([room_id,shop_id,category,s])=>({room_id,shop_id,category,state:"LIVE",reason:"FRESH_MINUTE_DATA_STATUS_"+s,agent_alive:true}))
+};
+let data=historical,filter="ALL",term="";
+const el=id=>document.getElementById(id);
+const dateLabel=s=>{const t=Date.parse(s);return Number.isFinite(t)?new Date(t).toLocaleString("zh-CN",{timeZone:"Asia/Shanghai",hour12:false}):"未知时间"};
+const fresh=d=>{const age=Date.now()-Date.parse(d.checked_at);return Number.isFinite(age)&&age>=-60000&&age<=900000;};
+const make=(tag,text,className)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(className)e.className=className;return e;};
+function render(){
+ const isBlocked=data.readiness==="BLOCKED";
+ const isFresh=fresh(data),safe=!isBlocked&&Array.isArray(data.rooms)?data.rooms:[];
+ const n=isBlocked?0:safe.length;
+ el("count").textContent=isBlocked?"—":String(n);
+ el("live").textContent=isBlocked?"—":String(safe.filter(x=>x.state==="LIVE").length);
+ el("unknown").textContent=isBlocked?"—":String(safe.filter(x=>x.state==="UNKNOWN").length);
+ el("rate").textContent="—";
+ const banner=isBlocked?"数据源未通过验收："+(data.reason||"未知原因"):
+  (isFresh?"单次观测可用":"历史快照，已过实时有效期")+
+  "。房间目录完整性："+(data.catalog_complete_attested===true?"已证明完整":"未证明完整")+
+  "；京东账号身份和排班未全部核实，所以不能发布正式开播率。";
+ el("warning").textContent=banner;
+ el("timestamp").textContent="观测时间（北京时间）："+dateLabel(data.checked_at)+" · "+
+  (isFresh?"15分钟有效窗口内":"仅作历史复查")+" · 状态："+data.readiness;
+ const host=el("rooms");host.replaceChildren();
+ const rows=safe.filter(r=>(filter==="ALL"||r.state===filter)&&
+  (String(r.room_id).includes(term)||String(r.category||"").toLowerCase().includes(term)));
+ if(!rows.length){host.append(make("div","没有符合条件的房间记录","muted"));return;}
+ for(const r of rows){
+  const card=make("article",undefined,"room");
+  const top=make("div",undefined,"room-head");
+  top.append(make("h3","京东内部房间 "+r.room_id));
+  top.append(make("span",r.state==="LIVE"?"LIVE · 当次观测":r.state, "state "+(r.state==="LIVE"?"live":"unknown")));
+  card.append(top);
+  card.append(make("div","品类："+r.category+"  ·  内部店铺号："+(r.shop_id||"待确认"),"muted"));
+  card.append(make("div","京东公开账号映射：待核实","meta"));
+  card.append(make("div","判定依据："+(r.reason||"暂无"),"meta"));
+  if(!isFresh)card.append(make("div","历史状态；不可用作当前在播认定","meta"));
+  host.append(card);
+ }
+}
+function isAccepted(x){
+ return x&&typeof x==="object"&&x.schema_version===21&&
+ ["OBSERVED","PARTIAL","BLOCKED"].includes(x.readiness)&&
+ x.formal_opening_rate_percent===null&&Array.isArray(x.rooms)&&x.rooms.length<=100&&
+ x.rooms.every(r=>/^\d{1,16}$/.test(String(r.room_id))&&["LIVE","UNKNOWN"].includes(r.state));
+}
+el("report").addEventListener("change",async e=>{
+ el("error").textContent="";
+ const f=e.target.files&&e.target.files[0];if(!f)return;
+ if(f.size>400000){el("error").textContent="文件超出 400KB，已拒绝。";return;}
+ try{
+  const result=JSON.parse(await f.text());
+  if(!isAccepted(result))throw new Error("格式或验收门禁不匹配");
+  data=result;render();
+ }catch(err){el("error").textContent="导入失败："+(err.message||"JSON不可用");}
+});
+document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{
+ filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x===b));render();
+}));
+el("search").addEventListener("input",e=>{term=e.target.value.trim().toLowerCase();render()});
+el("download").addEventListener("click",()=>{
+ const header=["checked_at","internal_room_id","internal_shop_id","category","observed_state","current_state","formal_opening_rate"];
+ const rows=(data.readiness==="BLOCKED"?[]:(data.rooms||[])).filter(r=>(filter==="ALL"||r.state===filter)&&(String(r.room_id).includes(term)||String(r.category||"").toLowerCase().includes(term)));
+ const cell=v=>{let s=String(v??"").replace(/[\u0000-\u001f\u007f]+/g," ");if(/^\s*[=+\-@＝＋－＠]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};
+ const table=[header,...rows.map(r=>[data.checked_at,r.room_id,r.shop_id,r.category,r.state,fresh(data)?r.state:"UNKNOWN","NOT_VERIFIED"])];
+ const text=table.map(row=>row.map(cell).join(",")).join("\r\n");
+ const blob=new Blob(["\uFEFF",text],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");
+ const url=URL.createObjectURL(blob);a.href=url;a.download="TCL-JD-r21-observations.csv";a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+render();
+// Re-evaluate the 15-minute window while the page stays open, so an idle tab cannot keep showing a stale snapshot as current.
+setInterval(render,30000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)render();});
+</script>
+</body>
+</html>

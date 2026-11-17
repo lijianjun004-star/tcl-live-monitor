@@ -1,0 +1,20 @@
+{
+  "schema_version": 20,
+  "observed_date_beijing": "2026-11-10",
+  "time_precision": "DATE_ONLY",
+  "source_type": "USER_PREVIOUSLY_PROVIDED_OPS_VIEW",
+  "platform_filter": "jd",
+  "category_filter": "全品类",
+  "internal_shop_filter": "17",
+  "browser_run_url": "https://agent.tinyfish.ai/runs/9d115a0b-8e40-482d-a229-4e8556a70c47",
+  "page_open": false,
+  "access_result": "TIMEOUT",
+  "page_visible_title": null,
+  "shop_name_visible": null,
+  "internal_room_id_verified": false,
+  "public_jd_live_link_found": false,
+  "public_jd_account_id": null,
+  "current_state": "UNKNOWN",
+  "historical_state": "UNKNOWN",
+  "note": "Normal read-only navigation timed out before page content was visible. Filter shop_id=17 originates from the user-provided query, not from page-verified content. Do not infer any public JD identity or claim an OFFLINE event. Source host is intentionally omitted from published repository evidence."
+}

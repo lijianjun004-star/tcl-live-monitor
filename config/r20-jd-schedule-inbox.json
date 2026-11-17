@@ -1,0 +1,12 @@
+{
+  "schema_version": 20,
+  "timezone": "Asia/Shanghai",
+  "origin": "EMPTY_INBOX_NOT_ACTUAL_SCHEDULE",
+  "updated_at": "2026-11-10",
+  "notes": [
+    "No verified JD shift plan was available in this repo. Do not infer scheduled sessions from daily 6-room catalog or observed LIVE samples.",
+    "Only authorized schedule import can populate shifts. User-supplied original Excel layout must not be overwritten. Dynamic revisions apply only before the scheduled shift begins.",
+    "Each shift must include unique shift_id, ops_room_id, platform jd, starts_at/ends_at/revision_at as +08:00 ISO strings, schedule_verified and schedule_evidence_ref."
+  ],
+  "shifts": []
+}

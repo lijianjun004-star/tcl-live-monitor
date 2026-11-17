@@ -1,0 +1,65 @@
+{
+  "schema_version": 20,
+  "researched_on_beijing": "2026-11-10",
+  "description": "JD brand/store public search leads; these are NOT verified room accounts and MUST NOT populate ops-to-JD identity crosswalk.",
+  "confirmed_public_live_room_entries": 0,
+  "unmapped_public_store_candidates": [
+    {
+      "store_name": "TCL官方旗舰店",
+      "public_store_page": "https://mall.jd.com/shopLevel-721631.html",
+      "source_type": "JD_STOREFRONT_PAGE",
+      "ops_room_id": null,
+      "ops_shop_id": null,
+      "public_jd_account_id": null,
+      "verified_live_profile_url": null,
+      "status": "UNMAPPED_CANDIDATE"
+    },
+    {
+      "store_name": "TCL官方旗舰店（另一商品列表候选）",
+      "public_store_page": "https://mall.jd.com/view_search-801162-26070594-1-0-20-1.html",
+      "source_type": "JD_SEARCH_LIST_PAGE",
+      "ops_room_id": null,
+      "ops_shop_id": null,
+      "public_jd_account_id": null,
+      "verified_live_profile_url": null,
+      "status": "UNMAPPED_CANDIDATE",
+      "ambiguity": "页面也显示TCL官方旗舰店但路径数值不同，尚不能据名称自动合并"
+    },
+    {
+      "store_name": "TCL冰箱洗衣机旗舰店",
+      "public_store_page": "https://mall.jd.com/index-619517.html?from=pc",
+      "source_type": "JD_STOREFRONT_PAGE",
+      "ops_room_id": null,
+      "ops_shop_id": null,
+      "public_jd_account_id": null,
+      "verified_live_profile_url": null,
+      "status": "UNMAPPED_CANDIDATE",
+      "customer_service_vender_id_candidate": "624085",
+      "customer_service_vender_id_kind": "JD_SELLER_ID_UNVERIFIED_AS_LIVE_ANCHOR",
+      "browser_evidence_run": "https://agent.tinyfish.ai/runs/231a6403-8b51-4fba-b5d2-df9c3805405c",
+      "live_entry_checked": "NO_ENTRY_VISIBLE_ON_NORMAL_DESKTOP_STORE_PAGE",
+      "live_state_at_observation": "UNKNOWN",
+      "mapping_warning": "624085 only appeared in a customer-service link; DO NOT treat as public JD live anchor ID, ops_room_id or liveId."
+    },
+    {
+      "store_name": "FFALCON雷鸟官方旗舰店",
+      "public_store_page": "https://mall.jd.com/shopLevel-10227967.html",
+      "source_type": "JD_STOREFRONT_PAGE",
+      "ops_room_id": null,
+      "ops_shop_id": null,
+      "public_jd_account_id": null,
+      "verified_live_profile_url": null,
+      "status": "UNMAPPED_CANDIDATE"
+    },
+    {
+      "store_name": "FFALCON雷鸟京东自营旗舰店",
+      "public_store_page": "https://mall.jd.com/view_search-1707687-29840400-1-0-20-1.html",
+      "source_type": "JD_SEARCH_LIST_PAGE",
+      "ops_room_id": null,
+      "ops_shop_id": null,
+      "public_jd_account_id": null,
+      "verified_live_profile_url": null,
+      "status": "UNMAPPED_CANDIDATE"
+    }
+  ]
+}

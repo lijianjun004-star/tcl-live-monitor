@@ -1,0 +1,28 @@
+{
+  "schema_version": 20,
+  "platform": "jd",
+  "observed_date_beijing": "2026-11-10",
+  "page_observed_precision": "DATE_ONLY",
+  "source_context": "京东超级品牌日于2026-05-23发布的TCL京东自营旗舰店2026-05-24直播推广历史短链",
+  "source_publication_url": "https://www.sina.cn/news/detail/5301676329930260.html",
+  "historic_share_url": "https://t.cn/AX6U24yU",
+  "readonly_browser_run_url": "https://agent.tinyfish.ai/runs/f5a4adbb-e385-45db-a9ea-1f6dcab1dc77",
+  "extracted_from": "JD login page sanitized returnurl route only",
+  "historic_jd_live_route_candidate": "https://lives.jd.com/#/45583477",
+  "historic_live_id_candidate": "45583477",
+  "identity_from_live_room_verified": false,
+  "public_anchor_profile_verified": false,
+  "internal_ops_room_id": null,
+  "internal_ops_shop_id": null,
+  "current_live_state": "UNKNOWN",
+  "blocker": "AUTH_REQUIRED",
+  "login_form_seen": true,
+  "no_login_attempted": true,
+  "opening_rate_eligible": false,
+  "exact_start_time_verified": false,
+  "notes": [
+    "URL embedded in JD's normal authentication redirect gives an historical live-route clue; not proof this session was LIVE during visit.",
+    "The campaign name TCL 京东自营旗舰店 is from an official published promotion, not a live page identity check.",
+    "No credentials, Cookie, login query string, returnurl tracking token, or private order data stored."
+  ]
+}

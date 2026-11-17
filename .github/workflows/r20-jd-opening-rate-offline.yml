@@ -1,0 +1,37 @@
+name: R2.0 JD opening-rate readiness (offline-only)
+on:
+  push:
+    branches:
+      - experiment/r20-jd-opening-rate-readiness
+  pull_request:
+    paths:
+      - 'probes/r20/**'
+      - 'tests/r20-*.test.mjs'
+      - 'config/r20-jd-*.json'
+      - 'docs/r20/**'
+      - '.github/workflows/r20-jd-opening-rate-offline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: All regression tests, real platform disabled
+        run: node --test tests/*.test.mjs
+      - name: Produce empty-inbox JD opening rate gate
+        run: node probes/r20/jd-opening-rate-cli.mjs --as-of 2026-11-10T12:00:00Z --out r20-jd-readiness.json
+      - name: Fail if an empty/unverified input produces an opening rate
+        run: |
+          node --input-type=module -e "import fs from 'node:fs';const d=JSON.parse(fs.readFileSync('r20-jd-readiness.json','utf8'));if(d.observed_real_jd_opening_rate!==null||d.opening_rate_percent!==null||d.due_shifts!==0||d.source_connected!==false||d.live_data_fetched_by_cli!==false||d.readiness.verified_public_jd_accounts!==0||d.readiness.imported_schedule_shifts!==0||d.formal_report_ready!==false)process.exit(1);console.log('JD R2.0: evidence gate correctly blocks fabricated opening rate');"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r20-jd-readiness-no-fabricated-rate
+          path: r20-jd-readiness.json
+          retention-days: 14
+          if-no-files-found: error

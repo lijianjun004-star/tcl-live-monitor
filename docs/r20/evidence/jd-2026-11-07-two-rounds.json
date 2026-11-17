@@ -1,0 +1,118 @@
+{
+  "schema_version": 20,
+  "platform": "jd",
+  "origin": "TCL_OPS_READ_ONLY_GITHUB_ACTION_LOG",
+  "source_run_url": "https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42356978045",
+  "observed_day_beijing": "2026-11-07",
+  "source_time_semantics": "ROUND_LOG_PRINT_TIME_NOT_EXACT_LIVE_START_OR_CHECK_TIME",
+  "evidence_qualification": "SIX_INTERNAL_ROOMS_ONLY; no public JD account identity verification, no schedule denominator, no current status, no OFFLINE",
+  "rounds": [
+    {
+      "round": 1,
+      "log_printed_at_utc": "2026-11-07T08:47:55Z",
+      "observations": [
+        {
+          "ops_room_id": "1",
+          "ops_shop_id": "1",
+          "source_display_category": "空调",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_1"
+        },
+        {
+          "ops_room_id": "14",
+          "ops_shop_id": "14",
+          "source_display_category": "洗衣机",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_1"
+        },
+        {
+          "ops_room_id": "15",
+          "ops_shop_id": "15",
+          "source_display_category": "空调",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_1"
+        },
+        {
+          "ops_room_id": "16",
+          "ops_shop_id": "17",
+          "source_display_category": "全品类",
+          "state": "UNKNOWN",
+          "reason": "NO_MINUTE_FEED_TODAY"
+        },
+        {
+          "ops_room_id": "17",
+          "ops_shop_id": "18",
+          "source_display_category": "电视",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_ABSENT"
+        },
+        {
+          "ops_room_id": "18",
+          "ops_shop_id": "19",
+          "source_display_category": "显示器",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_1"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "log_printed_at_utc": "2026-11-07T08:52:53Z",
+      "observations": [
+        {
+          "ops_room_id": "1",
+          "ops_shop_id": "1",
+          "source_display_category": "空调",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_1"
+        },
+        {
+          "ops_room_id": "14",
+          "ops_shop_id": "14",
+          "source_display_category": "洗衣机",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_ABSENT"
+        },
+        {
+          "ops_room_id": "15",
+          "ops_shop_id": "15",
+          "source_display_category": "空调",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_ABSENT"
+        },
+        {
+          "ops_room_id": "16",
+          "ops_shop_id": "17",
+          "source_display_category": "全品类",
+          "state": "UNKNOWN",
+          "reason": "NO_MINUTE_FEED_TODAY"
+        },
+        {
+          "ops_room_id": "17",
+          "ops_shop_id": "18",
+          "source_display_category": "电视",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_ABSENT"
+        },
+        {
+          "ops_room_id": "18",
+          "ops_shop_id": "19",
+          "source_display_category": "显示器",
+          "state": "LIVE",
+          "reason": "FRESH_MINUTE_DATA_STATUS_1"
+        }
+      ]
+    }
+  ],
+  "source_boundaries": {
+    "source_rooms_six": true,
+    "room_identity_public_jd_accounts_verified": false,
+    "shop_ids_are_internal": true,
+    "precise_jd_stream_start_time_known": false,
+    "formal_schedules_verified": false,
+    "actual_opening_rate_known": false,
+    "estimated_opening_rate_percent": null,
+    "is_recent_live_status": false,
+    "source_contains_personal_information": false
+  }
+}

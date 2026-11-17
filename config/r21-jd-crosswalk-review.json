@@ -1,0 +1,89 @@
+{
+  "schema_version": 20,
+  "created_at_beijing": "2026-11-10",
+  "purpose": "JD seven observed internal rooms crosswalk review (R2.1); none of their external JD anchor identities are verified",
+  "source_reference": "https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42815377261",
+  "note": "7 internal rooms discovered, but catalogue completeness is PARTIAL. Every public JD anchor mapping PENDING, no verified shift schedule, opening rate NULL.",
+  "entries": [
+    {
+      "ops_room_id": "1",
+      "ops_shop_id": "1",
+      "category_from_history": "空调（2026-11-10源站显示；旧历史品类曾为冰箱，待核实）",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "14",
+      "ops_shop_id": "14",
+      "category_from_history": "洗衣机",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "15",
+      "ops_shop_id": "15",
+      "category_from_history": "空调",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "16",
+      "ops_shop_id": "17",
+      "category_from_history": "全品类",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "17",
+      "ops_shop_id": "18",
+      "category_from_history": "电视",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "18",
+      "ops_shop_id": "19",
+      "category_from_history": "显示器",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "2026-11-07 TCL_OPS room-to-shop IDs read-only observed; public JD store/live account identity unconfirmed; ops IDs are not JD external IDs"
+    },
+    {
+      "ops_room_id": "19",
+      "ops_shop_id": "21",
+      "category_from_history": "电视（2026-11-10真实运营源发现新增内部房间）",
+      "public_jd_account_id": null,
+      "public_live_session_id": null,
+      "identity_status": "PENDING",
+      "evidence_ref": null,
+      "reason": "New internal ops room from 2026-11-10 20:23 Beijing read-only scan; public JD anchor unverified; catalogue completeness not proven"
+    }
+  ],
+  "sources": [
+    {
+      "kind": "HISTORICAL_SIX_ROOMS",
+      "url": "https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42356978045"
+    },
+    {
+      "kind": "2026_11_10_SEVENTH_ROOM_DISCOVERY",
+      "url": "https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/42815377261"
+    }
+  ]
+}
