@@ -48,7 +48,7 @@ test('probe and workflow shape', { skip: !fs.existsSync('.github/workflows/tmall
   const wf = fs.readFileSync('.github/workflows/tmall-daily-broadcast.yml', 'utf8');
   assert.match(wf, /\n  workflow_dispatch:\npermissions:\n  contents: read\n  actions: read\n/);
   assert.doesNotMatch(wf, /pull_request|\n  push:|contents: write|secrets\./);
-  assert.match(wf, /if: github\.ref == 'refs\/heads\/main'/); assert.match(wf, /age<24\*3600e3/); assert.match(wf, /--platform tmall/);
+  assert.match(wf, /if: github\.ref == 'refs\/heads\/main'/); assert.match(fs.readFileSync('scripts/tmall-ledger-recovery.mjs','utf8'), /now-Date.parse\(cooldown.stoppedAt\)<DAY/); assert.match(fs.readFileSync('scripts/tmall-sample-once.sh','utf8'), /--platform tmall/);
 });
 test('Douyin monitor-only sets: approved, registered room, not scoring, no overlap with the scoring sets', () => {
   const reg = JSON.parse(fs.readFileSync('config/probe-targets.json', 'utf8')).douyin;

@@ -78,6 +78,17 @@
       },
       "jdPlatformLiveSessionId": "UNKNOWN_DYNAMIC_PER_STREAM",
       "identityCrosswalkVerified": false
+    },
+    {
+      "opsInternalRoomId": "19",
+      "expectedCategoryInOps": "UNKNOWN_PENDING_VERIFICATION",
+      "opsInternalShopId": "UNKNOWN_PENDING_API_SHOPS",
+      "publicJdStoreCandidate": null,
+      "jdPlatformLiveSessionId": "UNKNOWN_DYNAMIC_PER_STREAM",
+      "identityCrosswalkVerified": false,
+      "placeholderOnly": true,
+      "coverageReviewDateBeijing": "2026-11-17",
+      "evidenceNote": "依据用户2026-11-17只读核查补记内部房间19的未核实占位；未重新访问来源，未确认公开店铺、类目、shop_id或直播场次ID。"
     }
   ],
   "douyinUnmappedOpsRows": {

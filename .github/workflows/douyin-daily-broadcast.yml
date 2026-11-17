@@ -29,35 +29,16 @@ jobs:
         with: { node-version: '22' }
       - name: Offline guard, identity, ledger and daily-result tests before any live request
         run: node --test tests/r320/network-identity-offline.test.mjs tests/r322/*.test.mjs tests/r323/*.test.mjs tests/r324/*.test.mjs tests/r325/*.test.mjs tests/r326/*.test.mjs
-      - name: Restore the previous 7-day ledger (latest successful run of this workflow)
-        run: |
-          mkdir -p out/ledger prev
-          ID=$(gh run list --workflow douyin-daily-broadcast.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty' || true)
-          if [ -n "$ID" ] && gh run download "$ID" -n douyin-daily-ledger -D prev; then
-            if [ -f prev/state.json ]; then cp prev/state.json out/ledger/state.json; fi
-            if [ -f prev/cooldown.json ]; then cp prev/cooldown.json out/ledger/cooldown.json; fi
-          fi
-          if [ -f out/ledger/state.json ] && ! node probes/r325/daily-report.mjs out/ledger/state.json > /dev/null; then
-            echo "::warning::previous ledger failed validation and was not used; starting a new one"
-            rm -f out/ledger/state.json
-          fi
-          echo "restored: $([ -f out/ledger/state.json ] && echo yes || echo no)"
-      - name: Cooldown gate (24 hours without any live request after an access limit)
+      - name: Restore latest completed ledger; fail closed on uncertainty
         id: gate
-        run: |
-          node -e "
-          const fs=require('fs');let skip=false,why='none';
-          try{const c=JSON.parse(fs.readFileSync('out/ledger/cooldown.json','utf8'));const age=Date.now()-Date.parse(c.stoppedAt);
-            if(Number.isFinite(age)&&age>=0&&age<24*3600e3){skip=true;why='ACCESS_LIMIT_COOLDOWN';}
-            else fs.rmSync('out/ledger/cooldown.json');}catch{}
-          fs.appendFileSync(process.env.GITHUB_OUTPUT,'skip='+skip+'\n');console.log(JSON.stringify({skip,why}));"
+        run: bash scripts/restore-douyin-ledger.sh
       - name: Install pinned Playwright Chromium
-        if: steps.gate.outputs.skip != 'true'
+        if: steps.gate.outcome == 'success' && steps.gate.outputs.skip == 'false'
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install chromium --with-deps
       - name: One read-only pass over the 7 registered accounts (fixed sets of at most two)
-        if: steps.gate.outputs.skip != 'true'
+        if: steps.gate.outcome == 'success' && steps.gate.outputs.skip == 'false'
         env:
           R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS
           R319_CORE_CDN_APPROVED_ONCE: TWO_APPROVED_CDNS_JS_CSS_ONLY
@@ -92,18 +73,9 @@ jobs:
           require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY,['## 抖音每日开播（北京时间）','','每天按 06:00 到次日 06:00 计算：凌晨 0–6 点看到的在播算前一天那一场。','','| 日期 | 账号 | 结果 | 看到在播（采样时刻） | 核验采样次数 |','|---|---|---|---|---|',...rows,''].join('\n'));"
       - name: Encrypt private page evidence, never upload plaintext
         if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          ls -d out/private-* > /dev/null 2>&1 || exit 0
-          mkdir -p out/enc
-          tar czf p.tgz -C out $(cd out && ls -d private-*) && rm -rf out/private-*
-          openssl rand -out k.bin 32
-          openssl enc -aes-256-cbc -pbkdf2 -salt -in p.tgz -out out/enc/p.enc -pass file:k.bin
-          openssl pkeyutl -encrypt -pubin -inkey probes/keys/analysis-pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out out/enc/k.enc
-          rm -f p.tgz k.bin
+        run: bash scripts/encrypt-douyin-evidence.sh
       - name: Save the 7-day ledger, offline view and cooldown marker
-        if: always() && hashFiles('out/ledger/state.json') != ''
+        if: always() && (hashFiles('out/ledger/state.json') != '' || hashFiles('out/ledger/recovery-block.json') != '')
         uses: actions/upload-artifact@v4
         with:
           name: douyin-daily-ledger
@@ -111,10 +83,12 @@ jobs:
             out/ledger/state.json
             out/ledger/index.html
             out/ledger/cooldown.json
+            out/ledger/recovery-block.json
+            out/ledger/recovery-reviewed.json
           retention-days: 7
           if-no-files-found: error
       - name: Save encrypted private evidence (7 days; readable only with the offline private key)
-        if: always() && hashFiles('out/enc/p.enc') != ''
+        if: always() && hashFiles('out/enc/p.enc') != '' && hashFiles('out/enc/k.enc') != '' && hashFiles('out/enc/integrity.txt') != ''
         uses: actions/upload-artifact@v4
         with:
           name: douyin-daily-private-encrypted
