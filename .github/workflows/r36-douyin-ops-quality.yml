@@ -1,0 +1,33 @@
+name: R3.6 Douyin ops read-only parity gate - OFFLINE TESTS ONLY
+on:
+  push:
+    branches:
+      - experiment/r36-douyin-ops-replica-20261111
+    paths:
+      - 'probes/r36/**'
+      - 'tests/r36-douyin-ops-parity.test.mjs'
+      - '.github/workflows/r36-douyin-ops-quality.yml'
+      - 'docs/r36/**'
+  pull_request:
+    paths:
+      - 'probes/r36/**'
+      - 'tests/r36-douyin-ops-parity.test.mjs'
+      - '.github/workflows/r36-douyin-ops-quality.yml'
+      - 'docs/r36/**'
+permissions:
+  contents: read
+jobs:
+  offline-douyin-parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run source-linked Douyin identity and room-state tests
+        run: node --test tests/r36-douyin-ops-parity.test.mjs tests/probe-classifiers.test.mjs tests/tcl-ops.test.mjs
+      - name: Run all existing MAIN regression tests (never query target dashboard)
+        run: node --test tests/*.test.mjs
