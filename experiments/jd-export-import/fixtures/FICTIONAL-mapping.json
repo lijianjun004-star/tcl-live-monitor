@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "sourceType": "JD_MERCHANT_EXPORT_UNVERIFIED",
+  "evidenceKind": "synthetic",
+  "exportedAt": "2026-11-16T14:00:00+08:00",
+  "columns": {
+    "accountId": "fictional_account",
+    "sessionId": "fictional_session",
+    "startedAt": "fictional_start",
+    "endedAt": "fictional_end",
+    "sourceId": "fictional_source"
+  },
+  "bindings": []
+}
