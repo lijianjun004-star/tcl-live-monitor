@@ -29,8 +29,10 @@ export function validateState(input){
     input.verified_offline_counter!==0)throw Error('BAD_PERSISTED_STATE');
  for(const key of ['last_checked_at','last_attempted_at','last_successful_source_at'])if(input[key]!=null&&!timestamp(input[key]))throw Error('BAD_PERSISTED_TIME');
  for(const [id,room] of Object.entries(input.rooms)){
-  if(!ROOM.test(id)||!room||!STATES.has(room.state))throw Error('BAD_PERSISTED_ROOM');
+  if(!ROOM.test(id)||!room||room.room_id!==id||!STATES.has(room.state))throw Error('BAD_PERSISTED_ROOM');
   for(const key of ['first_live_seen_at','last_live_seen_at','last_observed_at'])if(room[key]!=null&&!timestamp(room[key]))throw Error('BAD_PERSISTED_TIME');
+  const ordered=['first_live_seen_at','last_live_seen_at','last_observed_at'].map(k=>room[k]).filter(x=>x!=null).map(Date.parse);
+  if(ordered.some((t,i)=>i>0&&t<ordered[i-1])||ordered.some(t=>input.last_checked_at&&t>Date.parse(input.last_checked_at)+60000))throw Error('BAD_PERSISTED_TIME_ORDER');
  }
  for(const row of [...input.checks,...input.events]){
   if(!timestamp(row.at)||!ROOM.test(String(row.room_id||'0'))&&row.room_id!==null)
@@ -51,6 +53,7 @@ export function updateJdHistory(previous,report,{now,run_id,maxAgeMs=15*60_000}=
  const state=structuredClone(validateState(previous));
  if(!timestamp(now)||typeof run_id!=='string'||!/^[-\w.:]{1,120}$/.test(run_id))
    throw Error('BAD_RUN_ID_OR_TIME');
+ if(!Number.isSafeInteger(maxAgeMs)||maxAgeMs<=0)throw Error('BAD_FRESHNESS_LIMIT');
  const t=Date.parse(now),cutoff=t-WINDOW_MS;
  if(state.last_processed_run===run_id)return {state,delta:[],duplicate:true,source_accepted:false};
  if(state.last_checked_at&&t<Date.parse(state.last_checked_at)-60_000)
@@ -125,7 +128,7 @@ export function latestPublicSummary(state,now){
   Date.parse(now)-Date.parse(evidenceAt)<=15*60_000;
  const rooms=Object.values(s.rooms).sort((a,b)=>Number(a.room_id)-Number(b.room_id))
   .map(r=>({room_id:r.room_id,shop_id:r.shop_id,category:r.category,
-   last_observed_state:r.state,current_state:fresh&&timestamp(r.last_observed_at)&&Date.parse(now)-Date.parse(r.last_observed_at)<=15*60_000?r.state:'UNKNOWN',
+   last_observed_state:r.state,current_state:fresh&&s.last_source_attempt_accepted!==false&&timestamp(r.last_observed_at)&&Date.parse(now)-Date.parse(r.last_observed_at)>=0&&Date.parse(now)-Date.parse(r.last_observed_at)<=15*60_000?r.state:'UNKNOWN',
    first_detected_live_at:r.first_live_seen_at,last_detected_live_at:r.last_live_seen_at,
    actual_started_at:null,actual_ended_at:null}));
  return {schema_version:23,generated_at:now,previous_scan_at:s.last_checked_at,

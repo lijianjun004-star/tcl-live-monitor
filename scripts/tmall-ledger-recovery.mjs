@@ -67,6 +67,19 @@ export function decideRestore({run,bytes,approval=null,now=Date.now()}){
 }
 export function restore(previous,output,run,approval=null,now=Date.now()){
  fs.mkdirSync(output,{recursive:true});
+ // Recovery must not overwrite a newer local stop or reuse a prior destination.
+ // The restore shell's initial fail-closed sentinel is the sole allowed file.
+ let outputUnsafe=false;
+ for(const file of [...FILES,'restore-manifest.json']) {
+  const raw=read(path.join(output,file));
+  if(raw===null)continue;
+  if(file==='recovery-block.json'){
+   let marker;try{marker=json(raw);}catch{}
+   if(marker?.schemaVersion===1&&marker.reason==='RESTORE_UNVERIFIED')continue;
+  }
+  outputUnsafe=true;
+ }
+ if(outputUnsafe){block(output,'LOCAL_STATE_REQUIRES_REVIEW',run?.id);return {skip:true,reason:'LOCAL_STATE_REQUIRES_REVIEW',reviewed:false};}
  const bytes=Object.fromEntries([...FILES,'restore-manifest.json'].map(f=>[f,read(path.join(previous,f))]));
  // Preserve independently valid stop data even when the ledger is bad. Never replay raw invalid bytes.
  try{const c=json(bytes['cooldown.json']);if(cooldownValid(c,now))write(path.join(output,'cooldown.json'),c);}catch{}

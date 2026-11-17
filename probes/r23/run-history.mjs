@@ -10,15 +10,17 @@ const source=option('--report'),previous=option('--previous'),
  stateOutput=option('--state-output'),summaryOutput=option('--summary-output'),runId=option('--run-id');
 if(!stateOutput||!summaryOutput||!runId)throw Error('Required: --report FILE --previous FILE --state-output FILE --summary-output FILE --run-id ID');
 const now=new Date().toISOString();
-async function safeRead(file){
+async function safeRead(file,required=false){
  if(!file)return null;
  try{
-  const info=await fs.stat(file);
+  const info=await fs.lstat(file);
   if(!info.isFile()||info.size>12*1024*1024)throw Error('UNSAFE_INPUT_SIZE');
   return JSON.parse(await fs.readFile(file,'utf8'));
- }catch(e){if(e.code==='ENOENT')return null;throw e;}
+ }catch(e){if(e.code==='ENOENT'&&!required)return null;throw Error('HISTORY_INPUT_UNAVAILABLE');}
 }
-const saved=await safeRead(previous);
+try {
+if(path.resolve(stateOutput)===path.resolve(summaryOutput))throw Error('OUTPUT_COLLISION');
+const saved=await safeRead(previous,Boolean(previous));
 const report=await safeRead(source);
 const {state,delta,duplicate,source_accepted,counts,warning}=updateJdHistory(saved,report,{now,run_id:runId});
 const summary=latestPublicSummary(state,now);
@@ -41,3 +43,5 @@ console.log(JSON.stringify({run_id:runId,source_accepted,warning,
   unknown:summary.current_unknown,delta_count:delta.length,
   formal_opening_rate_percent:null,stored_check_count:state.checks.length,
   stored_transition_count:state.events.length}));
+
+} catch {console.error('JD_HISTORY_OPERATION_BLOCKED');process.exitCode=1;}
