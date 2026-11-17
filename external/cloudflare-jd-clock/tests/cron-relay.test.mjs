@@ -47,9 +47,9 @@ test('outside window means no GitHub request and no token required',async()=>{
   assert.equal(r.dispatch,false);
   assert.equal(count,0);
 });
-test('valid trigger requests GitHub Actions workflow_dispatch on MAIN only',async()=>{
+test('low-level transport seals workflow_dispatch target to MAIN',async()=>{
   const calls=[];
-  const reply=await runScheduled({
+  const reply=await dispatchBackup({
     scheduledMs:ms('2026-11-11T10:49:00.000Z'),
     nowMs:ms('2026-11-11T10:49:25.000Z'),token,
     request:async(url,opts)=>{calls.push({url,opts});return {status:204}}
