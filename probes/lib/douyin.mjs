@@ -209,6 +209,15 @@ export function roomIdentityEvidence(r, t) {
     rawAnchorExact: r?.raw?.anchorExact === true, rawStatus: Number.isInteger(r?.raw?.status) ? r.raw.status : null };
 }
 
+/** Render observations only. Neither boolean establishes the account's identity. */
+export function profileRenderSignals(profile) {
+  return {
+    visibleBodyTextPresent: typeof profile?.bodyExcerpt === 'string' && profile.bodyExcerpt.trim().length > 0,
+    visibleDouyinIdPresent: Array.isArray(profile?.douyinIdsInPage) &&
+      profile.douyinIdsInPage.some(id => typeof id === 'string' && id.trim().length > 0),
+  };
+}
+
 export function roomIdentity(r, t) {
   return r?.httpStatus === 200 && !CHALLENGE_RE.test(`${r.title} ${r.bodyExcerpt}`) && !LOGIN_GATE_RE.test(String(r.bodyExcerpt || ''))
     && r.title === `${t.accountName}的抖音直播间 - 抖音直播`

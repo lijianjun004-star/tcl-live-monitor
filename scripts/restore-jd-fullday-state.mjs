@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {validateState} from '../probes/r327/jd-fullday.mjs';
+import {validateOperationalPrevious} from '../probes/r327/jd-fullday.mjs';
 import {readHistoryJson,verifyHistoryPair} from '../probes/lib/history-files.mjs';
 const REPO='lijianjun004-star/tcl-live-monitor';
 const conclusions=new Set(['success','failure','cancelled','timed_out','action_required','neutral','skipped','stale','startup_failure']);
@@ -21,7 +21,7 @@ export function latestCompletedRun(document,{currentRunId=null}={}){
 export function verifyRestored(directory){
   for(const file of ['.jd-history.lock','state.json.lock','recovery-block.json'])if(fs.existsSync(path.join(directory,file)))throw Error('RESTORE_REVIEW_REQUIRED');
   const state=readHistoryJson(path.join(directory,'state.json')),summary=readHistoryJson(path.join(directory,'report.json'));
-  validateState(state);verifyHistoryPair(state,summary);
+  validateOperationalPrevious(state);verifyHistoryPair(state,summary);
   if(!state.lastRunAt||summary.generatedAt!==state.lastRunAt)throw Error('RESTORE_TIME_MISMATCH');
   return {state,summary,legacy:!state._historyCommit};
 }

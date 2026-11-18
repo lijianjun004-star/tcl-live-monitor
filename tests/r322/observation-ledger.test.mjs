@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {importReceipt,buildSummary} from '../../probes/r322/observation-ledger.mjs';
+import {renderLedger} from '../../probes/r322/render-ledger.mjs';
 const t=n=>`2026-11-${String(n).padStart(2,'0')}T12:00:00.000Z`;
 const row=(at,state='LIVE',extra={})=>({key:'TEST_A',at,state,reason:'TEST_OBSERVATION',profileIdentityVerified:true,roomIdentityVerified:true,...extra});
 const rec=(checked,at=checked.at(-1)?.at??t(13))=>({schemaVersion:319,at,checked});
@@ -18,3 +19,30 @@ test('malformed inputs and damaged persisted state reject',()=>{for(const r of [
 
 test('sampling gaps over fifteen minutes remain explicit without estimating duration',()=>{const s=buildSummary(add(null,rec([row(t(11)),row(t(12))])));assert.equal(s.sessions[0].hasSamplingGaps,true);assert.equal(s.sessions[0].samplingGapThresholdSeconds,900);assert.equal(s.sessions[0].durationSeconds,null);});
 test('conflicting reasons remain conflicts even when status downgrades',()=>{const a=row(t(12),'LIVE',{roomIdentityVerified:false});assert.throws(()=>add(add(null,rec([a])),rec([{...a,reason:'ANOTHER_REASON'}])),/OBSERVATION_CONFLICT/);});
+
+test('NOT_RUN records preserve the last actual observation and cannot fill sampling gaps', () => {
+  const at = minute => `2026-11-12T12:${String(minute).padStart(2, '0')}:00.000Z`;
+  const skipped = (minute, key = 'TEST_A') => ({
+    key, at: at(minute), state: 'NOT_RUN', reason: 'STOPPED_AFTER_ACCESS_LIMIT',
+  });
+  const ledger = add(null, rec([
+    row(at(0)), skipped(10), skipped(20), row(at(30)), skipped(40), skipped(40, 'TEST_B'),
+  ]), {platform: 'tmall'});
+  const {rooms, sessions} = buildSummary(ledger);
+  const [observed, neverObserved] = rooms;
+  assert.equal(observed.state, 'NOT_RUN');
+  assert.equal(observed.lastObservedAt, at(30));
+  assert.equal(observed.lastRecordedAt, at(40));
+  assert.equal(observed.executedCount, 2);
+  assert.equal(neverObserved.lastRecordedAt, at(40));
+  assert.equal(neverObserved.lastObservedAt, null);
+  assert.equal(neverObserved.executedCount, 0);
+  assert.equal(sessions[0].lastSeenLiveAt, at(30));
+  assert.equal(sessions[0].hasUnknownObservations, true);
+  assert.equal(sessions[0].hasSamplingGaps, true);
+  assert.equal(sessions[0].maxSampleGapSeconds, 30 * 60);
+  const html = renderLedger(ledger);
+  assert.match(html, /记录时间<\/dt><dd>[^<]*20:40:00<\/dd><dt>上次实际观察<\/dt><dd>[^<]*20:30:00/);
+  assert.match(html, /上次实际观察<\/dt><dd>未确认<\/dd>/);
+  assert.match(html, /存在超过 15 分钟的采样间隔/);
+});

@@ -21,7 +21,13 @@ const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] }
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'zh-CN', serviceWorkers: 'block' });
   for (const t of targets) {
-    if (stopped) { checked.push({ key: t.key, at: new Date().toISOString(), state: 'NOT_RUN', reason: 'STOPPED_AFTER_ACCESS_LIMIT' }); continue; }
+    if (stopped) {
+      const skipped = { key: t.key, at: new Date().toISOString(), state: 'NOT_RUN', reason: 'STOPPED_AFTER_ACCESS_LIMIT' };
+      checked.push(skipped);
+      // A distinct record keeps the skipped shop auditable without advancing attempt freshness.
+      console.log('R329_TMALL_NOT_RUN ' + JSON.stringify(skipped));
+      continue;
+    }
     const page = await context.newPage(), samples = [], pending = [], endpoints = [];
     let http = null, limit = null;
     const stop = reason => { limit ||= reason; void page.close().catch(() => {}); };

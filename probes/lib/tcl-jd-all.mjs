@@ -1,6 +1,7 @@
 // TCL 京东店铺与房间的只读自动发现器。仅查询现有、已授权的运营平台 GET API。
 // 不保留主播姓名、成交额、session key、原始 body、Cookie 或 Token。
 import { sourceError } from './source-error.mjs';
+import { parseJdSourceOrigin } from './jd-source-config.mjs';
 import { classifyTclOps, liveMinutesDelta } from './tcl-ops.mjs';
 
 export const SOURCE_ROUTES = Object.freeze({
@@ -137,10 +138,7 @@ export function scanSummary(observations) {
 }
 
 export function networkReader(base, fetchFn=globalThis.fetch, timeoutMs=20000) {
-  if(!base) throw new Error('BASE_NOT_SET');
-  const root=new URL(base);
-  if(!['http:','https:'].includes(root.protocol)) throw new Error('BASE_PROTOCOL_INVALID');
-  if(root.username || root.password || root.search || root.hash || (root.pathname!=='/' && root.pathname!=='')) throw new Error('BASE_MUST_BE_ORIGIN');
+  const root=parseJdSourceOrigin(base);
   return async (path, params=null) => {
     if(!Object.values(SOURCE_ROUTES).includes(path)) throw new Error('PATH_NOT_ALLOWED');
     const url=new URL(path,root);

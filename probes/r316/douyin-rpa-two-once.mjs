@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { decideDouyin, profileIdentityEvidence, roomIdentityEvidence, documentShape, rawRoomEvidence, roomStoreSkeleton, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
+import { decideDouyin, profileIdentityEvidence, profileRenderSignals, roomIdentityEvidence, documentShape, rawRoomEvidence, roomStoreSkeleton, liveAnchorRoomIds, liveAnchorScope, CHALLENGE_RE } from '../lib/douyin.mjs';
 import { CORE_STATIC_CANDIDATES, UNKNOWN_STATIC_CANDIDATES } from '../r318/douyin-static-policy.mjs';
 import { guardedRoute, disableUnroutedChannels, hostClass } from '../r320/network-guard.mjs';
 
@@ -178,7 +178,7 @@ try {
       ownerAnchorScope: liveAnchorScope(profile, t).scope,
       profileSignals: { titleExact: profileEvidence.titleExact, idExact: profileEvidence.idExact,
         finalUrlExact: profileEvidence.finalUrlExact, multipleVisibleIds: profileEvidence.multipleVisibleIds,
-        titleEmpty: String(profile.title || '').trim() === '' },
+        titleEmpty: String(profile.title || '').trim() === '', ...profileRenderSignals(profile) },
       roomSignals: room ? roomIdentityEvidence(room, t) : null,
       state: d.state, reason: d.reason, stop: reasonStop });
     priv.push({ key: t.key, at, profileTitle: profile.title, finalHost: profile.finalHost, finalPath: profile.finalPath,

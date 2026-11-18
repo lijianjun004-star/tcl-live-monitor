@@ -97,6 +97,10 @@ export function validateState(x) {
   }
   return x;
 }
+export function validateOperationalPrevious(state) {
+  if (state && Object.hasOwn(state,'historicalMigration')) throw Error('R327_HISTORY_MIGRATION_NOT_ACTIVATED');
+  return validateState(state);
+}
 /**
  * Fold one source read into the state. rows: [{roomId, category, captureBound, days:[daily rows]}].
  * Keeps the FIRST valid morning snapshot and the LATEST final reading per room and day; 35 days of history.

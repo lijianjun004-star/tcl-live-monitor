@@ -36,7 +36,7 @@ function normalizeRow(r, platform, { stored = false } = {}) {
   if (stored && r.ownRoomLiveBadge !== undefined && r.ownRoomLiveBadge !== true) fail();
   const ownRoomLiveBadge = stored ? r.ownRoomLiveBadge === true
     : r.state !== 'NOT_RUN' && r.profileIdentityVerified === true && r.liveBadgeSeen === true && OWN_ROOM_SCOPES.has(r.ownerAnchorScope);
-  if (ownRoomLiveBadge && r.profileIdentityVerified !== true) fail();
+  if (ownRoomLiveBadge && (r.state === 'NOT_RUN' || r.profileIdentityVerified !== true)) fail();
   const at = iso(r.at);
   const roomVerified = r.roomIdentityVerified === true || r.roomPageIdentityVerified === true;
   if (r.roomIdentityVerified !== undefined && r.roomPageIdentityVerified !== undefined && r.roomIdentityVerified !== r.roomPageIdentityVerified) fail();
@@ -102,19 +102,20 @@ export function buildSummary(ledger) {
   for (const samples of groups.values()) {
     samples.sort((a,b) => a.at.localeCompare(b.at));
     const latest = samples.at(-1);
-    // NOT_RUN means the page was never visited: it is a record, not an observation.
-    const executedCount = samples.filter(x => x.state !== 'NOT_RUN').length;
-    rooms.push({platform:latest.platform,key:latest.key,state:latest.state,lastObservedAt:latest.at,
-      reason:latest.reason,observationCount:samples.length,executedCount,notRunCount:samples.length - executedCount,
-      retentionTruncated:valid.retentionTruncated});
-    let current = null, previousAt = null;
+    let current = null, lastObservedAt = null, executedCount = 0;
     for (const r of samples) {
-      if (current && previousAt) {
-        const gap = Date.parse(r.at) - Date.parse(previousAt);
+      // NOT_RUN is still visible in the timeline, but cannot close the gap between samples.
+      if (r.state === 'NOT_RUN') {
+        if (current) current.hasUnknownObservations = true;
+        continue;
+      }
+      if (current && lastObservedAt) {
+        const gap = Date.parse(r.at) - Date.parse(lastObservedAt);
         if (gap > 900000) current.hasSamplingGaps = true;
         current.maxSampleGapSeconds = Math.max(current.maxSampleGapSeconds, Math.round(gap / 1000));
       }
-      previousAt = r.at;
+      lastObservedAt = r.at;
+      executedCount++;
       if (r.state === 'LIVE') {
         if (!current) {
           current = {platform:r.platform,key:r.key,firstSeenLiveAt:r.at,lastSeenLiveAt:r.at,
@@ -127,6 +128,9 @@ export function buildSummary(ledger) {
         current.firstSeenOfflineAt = r.at; current.status = 'OFFLINE_OBSERVED'; current = null;
       } else if (current) current.hasUnknownObservations = true;
     }
+    rooms.push({platform:latest.platform,key:latest.key,state:latest.state,lastObservedAt,lastRecordedAt:latest.at,
+      reason:latest.reason,observationCount:samples.length,executedCount,notRunCount:samples.length - executedCount,
+      retentionTruncated:valid.retentionTruncated});
   }
   return {rooms:rooms.sort((a,b)=>a.platform.localeCompare(b.platform)||a.key.localeCompare(b.key)),sessions};
 }
@@ -161,16 +165,18 @@ export function buildDailyBroadcast(ledger) {
   const days = [];
   for (const rows of groups.values()) {
     rows.sort((a, b) => a.at.localeCompare(b.at));
-    const verified = rows.filter(r => r.state !== 'NOT_RUN' && r.profileIdentityVerified === true);
-    const dual = rows.filter(r => r.state === 'LIVE');            // ledger LIVE already needs both identities
-    const badge = rows.filter(r => r.ownRoomLiveBadge === true);
+    const attempted = rows.filter(r => r.state !== 'NOT_RUN');
+    const verified = attempted.filter(r => r.profileIdentityVerified === true);
+    const dual = attempted.filter(r => r.state === 'LIVE');      // ledger LIVE already needs both identities
+    const badge = attempted.filter(r => r.ownRoomLiveBadge === true);
     const seen = [...new Set([...dual, ...badge])].sort((a, b) => a.at.localeCompare(b.at));
     const date = broadcastDay(rows[0].at);
     days.push({ platform: rows[0].platform, key: rows[0].key, date,
       status: seen.length ? 'BROADCAST_SEEN' : verified.length ? 'NOT_SEEN_IN_SAMPLES' : 'UNKNOWN',
       evidence: dual.length ? 'PROFILE_AND_ROOM_PAGE_IDENTITY' : badge.length ? 'PROFILE_OWN_ROOM_LIVE_BADGE' : null,
       firstSeenAt: seen[0]?.at ?? null, lastSeenAt: seen.at(-1)?.at ?? null,
-      samples: rows.length, verifiedSamples: verified.length,
+      samples: rows.length, attemptedSamples: attempted.length, notRunSamples: rows.length - attempted.length,
+      lastAttemptedSampleAt: attempted.at(-1)?.at ?? null, verifiedSamples: verified.length,
       firstVerifiedSampleAt: verified[0]?.at ?? null, lastVerifiedSampleAt: verified.at(-1)?.at ?? null,
       latestDay: date === latestDay, retentionTruncated: valid.retentionTruncated });
   }

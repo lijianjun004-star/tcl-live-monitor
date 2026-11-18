@@ -44,7 +44,12 @@ test('ledger and daily result: LIVE counts; API "off" stays not-seen (rule not v
 test('probe and workflow shape', { skip: !fs.existsSync('.github/workflows/tmall-daily-broadcast.yml') }, () => {
   const src = fs.readFileSync('probes/r329/tmall-daily-once.mjs', 'utf8');
   assert.doesNotMatch(src, /addCookies|setExtraHTTPHeaders|userAgent|storageState|\.fill\(|\.click\(|\.type\(/);
-  assert.match(src, /if \(stopped\) \{ checked\.push\(\{ key: t\.key, at: new Date\(\)\.toISOString\(\), state: 'NOT_RUN'/);
+  const skippedBeforeNavigation = /if \(stopped\) \{([\s\S]*?)\n    \}\n    const page = await context\.newPage\(\)/.exec(src)?.[1];
+  assert.ok(skippedBeforeNavigation, 'stopped shops skip before opening a page');
+  assert.match(skippedBeforeNavigation, /state: 'NOT_RUN', reason: 'STOPPED_AFTER_ACCESS_LIMIT'/);
+  assert.match(skippedBeforeNavigation, /checked\.push\(skipped\)/);
+  assert.match(skippedBeforeNavigation, /R329_TMALL_NOT_RUN /);
+  assert.match(skippedBeforeNavigation, /continue;/);
   const wf = fs.readFileSync('.github/workflows/tmall-daily-broadcast.yml', 'utf8');
   assert.match(wf, /\n  workflow_dispatch:\npermissions:\n  contents: read\n  actions: read\n/);
   assert.doesNotMatch(wf, /pull_request|\n  push:|contents: write|secrets\./);
