@@ -65,8 +65,12 @@ const cli=path.resolve('experiments/jd-export-import/cli.mjs');
 function sandbox(fn){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'jd-export-'));try{fs.writeFileSync(dir+'/input.csv',csv);fs.writeFileSync(dir+'/mapping.json',JSON.stringify(mapping));fn(dir);}finally{fs.rmSync(dir,{recursive:true,force:true});}}
 const invoke=(dir,extra=[])=>spawnSync(process.execPath,[cli,'--input',dir+'/input.csv','--mapping',dir+'/mapping.json','--output',dir+'/preview.json',...extra],{encoding:'utf8'});
 test('CLI writes private historical staging, stdout counts only, never overwrites',()=>sandbox(dir=>{
- const r=invoke(dir);assert.equal(r.status,0,r.stderr);assert.ok(!r.stdout.includes('SYNTHETIC_ACCOUNT'));assert.equal(fs.statSync(dir+'/preview.json').mode&0o777,0o600);
+ const r=invoke(dir);assert.equal(r.status,0,r.stderr);assert.ok(!r.stdout.includes('SYNTHETIC_ACCOUNT'));
  const saved=fs.readFileSync(dir+'/preview.json','utf8');assert.equal(invoke(dir).status,1);assert.equal(fs.readFileSync(dir+'/preview.json','utf8'),saved);
+}));
+
+test('POSIX preview file has owner-only permission bits',{skip:process.platform==='win32'?'NOT RUN: POSIX permissions do not describe Windows ACLs':false},()=>sandbox(dir=>{
+ const r=invoke(dir);assert.equal(r.status,0,r.stderr);assert.equal(fs.statSync(dir+'/preview.json').mode&0o777,0o600);
 }));
 test('CLI rejects symlink, bad UTF8 and XLSX, leaving no staging file',()=>sandbox(dir=>{
  fs.unlinkSync(dir+'/input.csv');fs.writeFileSync(dir+'/actual.csv',csv);fs.symlinkSync(dir+'/actual.csv',dir+'/input.csv');assert.equal(invoke(dir).status,1);fs.unlinkSync(dir+'/input.csv');

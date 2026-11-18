@@ -55,11 +55,11 @@ test('state update: first morning snapshot wins, final only after the day ended,
   const r = report(s).find(x => x.date === D && x.roomId === '15');
   assert.deepEqual([r.ratePercent, r.method, r.category, r.captureBound], [100, 'FROM_0800_SNAPSHOT', 'SYNTH', true]);
   assert.doesNotMatch(JSON.stringify(s), /SECRET_NAME|gmv|123/);
-  // failed daily call: no reading, nothing invented; succeeded call with no row for a past day: zero minutes
+  // Failed call or a successful response missing a day: no reading, nothing invented.
   const failed = update(null, [{ roomId: '16', category: 'X', captureBound: false, dailyOk: false, days: [] }], bj('2026-11-14', '00:34'));
   assert.equal(failed.days[D]['16'].final, null);
   const none = update(null, [{ roomId: '16', category: 'X', captureBound: false, dailyOk: true, days: [] }], bj('2026-11-14', '00:34'));
-  assert.equal(none.days[D]['16'].final.minuteCount, 0);
+  assert.equal(none.days[D]['16'].final, null);
   assert.throws(() => validateState({ schemaVersion: 1 }), /BAD_STATE/);
   assert.throws(() => update(null, [{ roomId: 'abc' }], bj(D, '08:04')), /ROOM_INVALID/);
   assert.equal(reading({ minute_count: 99999 }, bj(D, '08:04')).minuteCount, null);

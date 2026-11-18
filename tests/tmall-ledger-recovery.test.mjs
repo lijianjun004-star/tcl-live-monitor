@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-import {decideRestore,restore,snapshot,recordStop,block,finishSample} from '../scripts/tmall-ledger-recovery.mjs';
+import {decideRestore,restore,snapshot,recordStop,block,finishSample,beginSample} from '../scripts/tmall-ledger-recovery.mjs';
 import {importReceipt} from '../probes/r322/observation-ledger.mjs';
 const now=Date.parse('2026-11-17T08:00:00.000Z'),DAY=86400000,iso=t=>new Date(t).toISOString();
 const files=['state.json','cooldown.json','recovery-block.json','recovery-reviewed.json','restore-manifest.json'];
@@ -96,7 +96,7 @@ test('stop receipt, nonzero exit, missing and corrupt receipt persist cooldown b
 function shellFixture() {
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'tmall-shell-'));
  for(const sub of ['scripts','probes/r322','probes/r329','fixture','bin','config'])fs.mkdirSync(dir+'/'+sub,{recursive:true});
- for(const file of ['scripts/tmall-ledger-recovery.mjs','scripts/restore-tmall-ledger.sh','scripts/tmall-sample-once.sh','probes/r322/observation-ledger.mjs'])fs.copyFileSync(file,dir+'/'+file);
+ for(const file of ['scripts/tmall-ledger-recovery.mjs','scripts/recovery-file-store.mjs','scripts/restore-tmall-ledger.sh','scripts/tmall-sample-once.sh','probes/r322/observation-ledger.mjs'])fs.copyFileSync(file,dir+'/'+file);
  fs.writeFileSync(dir+'/bin/gh',`#!/bin/bash
 set -e
 case "$1 $2" in
@@ -106,7 +106,7 @@ case "$1 $2" in
  *) exit 2;;
 esac
 `,{mode:0o755});
- const env={...process.env,PATH:dir+'/bin:'+process.env.PATH,GITHUB_OUTPUT:dir+'/outputs',GITHUB_REPOSITORY:'lijianjun004-star/tcl-live-monitor',GITHUB_RUN_ID:'200',GITHUB_RUN_ATTEMPT:'1',FAIL_STAGE:''};
+ const env={...process.env,PATH:dir+'/bin'+path.delimiter+process.env.PATH,GITHUB_OUTPUT:dir+'/outputs',GITHUB_REPOSITORY:'lijianjun004-star/tcl-live-monitor',GITHUB_RUN_ID:'200',GITHUB_RUN_ATTEMPT:'1',FAIL_STAGE:''};
  return {dir,env,run:script=>spawnSync('bash',[script],{cwd:dir,env,encoding:'utf8'})};
 }
 test('actual restore shell: list/API/download failures default closed and persist sentinel',()=>{
@@ -139,7 +139,8 @@ test('healthy sample clears only its own sentinel and cannot erase an existing r
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'tmall-finish-'));try{
   const t=Date.now();write(dir+'/receipt.json',{schemaVersion:319,platform:'tmall',at:iso(t),stopped:null,checked:[]});write(dir+'/state.json',ledger(t));
   block(dir,'PERSISTENT_REVIEW_REQUIRED');assert.throws(()=>finishSample(dir,dir+'/receipt.json',0),/BLOCK_NOT_OWNED/);
-  block(dir,'SAMPLE_INCOMPLETE');finishSample(dir,dir+'/receipt.json',0);assert.equal(fs.existsSync(dir+'/recovery-block.json'),false);
+  fs.rmSync(dir+'/recovery-block.json');
+  beginSample(dir,{runId:'200',runAttempt:1,now:t-1});finishSample(dir,dir+'/receipt.json',0,{runId:'200',runAttempt:1});assert.equal(fs.existsSync(dir+'/recovery-block.json'),false);
  }finally{cleanup(dir);}
 });
 test('workflow requires affirmative gate and uploads marker/manifest even with missing state; triggers unchanged',()=>{
@@ -164,13 +165,13 @@ test('actual healthy sample wrapper and reviewed restore preserve audit, not fak
  const f=shellFixture();try{
   const t=Date.now();const s=ledger(t);
   fs.writeFileSync(f.dir+'/probes/r329/tmall-daily-once.mjs',`import fs from 'node:fs';fs.mkdirSync('out',{recursive:true});fs.writeFileSync('out/tmall-receipt.json',JSON.stringify({schemaVersion:319,platform:'tmall',at:new Date().toISOString(),stopped:null,checked:[]}));`);
-  fs.writeFileSync(f.dir+'/probes/r322/import-receipt.mjs',`import fs from 'node:fs';fs.writeFileSync('out/ledger/state.json',${JSON.stringify(JSON.stringify(s))});`);
+  fs.writeFileSync(f.dir+'/probes/r322/import-receipt.mjs',`import fs from 'node:fs';import {importReceipt} from './observation-ledger.mjs';const r=JSON.parse(fs.readFileSync('out/tmall-receipt.json'));fs.writeFileSync('out/ledger/state.json',JSON.stringify(importReceipt(null,r,{platform:'tmall',evidenceKind:'real'})));`);
   assert.equal(f.run('scripts/tmall-sample-once.sh').status,0);
   assert.equal(fs.existsSync(f.dir+'/out/ledger/recovery-block.json'),false);
-  assert.deepEqual(JSON.parse(fs.readFileSync(f.dir+'/out/ledger/state.json')),s);
-  block(f.dir+'/out/ledger','REVIEW_REQUIRED','99');snapshot(f.dir+'/out/ledger',{runId:'100',runAttempt:1,now:t});
-  const a=approval(f.dir+'/out/ledger');a.approvedAt=iso(t-1000);a.expiresAt=iso(t+60000);
-  const dest=f.dir+'/reviewed';const d=restore(f.dir+'/out/ledger',dest,run(),a,t);assert.equal(d.skip,false);
+  const actual=JSON.parse(fs.readFileSync(f.dir+'/out/ledger/state.json'));assert.equal(actual.evidenceKind,'real');assert.deepEqual(actual.observations,[]);
+  const completed=Date.now();block(f.dir+'/out/ledger','REVIEW_REQUIRED','99');snapshot(f.dir+'/out/ledger',{runId:'100',runAttempt:1,now:completed});
+  const a=approval(f.dir+'/out/ledger');a.approvedAt=iso(completed-1000);a.expiresAt=iso(completed+60000);
+  const dest=f.dir+'/reviewed';const d=restore(f.dir+'/out/ledger',dest,run(),a,completed);assert.equal(d.skip,false);
   assert.deepEqual(JSON.parse(fs.readFileSync(dest+'/recovery-reviewed.json')),a);
   assert.equal(fs.existsSync(dest+'/recovery-block.json'),false);
  }finally{cleanup(f.dir);}

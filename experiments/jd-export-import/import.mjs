@@ -44,17 +44,17 @@ export function previewExports({files,mapping,now}={}){
  if(!mapping||mapping.schemaVersion!==1||mapping.sourceType!=='JD_MERCHANT_EXPORT_UNVERIFIED'||!['synthetic','user-provided-unverified'].includes(mapping.evidenceKind))fail('MAPPING_INVALID');
  if(!mapping.columns||fields.some(k=>typeof mapping.columns[k]!=='string'||!mapping.columns[k]||mapping.columns[k].length>128)||new Set(fields.map(k=>mapping.columns[k])).size!==fields.length)fail('MAPPING_COLUMNS_INVALID');
  if(!Array.isArray(files)||files.length<1||files.length>LIMITS.files||!Array.isArray(mapping.bindings??[])||(mapping.bindings??[]).length>1000)fail('INPUT_LIMIT_OR_SCHEMA');
- const records=[],errors=[],duplicates=[],fileSummaries=[],groups=new Map();
+ const records=[],quarantinedRecords=[],errors=[],duplicates=[],fileSummaries=[],groups=new Map();
  for(const [fileIndex,file] of files.entries()){
   let rows,digest;
   try{
    if(file?.format!=='csv')fail('FORMAT_UNSUPPORTED');
-   rows=parseCsv(file.text);digest=hash(file.text);
+   rows=parseCsv(file.text);digest=file.sourceFormat==='xlsx'&&/^[a-f0-9]{64}$/.test(file.sourceSha256??'')?file.sourceSha256:hash(file.text);
    const headers=rows[0];
    if(new Set(headers).size!==headers.length||headers.some(h=>!h||/^[\s]*[=+@-]/.test(h)))fail('CSV_HEADER_INVALID');
    if(fields.some(k=>!headers.includes(mapping.columns[k])))fail('MAPPED_COLUMN_MISSING');
   }catch(e){errors.push({fileIndex,row:null,code:['FORMAT_UNSUPPORTED','CSV_SIZE_LIMIT','CSV_INVALID_TEXT','CSV_CELL_LIMIT','CSV_COLUMN_LIMIT','CSV_ROW_LIMIT','CSV_QUOTE_INVALID','CSV_NEWLINE_INVALID','CSV_EMPTY','CSV_HEADER_INVALID','MAPPED_COLUMN_MISSING'].includes(e.message)?e.message:'CSV_INVALID'});continue;}
-  fileSummaries.push({fileIndex,sha256:digest,rowCount:rows.length-1});
+  fileSummaries.push({fileIndex,sha256:digest,rowCount:rows.length-1,sourceFormat:file.sourceFormat==='xlsx'?'xlsx':'csv',sourceSheet:file.sourceFormat==='xlsx'?file.sourceSheet:null,parsedSha256:hash(file.text),parserVersion:'bounded-text-v1'});
   const indexes=Object.fromEntries(fields.map(k=>[k,rows[0].indexOf(mapping.columns[k])]));
   for(let n=1;n<rows.length;n++){
    const cells=rows[n],ref={fileIndex,row:n+1};let code=null;
@@ -74,7 +74,7 @@ export function previewExports({files,mapping,now}={}){
   }
  }
  for(const group of groups.values()){
-  if(new Set(group.map(x=>x.fingerprint)).size>1){for(const x of group)errors.push({...x.ref,code:'SESSION_CONFLICT'});continue;}
+  if(new Set(group.map(x=>x.fingerprint)).size>1){for(const x of group){errors.push({...x.ref,code:'SESSION_CONFLICT'});quarantinedRecords.push({...x.normalized,recordHash:x.fingerprint,provenance:[{...x.ref,fileSha256:x.fileSha256}],currentState:'UNKNOWN',historicalOnly:true});}continue;}
   const first=group[0],r=first.normalized;
   const bindings=(mapping.bindings??[]).filter(b=>b?.accountId===r.accountId&&b.sourceId===r.sourceId);
   let identity='UNVERIFIED',internalRoomId=null;
@@ -88,6 +88,6 @@ export function previewExports({files,mapping,now}={}){
   for(const x of group.slice(1))duplicates.push({...x.ref,code:'EXACT_DUPLICATE',of:first.ref});
  }
  return {schemaVersion:1,mode:'HISTORICAL_IMPORT_PREVIEW',evidenceKind:mapping.evidenceKind,
-  realFormatValidated:false,productionWrite:false,currentState:'UNKNOWN',records,errors,duplicates,fileSummaries,
+  realFormatValidated:false,productionWrite:false,currentState:'UNKNOWN',records,quarantinedRecords,errors,duplicates,fileSummaries,
   counts:{historicalRecords:records.length,errorRows:errors.length,duplicates:duplicates.length,unverifiedIdentities:records.filter(r=>r.identity!=='REVIEWED_MAPPING_INPUT').length}};
 }

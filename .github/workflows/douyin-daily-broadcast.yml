@@ -20,7 +20,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +30,8 @@ jobs:
         run: node --test tests/r320/network-identity-offline.test.mjs tests/r322/*.test.mjs tests/r323/*.test.mjs tests/r324/*.test.mjs tests/r325/*.test.mjs tests/r326/*.test.mjs
       - name: Restore latest completed ledger; fail closed on uncertainty
         id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/restore-douyin-ledger.sh
       - name: Install pinned Playwright Chromium
         if: steps.gate.outcome == 'success' && steps.gate.outputs.skip == 'false'
@@ -42,25 +43,7 @@ jobs:
         env:
           R316_RPA_ONCE: TWO_ACCOUNTS_ONE_PASS
           R319_CORE_CDN_APPROVED_ONCE: TWO_APPROVED_CDNS_JS_CSS_ONLY
-        run: |
-          pass() {  # $1 = label, $2 = target set
-            set +e; R326_TARGET_SET="$2" node probes/r316/douyin-rpa-two-once.mjs; code=$?; set -e
-            test -f out/r316-rpa-public.json || { echo "::error::probe produced no receipt"; exit 1; }
-            mv out/r316-rpa-public.json "out/receipt-$1.json"
-            if [ -d out/r316-private ]; then mv out/r316-private "out/private-$1"; fi
-            node probes/r322/import-receipt.mjs --receipt "out/receipt-$1.json" --state out/ledger/state.json --html out/ledger/index.html --evidence-kind real || { echo "::error::receipt import failed"; exit 1; }
-            return $code
-          }
-          stopped=0
-          pass a "" || stopped=1
-          if [ "$stopped" = 0 ]; then sleep 5; pass b SCORING_B || stopped=1; fi
-          # R3.29: three approved monitor-only accounts that have a registered room (not scoring).
-          if [ "$stopped" = 0 ]; then sleep 5; pass c MONITOR_C || stopped=1; fi
-          if [ "$stopped" = 0 ]; then sleep 5; pass d MONITOR_D || stopped=1; fi
-          if [ "$stopped" = 1 ]; then
-            node -e "require('fs').writeFileSync('out/ledger/cooldown.json',JSON.stringify({stoppedAt:new Date().toISOString()}))"
-            echo "::warning::Douyin access limit or stop condition: this run stopped at once; no live request for the next 24 hours. This is missing sampling, NOT evidence of OFFLINE."
-          fi
+        run: bash scripts/douyin-sample-once.sh
       - name: Daily result (account keys, Beijing dates, statuses and sample times only)
         if: always() && hashFiles('out/ledger/state.json') != ''
         run: |

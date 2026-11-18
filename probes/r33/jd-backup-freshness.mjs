@@ -6,6 +6,18 @@
  */
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
+import {createHash} from 'node:crypto';
+
+// Keep this gate standalone: production sparse-checks out this file alone.
+function verifyHistoryPair(state,summary){
+  if(!state?._historyCommit&&!summary?._historyCommitId)return;
+  const c=state?._historyCommit,raw={...state};delete raw._historyCommit;
+  const digest=x=>createHash('sha256').update(JSON.stringify(x)).digest('hex');
+  if(c?.version!==1||typeof c.id!=='string'||!/^[-a-f0-9]{36}$/.test(c.id)||
+    summary?._historyCommitId!==c.id||c.summary?._historyCommitId!==c.id||
+    digest(raw)!==c.stateSha256||digest(summary)!==c.summarySha256||digest(c.summary)!==c.summarySha256)
+    throw Error('HISTORY_PAIR_MISMATCH');
+}
 
 // Staggered external backup trails the primary by ~2 minutes.
 // A four-minute freshness threshold suppresses duplicates without suppressing 5-minute high-priority samples.
@@ -28,6 +40,7 @@ export function beijingOperatingWindow(date) {
 export function decideJdBackup({now, priorState = null, priorSummary = null} = {}) {
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error('INVALID_NOW');
   if ((priorState === null) !== (priorSummary === null)) throw new Error('INCOMPLETE_ARTIFACT_PAIR');
+  if(priorState!==null)verifyHistoryPair(priorState,priorSummary);
   if (!beijingOperatingWindow(now)) {
     return {should_run:false,reason:'OUTSIDE_BEIJING_OPERATING_WINDOW',elapsed_minutes:null};
   }

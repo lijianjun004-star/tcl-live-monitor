@@ -14,7 +14,7 @@ Latest-success restoration can skip the newer failed-run ledger, including a coo
 
 ## Safe release of a persistent recovery block — NOT authorized or executed
 
-There is deliberately no approval file in this PR. No environment flag/dispatch input clears a block. A future owner-approved PR may add `config/douyin-recovery-approval.json` with schemaVersion=1, reason=ENCRYPTION_FAILURE_ONLY, exact string runId, stateSha256, cooldownSha256 and blockSha256 (null only for absent files), approvedBy, approvalUrl (owner approval comment on this repository's issue/PR), approvedAt, expiresAt. Validity is at most 24 hours. `reviewedRecovery` validates bindings and expiry; it **cannot authenticate human consent**, which must be checked independently during that future PR review.
+There is deliberately no approval file in this PR. No environment flag/dispatch input clears a block. A future owner-approved PR may add `config/douyin-recovery-approval.json` with schemaVersion=1, reason=ENCRYPTION_FAILURE_ONLY, exact string runId, integer runAttempt, stateSha256, cooldownSha256 and blockSha256 (null only for absent files), approvedBy, approvalUrl (owner approval comment on this repository's issue/PR), approvedAt, expiresAt. Validity is at most 24 hours. `reviewedRecovery` validates bindings and expiry; it **cannot authenticate human consent**, which must be checked independently during that future PR review.
 
 1. Stop at the block. Read only sanitized latest-run metadata/ledger/cooldown/block; verify same repository, workflow and main provenance, including failures/cancellations. Never select an older success because it is convenient.
 2. Establish that the only unresolved failure was encryption. If access restriction, cooldown corruption, missing ledger, unexplained cancellation or data loss remains, this narrow receipt is inappropriate: remain blocked and request an explicit recovery design, not live access.
@@ -42,3 +42,7 @@ Independent Claude/Gemini reviewer: check exact diff against base; run commands 
 ## Trigger audit / impact / rollback
 
 All 30 tracked workflows reviewed. For this branch and changed paths, push/PR/pull_request_target matches: **none**. The modified daily workflow remains schedule/manual only, main-only. Results refresh listens for completed collection names on main; this branch starts no such run. No workflow dispatch/rerun, deployment, schedule edit, main merge, permission change, other-repository operation or external-model review was performed. Actual production impact: none until separately approved merge. After release, uncertain restore deliberately blocks sampling. Rollback must preserve cooldown/recovery blocks; do not revert blindly to latest-success restoration.
+
+## 2026-11-18 follow-up
+
+The subsequent defect-repair candidate adds run-attempt binding, strict repository/workflow provenance, local-state protection, cooperative filesystem locking and sampling sentinels. See [the current recovery report](defects-20261118/recovery.md) for this run's measured results and remaining acceptance gaps. Earlier test counts above are historical, not the current run.

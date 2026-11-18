@@ -22,7 +22,6 @@ jobs:
     timeout-minutes: 8
     env:
       TCL_OPS_BASE_URL: ${{ secrets.TCL_OPS_BASE_URL || 'http://101.96.215.251' }}
-      GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -31,33 +30,55 @@ jobs:
         with: { node-version: '22' }
       - name: Offline tests before any source request
         run: node --test tests/r327/*.test.mjs
-      - name: Restore the previous state (latest successful run of this workflow)
-        run: |
-          mkdir -p prev out
-          ID=$(gh run list --workflow jd-fullday-rate.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty' || true)
-          if [ -n "$ID" ] && gh run download "$ID" -n jd-fullday-state -D prev && [ -f prev/state.json ]; then
-            if node --input-type=module -e "import fs from 'node:fs';import {validateState} from './probes/r327/jd-fullday.mjs';validateState(JSON.parse(fs.readFileSync('prev/state.json','utf8')));"; then cp prev/state.json out/previous.json
-            else echo "::warning::previous state failed validation and was not used"; fi
-          fi
-          echo "restored: $([ -f out/previous.json ] && echo yes || echo no)"
+      - name: Restore the latest completed run including failures (no fallback)
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/restore-jd-fullday-state.sh
       - name: One read-only pass over the JD rooms (GET only, no retries)
-        run: node probes/r327/jd-fullday-cli.mjs --previous out/previous.json --state-output out/state.json --report-output out/report.json
+        id: source
+        continue-on-error: true
+        env:
+          JD_PREVIOUS_FILE: ${{ steps.restore.outputs.previous }}
+        run: node probes/r327/jd-fullday-cli.mjs --previous "$JD_PREVIOUS_FILE" --state-output out/state.json --report-output out/report.json
       - name: Report (room ids, categories, dates, minutes and rates only)
+        if: always() && steps.restore.outcome == 'success' && hashFiles('out/report.json') != '' && hashFiles('out/state.json.lock') == '' && hashFiles('out/.jd-history.lock') == ''
         run: |
           node -e "
           const r=require('./out/report.json');const f=x=>x===null||x===undefined?'—':x;const yn=x=>x===true?'是':x===false?'否':'—';
           const rate=x=>x.ratePercent!==null?x.ratePercent+'%':x.rangePercent?x.routineAssumedRangePercent[0]+'%–'+x.routineAssumedRangePercent[1]+'%（估算：缺 8 点快照，按 7–8 点开播、0–1 点下播推算；不依赖该假设的范围是 '+x.rangePercent[0]+'%–'+x.rangePercent[1]+'%）':x.soFarMinutes!==null?'当天进行中（全天已有 '+x.soFarMinutes+' 分钟）':'—';
           const rows=r.rows.map(x=>'| '+[x.date,'jd-'+x.roomId+' '+(x.category||''),f(x.inWindowMinutes),rate(x),yn(x.liveByWindowStart),f(x.lastMinuteBeijing),yn(x.reachedWindowEnd)].join(' | ')+' |');
-          const md=['## 京东满播率（考核时段 08:00–24:00，北京时间）','','按运营平台分钟数据估算；采集中断时会少算。','','| 日期 | 直播间 | 时段内分钟（满 960） | 满播率 | 8 点已在播 | 当天最后一分钟 | 播到 24 点 |','|---|---|---|---|---|---|---|',...rows,''].join('\n');
+          const md=['## 京东历史采集分钟覆盖估算（08:00–24:00，北京时间）','','非正式满播率或考核结果；缺样不代表停播，历史观测不代表当前状态。','本轮来源：'+r.sourceStatus+'；最近有效来源：'+(r.lastSuccessfulSourceAt||'UNKNOWN'),'来源失败时保留的历史估算可能已过期。','','| 日期 | 直播间 | 估算时段内分钟（满 960） | 覆盖估算 | 8 点信号 | 当天最后一分钟 | 末段信号 |','|---|---|---|---|---|---|---|',...rows,''].join('\n');
           require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY,md);
           for(const x of r.rows) console.log('R327_JD_DAY '+JSON.stringify(x));"
       - name: Save rolling state and report (7 days)
-        if: always() && hashFiles('out/state.json') != ''
+        id: save
+        if: always() && (hashFiles('out/state.json') != '' || hashFiles('out/state.json.lock') != '' || hashFiles('out/.jd-history.lock') != '' || hashFiles('out/recovery-block.json') != '')
         uses: actions/upload-artifact@v4
         with:
           name: jd-fullday-state
           path: |
             out/state.json
             out/report.json
+            out/state.json.lock
+            out/.jd-history.lock
+            out/recovery-block.json
           retention-days: 7
           if-no-files-found: error
+          include-hidden-files: true
+      - name: Final source and persistence gate
+        if: always()
+        env:
+          RESTORE_OUTCOME: ${{ steps.restore.outcome }}
+          SOURCE_OUTCOME: ${{ steps.source.outcome }}
+          SAVE_OUTCOME: ${{ steps.save.outcome }}
+        run: |
+          set -euo pipefail
+          test "$RESTORE_OUTCOME" = success
+          test "$SOURCE_OUTCOME" = success
+          test "$SAVE_OUTCOME" = success
+          test -f out/state.json
+          test -f out/report.json
+          test ! -e out/state.json.lock
+          test ! -e out/.jd-history.lock
+          test ! -e out/recovery-block.json

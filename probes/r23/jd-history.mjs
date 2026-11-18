@@ -5,6 +5,7 @@
  * OFFLINE, an interruption count, or a formal opening-rate denominator.
  * Caller is responsible for obtaining ONE authorized read-only report.
  */
+import {historyData,validateHistoryCommit} from '../lib/history-files.mjs';
 const STATES=new Set(['LIVE','UNKNOWN']);
 const ISO=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/;
 const ROOM=/^\d{1,16}$/;
@@ -21,6 +22,7 @@ const empty=()=>({schema_version:23,platform:'jd',version:1,rooms:{},checks:[],e
 
 export function validateState(input){
  if(input==null)return empty();
+ validateHistoryCommit(input);
  if(input.schema_version!==23||input.platform!=='jd'||input.version!==1||
     typeof input.rooms!=='object'||input.rooms===null||Array.isArray(input.rooms)||
     !Array.isArray(input.checks)||!Array.isArray(input.events)||
@@ -50,7 +52,7 @@ function trimRows(rows,cutoff,limit){
  return rows.filter(x=>Date.parse(x.at)>=cutoff).slice(-limit);
 }
 export function updateJdHistory(previous,report,{now,run_id,maxAgeMs=15*60_000}={}){
- const state=structuredClone(validateState(previous));
+ const state=historyData(validateState(previous));
  if(!timestamp(now)||typeof run_id!=='string'||!/^[-\w.:]{1,120}$/.test(run_id))
    throw Error('BAD_RUN_ID_OR_TIME');
  if(!Number.isSafeInteger(maxAgeMs)||maxAgeMs<=0)throw Error('BAD_FRESHNESS_LIMIT');

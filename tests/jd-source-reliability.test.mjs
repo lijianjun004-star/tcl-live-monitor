@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {pathToFileURL} from 'node:url';
 import {sourceError} from '../probes/lib/source-error.mjs';
 import {networkReader,scanJdSource,SOURCE_ROUTES,mergePreviousSnapshot} from '../probes/lib/tcl-jd-all.mjs';
 import {acceptJdOpsScan} from '../probes/r21/accept-jd-ops-scan.mjs';
@@ -78,7 +79,7 @@ test('CLI injected failure emits safe report and nonzero; corrupt prior stops be
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'jd-cli-offline-'));
  try {
   fs.writeFileSync(dir+'/mock.mjs',`globalThis.fetch=async()=>{throw Object.assign(new Error(${JSON.stringify(secret)}),{cause:{code:'UND_ERR_CONNECT_TIMEOUT'}})};`);
-  const run=args=>spawnSync(process.execPath,['--import',dir+'/mock.mjs','probes/tcl-jd-all.mjs',...args],{encoding:'utf8',env:{...process.env,TCL_OPS_BASE_URL:'https://synthetic.invalid'}});
+  const run=args=>spawnSync(process.execPath,['--import',pathToFileURL(dir+'/mock.mjs').href,'probes/tcl-jd-all.mjs',...args],{encoding:'utf8',env:{...process.env,TCL_OPS_BASE_URL:'https://synthetic.invalid'}});
   let r=run(['--output',dir+'/safe.json']);assert.equal(r.status,2);assert.doesNotMatch(r.stderr+r.stdout,/SYNTHETIC_SECRET|SYNTHETIC_TOKEN/);
   assert.equal(JSON.parse(fs.readFileSync(dir+'/safe.json')).errors[0].code,'CONNECT_TIMEOUT');
   fs.writeFileSync(dir+'/bad.json','{}');r=run(['--previous',dir+'/bad.json','--output',dir+'/new.json']);

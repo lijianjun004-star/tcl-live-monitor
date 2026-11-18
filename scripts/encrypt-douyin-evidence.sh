@@ -2,6 +2,14 @@
 # Only a complete, authenticated encrypted bundle is eligible for upload.
 set -euo pipefail
 umask 077
+# Serialize the complete read/encrypt/publish/cleanup lifecycle. A crash leaves a
+# stale lock requiring review; another process must never delete its evidence.
+[ ! -L out ] || { echo '::error::PRIVATE_EVIDENCE_ENCRYPTION_FAILED'; exit 1; }
+mkdir -p out
+if ! mkdir out/.encrypt-lock 2>/dev/null; then
+  echo '::error::PRIVATE_EVIDENCE_ENCRYPTION_FAILED'
+  exit 1
+fi
 shopt -s nullglob
 private=(out/private-*)
 [ ! -e out/r316-private ] || private+=(out/r316-private)
@@ -15,6 +23,7 @@ cleanup() {
     rm -rf out/enc
     echo '::error::PRIVATE_EVIDENCE_ENCRYPTION_FAILED'
   fi
+  rmdir out/.encrypt-lock
   exit "$code"
 }
 trap cleanup EXIT
@@ -30,7 +39,7 @@ names=(); for p in "${private[@]}"; do names+=("${p#out/}"); done
 # No filenames, page content, password, or crypto diagnostics in logs.
 tar czf "$work/p.tgz" -C out -- "${names[@]}" 2>/dev/null
 # OpenSSL -pass file: is line-oriented; use 64 hex characters (256 random bits).
-openssl rand -hex 32 > "$work/k.bin" 2>/dev/null
+openssl rand -hex 32 2>/dev/null | tr -d '\r' > "$work/k.bin"
 openssl enc -aes-256-cbc -pbkdf2 -salt -in "$work/p.tgz" -out "$work/bundle/p.enc" -pass "file:$work/k.bin" 2>/dev/null
 openssl pkeyutl -encrypt -pubin -inkey probes/keys/analysis-pub.pem -pkeyopt rsa_padding_mode:oaep -in "$work/k.bin" -out "$work/bundle/k.enc" 2>/dev/null
 node scripts/evidence-integrity.mjs write "$work/k.bin" "$work/bundle" 2>/dev/null

@@ -20,7 +20,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +30,8 @@ jobs:
         run: node --test tests/r329/*.test.mjs tests/r322/*.test.mjs tests/r325/*.test.mjs
       - name: Restore latest completed ledger and verify recovery safety
         id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/restore-tmall-ledger.sh
       - name: Install pinned Playwright Chromium
         if: steps.gate.outcome == 'success' && steps.gate.outputs.skip == 'false'

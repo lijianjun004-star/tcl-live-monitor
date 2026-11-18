@@ -4,6 +4,8 @@ set -euo pipefail
 
 report() {
   local status="$1" reason="$2" http="${3:-0}" dispatched=false
+  # curl's no-response 000 and malformed status must still produce valid JSON.
+  if [[ "$http" =~ ^[0-9]{1,3}$ ]]; then http=$((10#$http)); else http=0; fi
   [ "$status" = DISPATCHED ] && dispatched=true
   printf 'R334_RESULTS_REFRESH {"dispatched":%s,"status":"%s","reason":"%s","httpStatus":%s}\n' "$dispatched" "$status" "$reason" "$http"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
@@ -14,9 +16,12 @@ report() {
       printf '### 结果站刷新请求\n\n状态：**%s**；原因：`%s`。\n\n' "$status" "$reason"
       if [ "$status" = DISPATCHED ]; then
         printf 'GitHub 已接受一次发布请求；**尚未确认发布完成**。请查看 [结果站发布记录](https://github.com/lijianjun004-star/tcl-live-results/actions/workflows/publish.yml)，以对应运行的部署结果为准。\n'
+      elif [ "$reason" = REQUEST_FAILED ]; then
+        printf '刷新请求未收到可靠结果，是否已被接受未知；本次不会自动重试。请检查关联的发布记录，不能把超时当作已完成或确定未派发。\n'
       else
         printf '本次没有成功派发刷新；不能把本运行的完成状态当作结果站已更新。已有采集结果和其他发布入口不受此状态判定影响。\n'
       fi
+      printf '\n数据截至时间以各平台快照的有效观测时间为准；旧快照不能当作本轮新数据，缺样或 UNKNOWN 不代表停播。\n'
     } >> "$GITHUB_STEP_SUMMARY"
   fi
 }

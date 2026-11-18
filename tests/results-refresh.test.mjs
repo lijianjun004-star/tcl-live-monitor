@@ -66,7 +66,7 @@ test('401 and 403 remain non-fatal but cannot report a successful dispatch', t =
 });
 
 test('unexpected HTTP responses fail without pretending a deployment completed', t => {
-  for (const status of ['200','404','429','500']) {
+  for (const status of ['200','404','429','500','000','001']) {
     const r=run(t,{status});
     assert.equal(r.status,1);
     assert.equal(r.result.status,'FAILED');
@@ -79,6 +79,8 @@ test('network timeout fails once and records REQUEST_FAILED', t => {
   assert.equal(r.status,1);
   assert.equal(r.result.reason,'REQUEST_FAILED');
   assert.equal(r.result.dispatched,false);
+  assert.match(r.text,/是否已被接受未知/);
+  assert.match(r.text,/旧快照不能当作本轮新数据/);
 });
 
 test('numeric run IDs correlate one dispatch with the publisher without changing its target', t => {
