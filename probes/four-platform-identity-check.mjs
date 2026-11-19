@@ -106,4 +106,14 @@ for (const t of cfg.douyinVideoIds) {
 }
 await browser.close();
 await fs.writeFile('identity-check-report.json', JSON.stringify({ at: new Date().toISOString(), blocked: [...blocked], results: out }, null, 1));
+const jdWall = out.find(row => row.platform.startsWith('jd-') && row.result === 'WALLED');
+if (jdWall && process.env.GITHUB_STEP_SUMMARY) {
+  const reasons = {
+    HUMAN_VERIFICATION_REQUIRED: '京东要求人机验证',
+    LOGIN_REQUIRED: '京东要求登录',
+    ACCESS_RESTRICTED: '京东访问受限',
+  };
+  await fs.appendFile(process.env.GITHUB_STEP_SUMMARY,
+    `### 京东身份核验已暂停\n\n${reasons[jdWall.reason]}。受阻店铺的直播状态未知。\n`);
+}
 console.log('blocked=' + JSON.stringify([...blocked]));

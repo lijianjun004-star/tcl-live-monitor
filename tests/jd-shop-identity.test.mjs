@@ -20,13 +20,15 @@ function render({ url = storeUrl, title = 'TCL官方旗舰店 - 京东', text = 
   return JSON.parse(JSON.stringify(output));
 }
 
-test('known login host, login title, and visible challenge stop the shop check', () => {
-  for (const page of [
-    { url: 'https://plogin.m.jd.com/login/login', title: '' },
-    { title: '京东登录注册' },
-    { text: '请按照图中轨迹绘制' },
+test('known login host, visible challenge, and access restriction have distinct reasons', () => {
+  const login = { url: 'https://plogin.m.jd.com/login/login', title: '京东登录注册' };
+  for (const [page, reason] of [
+    [login, 'LOGIN_REQUIRED'],
+    [{ title: '京东登录注册', text: '获取验证码' }, 'LOGIN_REQUIRED'],
+    [{ ...login, text: '请按照图中轨迹绘制' }, 'HUMAN_VERIFICATION_REQUIRED'],
+    [{ url: 'https://cfe.m.jd.com/risk_handler' }, 'ACCESS_RESTRICTED'],
   ]) {
-    assert.deepEqual(render(page), { result: 'WALLED' });
+    assert.deepEqual(render(page), { result: 'WALLED', reason });
   }
 });
 
@@ -50,7 +52,11 @@ test('only visible links on the matching store are recorded as candidate IDs', (
 });
 
 test('a wall stops both JD channels and all remaining JD stores', async () => {
-  for (const response of [{ result: 'WALLED', http: 200 }, { result: 'PAGE_READ', http: 429 }]) {
+  for (const [response, reason] of [
+    [{ result: 'WALLED', http: 200, reason: 'HUMAN_VERIFICATION_REQUIRED' }, 'HUMAN_VERIFICATION_REQUIRED'],
+    [{ result: 'PAGE_READ', http: 401 }, 'LOGIN_REQUIRED'],
+    [{ result: 'PAGE_READ', http: 429 }, 'ACCESS_RESTRICTED'],
+  ]) {
     const rows = [];
     const calls = [];
     const blocked = await checkJdShops([target, { id: '123456', claimedName: '第二家店' }], async (_channel, url) => {
@@ -60,6 +66,7 @@ test('a wall stops both JD channels and all remaining JD stores', async () => {
     assert.equal(blocked, true);
     assert.deepEqual(calls, ['https://mall.jd.com/index-721631.html']);
     assert.deepEqual(rows.map(row => row.result), ['WALLED', ...Array(3).fill('SKIPPED_PLATFORM_WALLED')]);
+    assert.equal(rows[0].reason, reason);
   }
 });
 

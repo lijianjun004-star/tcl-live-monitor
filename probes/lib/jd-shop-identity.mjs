@@ -3,12 +3,18 @@
 export function readJdShopPage(target) {
   const { protocol, host, pathname, searchParams } = new URL(location.href);
   const title = document.title.trim().replace(/\s+/g, ' ');
-  const body = document.body?.innerText ?? '';
-  const wall = ['plogin.m.jd.com', 'passport.jd.com', 'cfe.m.jd.com'].includes(host) ||
-    /京东登录注册|京东登录|京东验证|验证码|安全验证|captcha|滑块|风控|请登录|登录后|扫码登录|risk/i.test(title) ||
-    /(?:captcha|risk)/i.test(pathname) ||
-    /验证码中间页|安全验证|请按照图中轨迹绘制|滑块验证|扫码登录后观看|请先登录后观看|captcha/i.test(body.slice(0, 1500));
-  if (wall) return { result: 'WALLED' };
+  const body = (document.body?.innerText ?? '').slice(0, 1500);
+  if (/京东验证|安全验证|验证码中间页|请按照图中轨迹绘制|滑块验证|captcha/i.test(`${title} ${body}`) ||
+      /验证码|滑块/i.test(title) || /captcha/i.test(pathname)) {
+    return { result: 'WALLED', reason: 'HUMAN_VERIFICATION_REQUIRED' };
+  }
+  if (['plogin.m.jd.com', 'passport.jd.com'].includes(host) ||
+      /京东登录|请登录|登录后|扫码登录/i.test(title) || /(?:扫码登录后|请先登录后)观看/.test(body)) {
+    return { result: 'WALLED', reason: 'LOGIN_REQUIRED' };
+  }
+  if (host === 'cfe.m.jd.com' || /风控|risk/i.test(`${title} ${pathname}`)) {
+    return { result: 'WALLED', reason: 'ACCESS_RESTRICTED' };
+  }
 
   const correctRoute = protocol === 'https:' && (
     (host === 'mall.jd.com' && pathname === '/index-' + target.id + '.html') ||
@@ -56,7 +62,8 @@ export async function checkJdShops(targets, read, emit) {
       const page = await read(channel, url, target);
       if (page.result === 'WALLED' || [401, 403, 429].includes(page.http)) {
         blocked = true;
-        emit({ ...base, result: 'WALLED', http: page.http });
+        const reason = page.reason ?? (page.http === 401 ? 'LOGIN_REQUIRED' : 'ACCESS_RESTRICTED');
+        emit({ ...base, result: 'WALLED', reason, http: page.http });
       } else if (page.error || !Number.isInteger(page.http) || page.http < 200 || page.http >= 300) {
         emit({ ...base, result: 'NAV_ERROR', http: page.http ?? null });
       } else {
