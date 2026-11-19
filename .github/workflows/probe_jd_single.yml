@@ -12,6 +12,7 @@ on:
       - experiment/jd-single-room-anonymous-20261120
     paths:
       - .github/workflows/probe_jd_single.yml
+      - src/single_room_probe.py
 
 permissions:
   contents: read

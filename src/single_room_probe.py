@@ -27,11 +27,22 @@ GATE_TEXT = (
 MEDIA_SUFFIX = (".flv", ".m3u8", ".mp4", ".ts", ".m4s", ".aac", ".fmp4")
 STATIC_SUFFIX = (".js", ".css", ".png", ".jpg", ".jpeg", ".webp", ".woff2", ".svg")
 SOURCE_PATH = re.compile(r"^/(?:[A-Za-z][A-Za-z0-9_.-]{0,23}/)*[A-Za-z][A-Za-z0-9_.-]{0,23}$")
+SAFE_HOST = re.compile(r"^[a-z0-9-]{1,31}(?:\.[a-z0-9-]{1,31}){0,8}$")
+FUNCTION_ID = re.compile(r"^[A-Za-z0-9_.-]{1,48}$")
+SAFE_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]{0,40}$")
+SENSITIVE_KEY = re.compile(
+    r"token|cookie|authorization|secret|password|phone|email|openid|unionid|\d{5,}",
+    re.IGNORECASE,
+)
+DIAGNOSTIC_CODE = re.compile(r"^-?\d{1,8}$|^[A-Z][A-Z0-9_-]{0,23}$")
 JSONP = re.compile(r"^[A-Za-z_$][\w$.]{0,99}\s*\(([\s\S]*)\)\s*;?$")
 ROOM_FRAGMENT = re.compile(r"^/([1-9][0-9]{4,17})(?:/live)?(?:\?.*)?$")
 MAX_BODY = 384 * 1024
 MAX_RESPONSES = 40
 MAX_FRAMES = 40
+MAX_TARGET_REQUESTS = 40
+MAX_FUNCTION_IDS = 80
+TARGET_FUNCTION = "getImmediatePlayToM"
 
 
 def canonical_room(url: str) -> tuple[str, str]:
@@ -50,12 +61,16 @@ def timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def redact_path(path: str) -> str:
+    path = unquote(path) or "/"
+    if path == "/" or (SOURCE_PATH.fullmatch(path) and not re.search(r"\d{5,}", path)):
+        return path
+    return "/[redacted]"
+
+
 def source_label(url: str) -> str:
     parts = urlsplit(url)
-    path = unquote(parts.path)
-    if path != "/" and (not SOURCE_PATH.fullmatch(path) or re.search(r"\d{5,}", path)):
-        path = "/[redacted]"
-    return f"{parts.scheme}://{parts.hostname}{path or '/'}"
+    return f"{parts.scheme}://{parts.hostname}{redact_path(parts.path)}"
 
 
 def eligible(url: str) -> bool:
@@ -81,12 +96,116 @@ def decode_json(text: str):
         return None
 
 
+def form_function_ids(value: str) -> list:
+    try:
+        return parse_qs(value, max_num_fields=120).get("functionId", [])
+    except ValueError:
+        return []
+
+
+def request_function_ids(request) -> set[str]:
+    parts = urlsplit(request.url)
+    if (
+        parts.scheme != "https" or parts.netloc != "api.m.jd.com"
+        or (parts.path or "/") not in {"/", "/api"}
+        or request.method not in {"GET", "POST"}
+    ):
+        return set()
+    values = form_function_ids(parts.query)
+    if request.method == "POST":
+        try:
+            body = request.post_data or ""
+        except (PlaywrightError, UnicodeError):
+            body = ""
+        if len(body) <= 64 * 1024:
+            decoded = decode_json(body)
+            if isinstance(decoded, dict):
+                values.append(decoded.get("functionId"))
+            elif not body.lstrip().startswith(("{", "[")):
+                values.extend(form_function_ids(body))
+    return {value for value in values if isinstance(value, str) and FUNCTION_ID.fullmatch(value)}
+
+
+def safe_code(value):
+    if value is None:
+        return None
+    # Codes may be strings in the public envelope; free-form messages never leave memory.
+    return value if type(value) in (int, str) and DIAGNOSTIC_CODE.fullmatch(str(value)) else "[redacted]"
+
+
+def diagnose_target(http_status: int, payload, room_id: str) -> tuple[str, dict]:
+    envelope = payload if isinstance(payload, dict) else {}
+    codes = [envelope.get(key) for key in ("code", "subCode")]
+    has_error_code = any(type(code) in (int, str) and str(code) != "0" for code in codes)
+    if not 200 <= http_status < 300 or has_error_code:
+        return "error", {"http_status": http_status, "code": safe_code(envelope.get("code")),
+                         "subCode": safe_code(envelope.get("subCode"))}
+    data = envelope.get("data")
+    if (
+        not all(type(code) in (int, str) and str(code) == "0" for code in codes)
+        or not isinstance(data, dict) or type(data.get("liveId")) not in (int, str)
+        or not re.fullmatch(r"[1-9][0-9]{4,17}", str(data["liveId"]))
+        or type(data.get("status")) not in (int, str)
+    ):
+        return "schema_mismatch", {"http_status": http_status, "top_level_keys": sorted(
+            key for key in envelope if SAFE_KEY.fullmatch(key) and not SENSITIVE_KEY.search(key)
+        )[:16]}
+    if str(data["liveId"]) != room_id:
+        return "room_mismatch", {}
+    return "matched", {}
+
+
+class ProbeDiagnostics:
+    """Keep bounded, non-identifying metadata for requests observed in this browser."""
+
+    def __init__(self) -> None:
+        self.function_ids: set[str] = set()
+        self.targets: dict = {}
+        self.truncated = False
+
+    def register(self, request) -> bool:
+        if request in self.targets:
+            return True
+        function_ids = request_function_ids(request)
+        for function_id in sorted(function_ids - self.function_ids):
+            if len(self.function_ids) >= MAX_FUNCTION_IDS:
+                self.truncated = True
+                break
+            self.function_ids.add(function_id)
+        if TARGET_FUNCTION not in function_ids:
+            return False
+        if len(self.targets) >= MAX_TARGET_REQUESTS:
+            self.truncated = True
+            return False
+        self.targets[request] = None
+        return True
+
+    def finish(self, request, outcome: tuple[str, dict]) -> None:
+        if request in self.targets and self.targets[request] is None:
+            self.targets[request] = outcome
+
+    def report(self) -> dict:
+        outcomes = [outcome or ("unclassified", {}) for outcome in self.targets.values()]
+        return {
+            "observed_function_ids": sorted(self.function_ids),
+            "target_request_seen": len(self.targets),
+            "target_error_count": sum(kind == "error" for kind, _ in outcomes),
+            "target_schema_mismatch_count": sum(kind == "schema_mismatch" for kind, _ in outcomes),
+            "target_room_mismatch_count": sum(kind == "room_mismatch" for kind, _ in outcomes),
+            "target_matched_count": sum(kind == "matched" for kind, _ in outcomes),
+            "target_unclassified_count": sum(kind == "unclassified" for kind, _ in outcomes),
+            "target_error_samples": [detail for kind, detail in outcomes if kind == "error"][:10],
+            "target_schema_samples": [detail for kind, detail in outcomes if kind == "schema_mismatch"][:10],
+            "truncated": self.truncated,
+        }
+
+
 def public_detail(url: str, payload, room_id: str) -> dict | None:
     """Only the documented JD page detail's response can establish a state."""
     parts = urlsplit(url)
     if (
         parts.scheme != "https" or parts.netloc != "api.m.jd.com" or parts.path != "/api"
-        or parse_qs(parts.query).get("functionId") != ["getImmediatePlayToM"]
+        or form_function_ids(parts.query) != [TARGET_FUNCTION]
         or not isinstance(payload, dict)
         or str(payload.get("code")) != "0" or str(payload.get("subCode")) != "0"
     ):
@@ -140,6 +259,12 @@ def initial_result(room_id: str) -> dict:
         "generated_at": timestamp(),
         "room_id": room_id,
         "page_loaded": False,
+        "final_host": None,
+        "final_path_redacted": None,
+        "fragment_matched": False,
+        "body_text_len": None,
+        "page_gate_reason": None,
+        "diagnostics": ProbeDiagnostics().report(),
         "login_or_captcha_blocked": False,
         "live_status": "unknown",
         "room_id_matched": False,
@@ -154,21 +279,38 @@ def initial_result(room_id: str) -> dict:
     }
 
 
-async def gate_state(page, room_id: str) -> tuple[bool, bool]:
-    parts = urlsplit(page.url)
-    if parts.hostname in LOGIN_HOSTS:
-        return False, True
-    match = ROOM_FRAGMENT.fullmatch(parts.fragment)
-    if parts.hostname != "lives.jd.com" or not match or match.group(1) != room_id:
-        return False, False
+async def gate_state(page, room_id: str) -> dict:
+    title = ""
+    visible = None
     try:
-        title = (await page.title())[:300]
-        visible = (await page.locator("body").inner_text(timeout=1500))[:9000]
+        title = await asyncio.wait_for(page.title(), timeout=1.5)
+    except (PlaywrightError, TimeoutError):
+        pass
+    try:
+        visible = await page.locator("body").inner_text(timeout=1500)
     except PlaywrightError:
-        return False, False
-    if any(word in title or word in visible for word in GATE_TEXT):
-        return False, True
-    return bool(visible.strip()), False
+        pass
+    parts = urlsplit(page.url)
+    host = parts.hostname
+    match = ROOM_FRAGMENT.fullmatch(parts.fragment)
+    fragment_matched = bool(match and match.group(1) == room_id)
+    if host in LOGIN_HOSTS:
+        reason = "login_host"
+    elif any(word in title or word in (visible or "") for word in GATE_TEXT):
+        reason = "gate_text_hit"
+    elif parts.netloc != "lives.jd.com" or parts.path not in {"", "/"} or not fragment_matched:
+        reason = "url_or_fragment_changed"
+    elif not visible or not visible.strip():
+        reason = "empty_body"
+    else:
+        reason = "ok"
+    return {
+        "final_host": host if host and SAFE_HOST.fullmatch(host) else None,
+        "final_path_redacted": redact_path(parts.path) if parts.scheme in {"http", "https"} else None,
+        "fragment_matched": fragment_matched,
+        "body_text_len": len(visible) if visible is not None else None,
+        "page_gate_reason": reason,
+    }
 
 
 async def snapshot(page, output: Path) -> None:
@@ -186,12 +328,15 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
     sources = set()
     records = []
     tasks = []
+    diagnostics = ProbeDiagnostics()
     response_count = 0
     frame_count = 0
     network_blocked = False
     accepting = True
 
-    async def inspect_response(response, seq: int) -> None:
+    async def inspect_response(response, seq: int, target: bool, eligible_probe: bool) -> None:
+        payload = None
+        read_body = False
         try:
             length = response.headers.get("content-length", "")
             if re.fullmatch(r"\d{1,12}", length) and int(length) > MAX_BODY:
@@ -199,8 +344,9 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
             body = await asyncio.wait_for(response.body(), timeout=3)
             if len(body) > MAX_BODY:
                 return
+            read_body = True
             payload = decode_json(body.decode("utf-8"))
-            if not isinstance(payload, (dict, list)):
+            if not eligible_probe or not isinstance(payload, (dict, list)):
                 return
             label = source_label(response.url)
             sources.add(label)
@@ -209,32 +355,38 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
                 records.append((seq, match))
         except (ValueError, TimeoutError, PlaywrightError):
             return
+        finally:
+            if target and (read_body or not 200 <= response.status < 300):
+                diagnostics.finish(response.request, diagnose_target(response.status, payload, room_id))
+
+    def on_request(request) -> None:
+        if accepting:
+            diagnostics.register(request)
 
     def on_response(response) -> None:
         nonlocal response_count, network_blocked
         if not accepting or not eligible(response.url):
             return
+        target = diagnostics.register(response.request)
         parts = urlsplit(response.url)
         relevant = (
             parts.hostname == "api.m.jd.com" and parts.path == "/api"
-            and parse_qs(parts.query).get("functionId") == ["getImmediatePlayToM"]
+            and form_function_ids(parts.query) == [TARGET_FUNCTION]
         )
         if response.status in {401, 403, 429} and (
             relevant or response.request.is_navigation_request()
         ):
             network_blocked = True
-            return
-        if not 200 <= response.status < 300:
-            return
         mime = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
-        if (
-            response_count >= MAX_RESPONSES
-            or (mime not in {"application/json", "text/javascript", "application/javascript"}
-                and not mime.endswith("+json"))
-        ):
-            return
-        response_count += 1
-        tasks.append(asyncio.create_task(inspect_response(response, response_count)))
+        eligible_probe = (
+            200 <= response.status < 300 and response_count < MAX_RESPONSES
+            and (mime in {"application/json", "text/javascript", "application/javascript"}
+                 or mime.endswith("+json"))
+        )
+        if eligible_probe:
+            response_count += 1
+        if target or eligible_probe:
+            tasks.append(asyncio.create_task(inspect_response(response, response_count, target, eligible_probe)))
 
     def on_socket(socket) -> None:
         if not eligible(socket.url):
@@ -261,6 +413,7 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
         try:
             context = await browser.new_context(viewport={"width": 1280, "height": 820})
             page = await context.new_page()
+            page.on("request", on_request)
             page.on("response", on_response)
             page.on("websocket", on_socket)
             await page.route("**/*", media_filter)
@@ -269,19 +422,22 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
             except PlaywrightError:
                 result["reasons"].append("navigation_timeout_or_error")
             visible_gate = False
+            gate_reasons = {"login_host", "gate_text_hit"}
             for _ in range(7):
-                _, visible_gate = await gate_state(page, room_id)
+                state = await gate_state(page, room_id)
+                visible_gate = state["page_gate_reason"] in gate_reasons
                 if visible_gate or network_blocked:
                     break
                 await asyncio.sleep(1)
             accepting = False
             if tasks:
                 await asyncio.gather(*tasks)
-            loaded, final_gate = await gate_state(page, room_id)
-            blocked = visible_gate or final_gate or network_blocked
+            state = await gate_state(page, room_id)
+            result.update(state)
+            blocked = visible_gate or state["page_gate_reason"] in gate_reasons or network_blocked
             ordered = [record for _, record in sorted(records, key=lambda pair: pair[0])]
             final_evidence(result, ordered, blocked)
-            result["page_loaded"] = loaded and not result["login_or_captcha_blocked"]
+            result["page_loaded"] = state["page_gate_reason"] == "ok" and not result["login_or_captcha_blocked"]
             result["evidence_endpoints"] = sorted(sources)[:15]
             if result["login_or_captcha_blocked"]:
                 result["reasons"].append("login_or_access_gate")
@@ -289,12 +445,13 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
             elif result["page_loaded"] and result["room_id_matched"] and result["live_status"] != "unknown":
                 try:
                     await snapshot(page, output / "snapshot.jpg")
-                    still_loaded, later_gate = await gate_state(page, room_id)
-                    if later_gate or not still_loaded:
+                    state = await gate_state(page, room_id)
+                    result.update(state)
+                    if state["page_gate_reason"] != "ok":
                         (output / "snapshot.jpg").unlink(missing_ok=True)
                         result["snapshot_status"] = "omitted_page_changed"
                         result["page_loaded"] = False
-                        result["login_or_captcha_blocked"] = later_gate
+                        result["login_or_captcha_blocked"] = state["page_gate_reason"] in gate_reasons
                         result["live_status"] = "unknown"
                         for key in ("online_count", "item_title", "item_price"):
                             result[key] = None
@@ -313,6 +470,7 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
                 if not task.done():
                     task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+            result["diagnostics"] = diagnostics.report()
             await browser.close()
 
 
@@ -356,7 +514,78 @@ def self_test() -> None:
     assert public_detail(endpoint, payload, room)["state"] == "replay"
     payload["data"]["secret"] = 1
     assert public_detail(endpoint, payload, room) == {"restricted": True}
-    print("Passed local JSON/JSONP, anonymous scope, identity, state and gate checks.")
+
+    class Request:
+        def __init__(self, url, method="GET", post_data=None):
+            self.url, self.method, self.post_data = url, method, post_data
+
+    root_post = Request("https://api.m.jd.com/", "POST", 'functionId=getImmediatePlayToM&a=redact-me')
+    json_post = Request("https://api.m.jd.com/api", "POST", '{"functionId":"metadata.test","other":"private"}')
+    no_response = Request(endpoint)
+    assert request_function_ids(root_post) == {TARGET_FUNCTION}
+    assert request_function_ids(json_post) == {"metadata.test"}
+    assert not request_function_ids(Request(endpoint, "OPTIONS"))
+    assert not request_function_ids(Request("https://api.m.jd.com/api?functionId=not%20valid"))
+    assert not request_function_ids(Request("https://example.com/api?functionId=getImmediatePlayToM"))
+    diag = ProbeDiagnostics()
+    assert diag.report()["target_request_seen"] == 0
+    assert diag.register(root_post) and diag.register(root_post)
+    assert diag.register(no_response) and not diag.register(json_post)
+    diag.finish(root_post, diagnose_target(403, {"code": 7, "subCode": "ACCESS_DENIED"}, room))
+    diag.finish(root_post, diagnose_target(200, {}, room))
+    bad_schema = Request(endpoint)
+    diag.register(bad_schema)
+    diag.finish(bad_schema, diagnose_target(200, {"code": 0, "subCode": 0, "accessToken": "private"}, room))
+    wrong_room = Request(endpoint)
+    diag.register(wrong_room)
+    diag.finish(wrong_room, diagnose_target(200, {
+        "code": 0, "subCode": 0, "data": {"liveId": "49620441", "status": 1}
+    }, room))
+    present = Request(endpoint)
+    diag.register(present)
+    diag.finish(present, diagnose_target(200, payload, room))
+    report = diag.report()
+    assert report["observed_function_ids"] == [TARGET_FUNCTION, "metadata.test"]
+    assert report["target_request_seen"] == 5
+    assert all(report[f"target_{key}_count"] == 1 for key in (
+        "error", "schema_mismatch", "room_mismatch", "matched", "unclassified"
+    ))
+    assert report["target_error_samples"] == [{"http_status": 403, "code": 7, "subCode": "ACCESS_DENIED"}]
+    assert report["target_schema_samples"] == [{"http_status": 200, "top_level_keys": ["code", "subCode"]}]
+    assert diagnose_target(200, {"code": 0, "subCode": 10}, room)[0] == "error"
+    assert public_detail(root_post.url, payload, room) is None
+
+    class GatePage:
+        def __init__(self, url, body, visible_title=""):
+            self.url, self.body, self.visible_title = url, body, visible_title
+
+        async def title(self):
+            return self.visible_title
+
+        def locator(self, _):
+            return self
+
+        async def inner_text(self, **_):
+            return self.body
+
+    async def verify_gates() -> None:
+        login = await gate_state(GatePage("https://plogin.m.jd.com/login/login?a=secret", "欢迎"), room)
+        assert login == {"final_host": "plogin.m.jd.com", "final_path_redacted": "/login/login",
+                         "fragment_matched": False, "body_text_len": 2, "page_gate_reason": "login_host"}
+        altered = await gate_state(GatePage("https://lives.jd.com/12345678/#/49620441", "请按照图中轨迹绘制"), room)
+        assert altered["page_gate_reason"] == "gate_text_hit"
+        assert altered["final_path_redacted"] == "/[redacted]"
+        for url, body, expected in (
+            ("https://lives.jd.com/#/49620441", "常规页面", "url_or_fragment_changed"),
+            (DEFAULT_URL, "  ", "empty_body"),
+            (DEFAULT_URL, "常规页面", "ok"),
+        ):
+            state = await gate_state(GatePage(url, body), room)
+            assert state["page_gate_reason"] == expected
+            assert state["body_text_len"] == len(body)
+
+    asyncio.run(verify_gates())
+    print("Passed original evidence gates, URL metadata, GET/POST and independent request outcomes.")
 
 
 def main() -> int:
