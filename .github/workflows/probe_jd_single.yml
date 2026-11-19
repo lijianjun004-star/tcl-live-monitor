@@ -1,0 +1,54 @@
+name: JD single room anonymous probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      room_url:
+        description: Public JD Live PC room URL
+        required: false
+        type: string
+  push:
+    branches:
+      - experiment/jd-single-room-anonymous-20261120
+    paths:
+      - .github/workflows/probe_jd_single.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jd-single-room-anonymous-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      ROOM_URL: ${{ inputs.room_url || 'https://lives.jd.com/#/49620440' }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Validate evidence rules offline
+        run: python src/single_room_probe.py --self-test
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Observe one public room
+        run: python src/single_room_probe.py
+      - name: Upload safe evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jd-single-room-anonymous
+          path: |
+            output/result.json
+            output/snapshot.jpg
+          if-no-files-found: warn
+          retention-days: 7
