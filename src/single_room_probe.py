@@ -42,7 +42,9 @@ MAX_RESPONSES = 40
 MAX_FRAMES = 40
 MAX_TARGET_REQUESTS = 40
 MAX_FUNCTION_IDS = 80
+MAX_TARGET_SAMPLES = 5
 TARGET_FUNCTION = "getImmediatePlayToM"
+KNOWN_FRAGMENT_SEGMENTS = {"detail", "home", "index", "live", "live-room", "player", "replay", "room"}
 
 
 def canonical_room(url: str) -> tuple[str, str]:
@@ -71,6 +73,25 @@ def redact_path(path: str) -> str:
 def source_label(url: str) -> str:
     parts = urlsplit(url)
     return f"{parts.scheme}://{parts.hostname}{redact_path(parts.path)}"
+
+
+def redacted_fragment_shape(fragment: str) -> str:
+    route = unquote(fragment).split("?", 1)[0].split("#", 1)[0]
+    if not route:
+        return ""
+    segments = []
+    for segment in route.split("/", 9)[:9]:
+        if not segment or segment in KNOWN_FRAGMENT_SEGMENTS:
+            segments.append(segment)
+            continue
+        # Unknown segment values can contain tokens, so retain only route shape.
+        if re.fullmatch(r"[0-9]{1,4}", segment):
+            segments.append(segment)
+            continue
+        chunks = re.split(r"([0-9]{5,})", segment[:160], maxsplit=4)
+        segments.append("".join("<id>" if index % 2 else "<segment>"
+                                for index, chunk in enumerate(chunks) if chunk))
+    return "/".join(segments)
 
 
 def eligible(url: str) -> bool:
@@ -103,15 +124,17 @@ def form_function_ids(value: str) -> list:
         return []
 
 
-def request_function_ids(request) -> set[str]:
+def request_function_ids(request) -> tuple[set[str], str | None]:
     parts = urlsplit(request.url)
     if (
         parts.scheme != "https" or parts.netloc != "api.m.jd.com"
         or (parts.path or "/") not in {"/", "/api"}
         or request.method not in {"GET", "POST"}
     ):
-        return set()
-    values = form_function_ids(parts.query)
+        return set(), None
+    query_ids = form_function_ids(parts.query)
+    post_ids = []
+    post_source = None
     if request.method == "POST":
         try:
             body = request.post_data or ""
@@ -120,10 +143,28 @@ def request_function_ids(request) -> set[str]:
         if len(body) <= 64 * 1024:
             decoded = decode_json(body)
             if isinstance(decoded, dict):
-                values.append(decoded.get("functionId"))
+                post_ids = [decoded.get("functionId")]
+                post_source = "post_json"
             elif not body.lstrip().startswith(("{", "[")):
-                values.extend(form_function_ids(body))
-    return {value for value in values if isinstance(value, str) and FUNCTION_ID.fullmatch(value)}
+                post_ids = form_function_ids(body)
+                post_source = "post_form"
+    in_query = TARGET_FUNCTION in query_ids
+    in_post = TARGET_FUNCTION in post_ids
+    source = "both" if in_query and in_post else "query" if in_query else post_source if in_post else None
+    valid = {value for value in query_ids + post_ids if isinstance(value, str) and FUNCTION_ID.fullmatch(value)}
+    return valid, source
+
+
+def mime_category(mime: str) -> str:
+    if not mime:
+        return "missing"
+    if mime == "application/json" or mime.endswith("+json"):
+        return "json"
+    if mime in {"text/javascript", "application/javascript"}:
+        return "javascript"
+    if mime == "text/plain":
+        return "text_plain"
+    return "other"
 
 
 def safe_code(value):
@@ -161,12 +202,14 @@ class ProbeDiagnostics:
     def __init__(self) -> None:
         self.function_ids: set[str] = set()
         self.targets: dict = {}
+        self.sources: dict = {}
+        self.samples: dict = {}
         self.truncated = False
 
     def register(self, request) -> bool:
         if request in self.targets:
             return True
-        function_ids = request_function_ids(request)
+        function_ids, source = request_function_ids(request)
         for function_id in sorted(function_ids - self.function_ids):
             if len(self.function_ids) >= MAX_FUNCTION_IDS:
                 self.truncated = True
@@ -178,7 +221,41 @@ class ProbeDiagnostics:
             self.truncated = True
             return False
         self.targets[request] = None
+        self.sources[request] = source
         return True
+
+    def sample_response(self, response, content: str, eligible_probe: bool, arrival_count: int) -> None:
+        request = response.request
+        if request in self.samples or len(self.samples) >= MAX_TARGET_SAMPLES:
+            return
+        parts = urlsplit(request.url)
+        category = mime_category(content)
+        reason = None
+        if 200 <= response.status < 300:
+            ids = form_function_ids(parts.query)
+            if category not in {"json", "javascript"}:
+                reason = "mime_not_allowed"
+            elif arrival_count >= MAX_RESPONSES:
+                reason = "max_responses_reached"
+            elif parts.path != "/api":
+                reason = "path_not_api"
+            elif len(ids) > 1:
+                reason = "duplicate_query_function_id"
+            elif ids != [TARGET_FUNCTION]:
+                reason = "function_id_not_in_query"
+        self.samples[request] = {
+            "method": request.method,
+            "safe_path": parts.path or "/",
+            "function_id_source": self.sources[request],
+            "mime_category": category,
+            "eligible_probe": eligible_probe,
+            "response_count_at_arrival": arrival_count,
+            "rejected_reason": reason,
+        }
+
+    def accepted_by_original_rule(self, request) -> None:
+        if request in self.samples:
+            self.samples[request]["rejected_reason"] = "accepted"
 
     def finish(self, request, outcome: tuple[str, dict]) -> None:
         if request in self.targets and self.targets[request] is None:
@@ -196,6 +273,7 @@ class ProbeDiagnostics:
             "target_unclassified_count": sum(kind == "unclassified" for kind, _ in outcomes),
             "target_error_samples": [detail for kind, detail in outcomes if kind == "error"][:10],
             "target_schema_samples": [detail for kind, detail in outcomes if kind == "schema_mismatch"][:10],
+            "target_request_samples": list(self.samples.values()),
             "truncated": self.truncated,
         }
 
@@ -262,6 +340,7 @@ def initial_result(room_id: str) -> dict:
         "final_host": None,
         "final_path_redacted": None,
         "fragment_matched": False,
+        "final_fragment_shape": None,
         "body_text_len": None,
         "page_gate_reason": None,
         "diagnostics": ProbeDiagnostics().report(),
@@ -308,6 +387,7 @@ async def gate_state(page, room_id: str) -> dict:
         "final_host": host if host and SAFE_HOST.fullmatch(host) else None,
         "final_path_redacted": redact_path(parts.path) if parts.scheme in {"http", "https"} else None,
         "fragment_matched": fragment_matched,
+        "final_fragment_shape": redacted_fragment_shape(parts.fragment),
         "body_text_len": len(visible) if visible is not None else None,
         "page_gate_reason": reason,
     }
@@ -353,6 +433,8 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
             match = public_detail(response.url, payload, room_id)
             if match is not None:
                 records.append((seq, match))
+                if target and "state" in match:
+                    diagnostics.accepted_by_original_rule(response.request)
         except (ValueError, TimeoutError, PlaywrightError):
             return
         finally:
@@ -383,6 +465,8 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
             and (mime in {"application/json", "text/javascript", "application/javascript"}
                  or mime.endswith("+json"))
         )
+        if target:
+            diagnostics.sample_response(response, mime, eligible_probe, response_count)
         if eligible_probe:
             response_count += 1
         if target or eligible_probe:
@@ -418,7 +502,7 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
             page.on("websocket", on_socket)
             await page.route("**/*", media_filter)
             try:
-                await page.goto(url, wait_until="domcontentloaded", timeout=16000)
+                await page.goto(url, wait_until="domcontentloaded", timeout=25000)
             except PlaywrightError:
                 result["reasons"].append("navigation_timeout_or_error")
             visible_gate = False
@@ -522,11 +606,14 @@ def self_test() -> None:
     root_post = Request("https://api.m.jd.com/", "POST", 'functionId=getImmediatePlayToM&a=redact-me')
     json_post = Request("https://api.m.jd.com/api", "POST", '{"functionId":"metadata.test","other":"private"}')
     no_response = Request(endpoint)
-    assert request_function_ids(root_post) == {TARGET_FUNCTION}
-    assert request_function_ids(json_post) == {"metadata.test"}
-    assert not request_function_ids(Request(endpoint, "OPTIONS"))
-    assert not request_function_ids(Request("https://api.m.jd.com/api?functionId=not%20valid"))
-    assert not request_function_ids(Request("https://example.com/api?functionId=getImmediatePlayToM"))
+    assert request_function_ids(root_post) == ({TARGET_FUNCTION}, "post_form")
+    assert request_function_ids(json_post) == ({"metadata.test"}, None)
+    assert request_function_ids(Request(endpoint, "POST", '{"functionId":"getImmediatePlayToM"}')) == (
+        {TARGET_FUNCTION}, "both"
+    )
+    assert request_function_ids(Request(endpoint, "OPTIONS")) == (set(), None)
+    assert request_function_ids(Request("https://api.m.jd.com/api?functionId=not%20valid")) == (set(), None)
+    assert request_function_ids(Request("https://example.com/api?functionId=getImmediatePlayToM")) == (set(), None)
     diag = ProbeDiagnostics()
     assert diag.report()["target_request_seen"] == 0
     assert diag.register(root_post) and diag.register(root_post)
@@ -555,6 +642,42 @@ def self_test() -> None:
     assert diagnose_target(200, {"code": 0, "subCode": 10}, room)[0] == "error"
     assert public_detail(root_post.url, payload, room) is None
 
+    class Response:
+        def __init__(self, request, status=200):
+            self.request, self.status = request, status
+
+    post_api = Request("https://api.m.jd.com/api", "POST", '{"functionId":"getImmediatePlayToM"}')
+    repeated = Request(endpoint + "&functionId=getImmediatePlayToM")
+    sample_cases = (
+        (root_post, "application/json", True, 1, "path_not_api"),
+        (post_api, "application/problem+json", True, 2, "function_id_not_in_query"),
+        (repeated, "application/javascript", True, 3, "duplicate_query_function_id"),
+        (Request(endpoint), "text/plain", False, 4, "mime_not_allowed"),
+        (Request(endpoint), "application/json", False, MAX_RESPONSES, "max_responses_reached"),
+    )
+    diag = ProbeDiagnostics()
+    for req, mime, usable, count, reason in sample_cases:
+        assert diag.register(req)
+        diag.sample_response(Response(req), mime, usable, count)
+        sample = diag.report()["target_request_samples"][-1]
+        assert sample["rejected_reason"] == reason
+        assert sample["eligible_probe"] == usable and sample["response_count_at_arrival"] == count
+    assert diag.report()["target_request_samples"][1]["function_id_source"] == "post_json"
+    assert diag.report()["target_request_samples"][1]["mime_category"] == "json"
+    extra = Request(endpoint)
+    assert diag.register(extra)
+    diag.sample_response(Response(extra), "application/json", True, 1)
+    assert len(diag.report()["target_request_samples"]) == MAX_TARGET_SAMPLES
+    another = ProbeDiagnostics()
+    assert another.register(extra)
+    another.sample_response(Response(extra), "application/json", True, 0)
+    assert another.report()["target_request_samples"][0]["rejected_reason"] is None
+    another.accepted_by_original_rule(extra)
+    assert another.report()["target_request_samples"][0]["rejected_reason"] == "accepted"
+    assert redacted_fragment_shape("/49620440/live?private=hide-me") == "/<id>/live"
+    assert redacted_fragment_shape("/room/opaque-123456-token?foo=hide-me") == "/room/<segment><id><segment>"
+    assert redacted_fragment_shape("") == ""
+
     class GatePage:
         def __init__(self, url, body, visible_title=""):
             self.url, self.body, self.visible_title = url, body, visible_title
@@ -571,7 +694,8 @@ def self_test() -> None:
     async def verify_gates() -> None:
         login = await gate_state(GatePage("https://plogin.m.jd.com/login/login?a=secret", "欢迎"), room)
         assert login == {"final_host": "plogin.m.jd.com", "final_path_redacted": "/login/login",
-                         "fragment_matched": False, "body_text_len": 2, "page_gate_reason": "login_host"}
+                         "fragment_matched": False, "final_fragment_shape": "",
+                         "body_text_len": 2, "page_gate_reason": "login_host"}
         altered = await gate_state(GatePage("https://lives.jd.com/12345678/#/49620441", "请按照图中轨迹绘制"), room)
         assert altered["page_gate_reason"] == "gate_text_hit"
         assert altered["final_path_redacted"] == "/[redacted]"
