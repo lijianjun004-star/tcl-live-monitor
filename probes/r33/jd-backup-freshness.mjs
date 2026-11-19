@@ -59,7 +59,15 @@ export function decideJdBackup({now, priorState = null, priorSummary = null} = {
   const age=now.getTime()-Date.parse(iso);
   if(age < -60000) throw new Error('FUTURE_PREVIOUS_SCAN');
   if(age < BACKUP_FRESHNESS_MS) {
-    return {should_run:false,reason:'RECENT_SUCCESSFUL_MAIN_SCAN',elapsed_minutes:Math.max(0,Math.floor(age/60000))};
+    // A recent all-unknown scan still consumes its slot, but proves no live signal.
+    const allRoomsUnknown = Number.isSafeInteger(priorSummary.room_count) &&
+      priorSummary.room_count > 0 && priorSummary.observed_live === 0 &&
+      priorSummary.current_unknown === priorSummary.room_count;
+    return {
+      should_run: false,
+      reason: allRoomsUnknown ? 'RECENT_MAIN_SCAN_ALL_UNKNOWN' : 'RECENT_SUCCESSFUL_MAIN_SCAN',
+      elapsed_minutes: Math.max(0, Math.floor(age / 60000)),
+    };
   }
   return {should_run:true,reason:'MAIN_SCAN_STALE',elapsed_minutes:Math.floor(age/60000)};
 }
