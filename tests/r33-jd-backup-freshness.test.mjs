@@ -32,6 +32,17 @@ test('verified recent MAIN scan suppresses duplicate backup request',()=>{
  assert.equal(r.reason,'RECENT_SUCCESSFUL_MAIN_SCAN');
  assert.equal(r.elapsed_minutes,3);
 });
+test('recent accepted scan with all rooms unknown suppresses a duplicate without implying observed live',()=>{
+ const recent=state('2026-11-11T08:35:00.000Z');
+ const allUnknown={...summary,room_count:7,observed_live:0,current_unknown:7};
+ assert.deepEqual(decide(recent,allUnknown),{
+  should_run:false,reason:'RECENT_MAIN_SCAN_ALL_UNKNOWN',elapsed_minutes:2
+ });
+ assert.equal(decide(recent,{...allUnknown,observed_live:1,current_unknown:6}).reason,'RECENT_SUCCESSFUL_MAIN_SCAN');
+ assert.equal(decide(recent,{...allUnknown,current_unknown:6}).reason,'RECENT_SUCCESSFUL_MAIN_SCAN');
+ assert.equal(decide(recent,{...allUnknown,room_count:0,current_unknown:0}).reason,'RECENT_SUCCESSFUL_MAIN_SCAN');
+ assert.equal(decide(state(),allUnknown).reason,'MAIN_SCAN_STALE');
+});
 test('stale MAIN scan authorizes a backup attempt, not verified historical live duration',()=>{
  const r=decide(state('2026-11-11T08:27:00.000Z'),summary);
  assert.equal(r.should_run,true);
