@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { LIVE_PAGE, LIVE_DETAIL_HOST, LIVE_DETAIL_PATH, parseJSONOrJSONP } from './lib/tmall.mjs';
 import { CHALLENGE_RE } from './lib/douyin.mjs';
+import { checkJdShops, readJdShopPage } from './lib/jd-shop-identity.mjs';
 
 const cfg = JSON.parse(await fs.readFile('config/identity-check-targets.json', 'utf8'));
 const WALL_RE = /(验证码|安全验证|滑块|captcha|请登录|登录后|扫码登录|passport\.jd\.com|login\.taobao\.com|login\.m\.taobao\.com|risk|风控)/i;
@@ -20,16 +21,20 @@ const mobile = await browser.newContext({ viewport: { width: 390, height: 844 },
   userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36' });
 const desktop = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'zh-CN' });
 
-async function pageInfo(ctx, url, waitMs = 6000) {
+async function pageInfo(ctx, url, waitMs = 6000, jdTarget) {
   const page = await ctx.newPage();
   try {
     const r = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(waitMs);
+    if (jdTarget) {
+      const evidence = await page.evaluate(readJdShopPage, jdTarget);
+      return { ...evidence, http: r?.status() ?? null };
+    }
     const s = await page.evaluate(() => ({ title: document.title, text: (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 1500),
       userLinks: [...document.querySelectorAll('a[href*="/user/MS4wLjABAAAA"]')].map(a => ({ href: a.href, text: (a.innerText || '').replace(/\s+/g, ' ').slice(0, 60) })).slice(0, 8) }));
     let finalHost = null; try { finalHost = new URL(page.url()).host; } catch {}
     return { http: r?.status() ?? null, finalHost, finalPath: (() => { try { return new URL(page.url()).pathname.slice(0, 60); } catch { return null; } })(), ...s };
-  } catch (e) { return { error: String(e?.message || e).slice(0, 120) }; }
+  } catch (e) { return jdTarget ? { error: true } : { error: String(e?.message || e).slice(0, 120) }; }
   finally { await page.close().catch(() => {}); }
 }
 const walled = i => !!(i.error ? false : (WALL_RE.test(`${i.title} ${i.finalHost} ${i.finalPath}`) || CHALLENGE_RE.test(`${i.title} ${i.text?.slice(0, 300)}`)));
@@ -72,16 +77,13 @@ for (const t of cfg.taobaoShopIds) {
   const wall = walled(i); if (wall) blocked.add('taobao-shop');
   emit({ platform: 'taobao', id: t.id, claimedName: t.claimedName, result: i.error ? 'NAV_ERROR' : wall ? 'WALLED' : 'PAGE_READ', http: i.http, finalHost: i.finalHost, title: clean(i.title), head: clean(i.text?.slice(0, 160)) });
 }
-// 3) JD shop pages (desktop mall page, then mobile shop page).
-for (const t of cfg.jdShopIds) {
-  if (!ID_RE.test(t.id)) { emit({ platform: 'jd', id: t.id, result: 'INVALID_ID' }); continue; }
-  for (const [label, ctx, url] of [['mall', desktop, `https://mall.jd.com/index-${t.id}.html`], ['m', mobile, `https://shop.m.jd.com/?shopId=${t.id}`]]) {
-    if (blocked.has('jd-' + label)) { emit({ platform: 'jd-' + label, id: t.id, result: 'SKIPPED_PLATFORM_WALLED' }); continue; }
-    const i = await pageInfo(ctx, url);
-    const wall = walled(i); if (wall) blocked.add('jd-' + label);
-    emit({ platform: 'jd-' + label, id: t.id, claimedName: t.claimedName, result: i.error ? 'NAV_ERROR' : wall ? 'WALLED' : 'PAGE_READ', http: i.http, finalHost: i.finalHost, finalPath: i.finalPath, title: clean(i.title), head: clean(i.text?.slice(0, 160)) });
-  }
+// 3) JD public shop pages. Shared sessions are unverified historical clues.
+for (const id of cfg.jdSharedSessionIds ?? []) {
+  if (ID_RE.test(id)) emit({ platform: 'jd-session', id, result: 'USER_SHARED_SAMPLE', verifiedShopId: null, live: null });
 }
+const jdBlocked = await checkJdShops(cfg.jdShopIds, (channel, url, target) =>
+  pageInfo(channel === 'mall' ? desktop : mobile, url, 6000, target), emit);
+if (jdBlocked) blocked.add('jd');
 // 4) Douyin public video page -> author profile link (secUid) -> profile 抖音号.
 for (const t of cfg.douyinVideoIds) {
   if (!/^\d{15,22}$/.test(t.id)) { emit({ platform: 'douyin', id: t.id, result: 'INVALID_ID' }); continue; }
@@ -104,4 +106,14 @@ for (const t of cfg.douyinVideoIds) {
 }
 await browser.close();
 await fs.writeFile('identity-check-report.json', JSON.stringify({ at: new Date().toISOString(), blocked: [...blocked], results: out }, null, 1));
+const jdWall = out.find(row => row.platform.startsWith('jd-') && row.result === 'WALLED');
+if (jdWall && process.env.GITHUB_STEP_SUMMARY) {
+  const reasons = {
+    HUMAN_VERIFICATION_REQUIRED: '京东要求人机验证',
+    LOGIN_REQUIRED: '京东要求登录',
+    ACCESS_RESTRICTED: '京东访问受限',
+  };
+  await fs.appendFile(process.env.GITHUB_STEP_SUMMARY,
+    `### 京东身份核验已暂停\n\n${reasons[jdWall.reason]}。受阻店铺的直播状态未知。\n`);
+}
 console.log('blocked=' + JSON.stringify([...blocked]));

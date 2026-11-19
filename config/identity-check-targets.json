@@ -21,11 +21,13 @@
     {"id": "448870934", "claimedName": "TCL 淘宝企业店样本 #2", "source": "Gemini R0.9.1"}
   ],
   "jdShopIds": [
+    {"id": "721631", "claimedName": "TCL官方旗舰店", "source": "京东店铺公示页，2026-11-19 核对"},
     {"id": "407681", "claimedName": "TCL京东自营官方旗舰店", "source": "Gemini R0.9.1"},
     {"id": "1000467565", "claimedName": "FFALCON雷鸟京东自营官方旗舰店", "source": "Gemini R0.9.1"},
     {"id": "1000194977", "claimedName": "TCL灯饰照明官方京东自营旗舰店", "source": "Gemini R0.9.1 配置"},
     {"id": "100019477", "claimedName": "TCL灯饰照明官方京东自营旗舰店", "source": "Gemini R0.9.1 报告（与配置不一致）"}
   ],
+  "jdSharedSessionIds": ["49620440"],
   "douyinVideoIds": [
     {"id": "7481122026606955834", "claimedAuthor": "雷鸟电视品牌官方直营 / 抖音号 wlhnumber1", "source": "Gemini R0.9.1"},
     {"id": "7617755992205212186", "claimedAuthor": "雷鸟官方旗舰店壁纸电视 / 抖音号 87826221679", "source": "Gemini R0.9.1"},
