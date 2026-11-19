@@ -7,6 +7,15 @@ on:
         description: Public JD Live PC room URL
         required: false
         type: string
+      record_history:
+        description: Append accepted observations to state_history.jsonl
+        required: false
+        type: boolean
+        default: false
+      history_run_id:
+        description: Earlier run on this branch whose history should be continued
+        required: false
+        type: string
   push:
     branches:
       - experiment/jd-single-room-anonymous-20261120
@@ -16,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: jd-single-room-anonymous-${{ github.ref }}
@@ -27,6 +37,7 @@ jobs:
     timeout-minutes: 8
     env:
       ROOM_URL: ${{ inputs.room_url || 'https://lives.jd.com/#/49620440' }}
+      RECORD_HISTORY: ${{ github.event_name == 'push' || inputs.record_history }}
       PYTHONUNBUFFERED: '1'
     steps:
       - uses: actions/checkout@v7
@@ -41,8 +52,35 @@ jobs:
         run: python src/single_room_probe.py --self-test
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
+      - name: Restore chosen observation history
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_history && inputs.history_run_id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HISTORY_RUN_ID: ${{ inputs.history_run_id }}
+        run: |
+          [[ "$HISTORY_RUN_ID" =~ ^[0-9]{1,20}$ && "$HISTORY_RUN_ID" != "$GITHUB_RUN_ID" ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$HISTORY_RUN_ID" |
+            jq -e --arg branch "$GITHUB_REF_NAME" --arg repo "$GITHUB_REPOSITORY" '
+              .head_branch == $branch and .head_repository.full_name == $repo
+              and .path == ".github/workflows/probe_jd_single.yml"
+              and .status == "completed" and .conclusion == "success"
+            ' >/dev/null
+          history_dir="$(mktemp -d "$RUNNER_TEMP/jd-history.XXXXXX")"
+          gh run download "$HISTORY_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name jd-single-room-anonymous --dir "$history_dir"
+          test -f "$history_dir/state_history.jsonl"
+          cp "$history_dir/state_history.jsonl" "$RUNNER_TEMP/jd-state-history.jsonl"
       - name: Observe one public room
-        run: python src/single_room_probe.py
+        run: |
+          if [[ "$RECORD_HISTORY" == "true" ]]; then
+            history_file="$RUNNER_TEMP/jd-state-history.jsonl"
+            python src/single_room_probe.py --state-history "$history_file"
+            if [[ -f "$history_file" ]]; then
+              cp "$history_file" output/state_history.jsonl
+            fi
+          else
+            python src/single_room_probe.py
+          fi
       - name: Upload safe evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -51,5 +89,6 @@ jobs:
           path: |
             output/result.json
             output/snapshot.jpg
+            output/state_history.jsonl
           if-no-files-found: warn
           retention-days: 7

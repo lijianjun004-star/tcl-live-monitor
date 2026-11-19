@@ -9,7 +9,7 @@ import json
 import math
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -31,7 +31,8 @@ SAFE_HOST = re.compile(r"^[a-z0-9-]{1,31}(?:\.[a-z0-9-]{1,31}){0,8}$")
 FUNCTION_ID = re.compile(r"^[A-Za-z0-9_.-]{1,48}$")
 SAFE_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]{0,40}$")
 SENSITIVE_KEY = re.compile(
-    r"token|cookie|authorization|secret|password|phone|email|openid|unionid|\d{5,}",
+    r"token|cookie|authorization|secret|password|phone|mobile|email|openid|unionid|"
+    r"session|credential|user.?id|user.?name|nick|\d{5,}",
     re.IGNORECASE,
 )
 DIAGNOSTIC_CODE = re.compile(r"^-?\d{1,8}$|^[A-Z][A-Z0-9_-]{0,23}$")
@@ -43,7 +44,10 @@ MAX_FRAMES = 40
 MAX_TARGET_REQUESTS = 40
 MAX_FUNCTION_IDS = 80
 MAX_TARGET_SAMPLES = 5
+MAX_LIVE_DETAIL_RESPONSES = 8
 TARGET_FUNCTION = "getImmediatePlayToM"
+LIVE_DETAIL_FUNCTION = "liveDetailToM"
+APP_PROMPT_TITLE = re.compile(r"^快来下载京东\s*APP$", re.IGNORECASE)
 KNOWN_FRAGMENT_SEGMENTS = {"detail", "home", "index", "live", "live-room", "player", "replay", "room"}
 
 
@@ -189,7 +193,7 @@ def strict_function_ids(value: str) -> list[str] | None:
         return None
 
 
-def detail_request_rejection(request) -> str | None:
+def detail_request_rejection(request, target_function: str = TARGET_FUNCTION) -> str | None:
     """Admit exactly one target identity on the official HTTPS detail endpoint."""
     parts = urlsplit(request.url)
     if parts.scheme != "https" or parts.netloc != "api.m.jd.com" or parts.path != "/api":
@@ -200,7 +204,7 @@ def detail_request_rejection(request) -> str | None:
     if len(query_ids) > 1:
         return "duplicate_query_function_id"
     if request.method == "GET":
-        return None if query_ids == [TARGET_FUNCTION] else "function_id_not_in_query"
+        return None if query_ids == [target_function] else "function_id_not_in_query"
     if request.method != "POST":
         return "method_not_allowed"
     form_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
@@ -219,7 +223,7 @@ def detail_request_rejection(request) -> str | None:
         return "invalid_post_form"
     if len(post_ids) > 1:
         return "duplicate_post_function_id"
-    if any(ids and ids != [TARGET_FUNCTION] for ids in (query_ids, post_ids)):
+    if any(ids and ids != [target_function] for ids in (query_ids, post_ids)):
         return "function_id_conflict"
     return None if query_ids or post_ids else "function_id_missing"
 
@@ -252,6 +256,19 @@ def diagnose_target(http_status: int, payload, room_id: str) -> tuple[str, dict]
     return "matched", {}
 
 
+def live_detail_key_observation(payload, room_id: str) -> tuple[str, list[str]]:
+    if not isinstance(payload, dict):
+        return "schema_mismatch", []
+    if str(payload.get("code")) != "0" or str(payload.get("subCode")) != "0":
+        return "envelope_not_accepted", []
+    data = payload.get("data")
+    if not isinstance(data, dict) or str(data.get("liveId")) != room_id:
+        return "room_not_matched", []
+    if data.get("secret") is not None and str(data["secret"]) != "0":
+        return "restricted", []
+    return "accepted", safe_member_names(data)[:40]
+
+
 class ProbeDiagnostics:
     """Keep bounded, non-identifying metadata for requests observed in this browser."""
 
@@ -261,6 +278,8 @@ class ProbeDiagnostics:
         self.sources: dict = {}
         self.samples: dict = {}
         self.detail_keys: set[str] = set()
+        self.live_detail_keys: set[str] = set()
+        self.live_detail_outcomes: set[str] = set()
         self.truncated = False
 
     def register(self, request) -> bool:
@@ -328,6 +347,8 @@ class ProbeDiagnostics:
             "target_schema_samples": [detail for kind, detail in outcomes if kind == "schema_mismatch"][:10],
             "target_request_samples": list(self.samples.values()),
             "detail_data_keys": sorted(self.detail_keys)[:40],
+            "live_detail_data_keys": sorted(self.live_detail_keys)[:40],
+            "live_detail_outcomes": sorted(self.live_detail_outcomes),
             "truncated": self.truncated,
         }
 
@@ -384,6 +405,162 @@ def final_evidence(result: dict, records: list[dict], blocked: bool) -> None:
     # Its nowTime is a server clock, so both event times stay null.
 
 
+HISTORY_LIMIT_BYTES = 1024 * 1024
+HISTORY_LIMIT_RECORDS = 2_000
+OBSERVED_TIME_FIELDS = (
+    "observed_live_since", "observed_last_live_at", "observed_ended_at", "observed_window_seconds",
+)
+HISTORY_FIELDS = {
+    "room_id", "generated_at", "live_status", "page_loaded",
+    "room_id_matched", "login_or_captcha_blocked",
+}
+
+
+def verified_history_observation(value: object) -> tuple[str, datetime, str] | None:
+    if not isinstance(value, dict):
+        return None
+    room = value.get("room_id")
+    generated = value.get("generated_at")
+    status = value.get("live_status")
+    if (
+        not isinstance(room, str) or not re.fullmatch(r"[1-9][0-9]{4,17}", room)
+        or not isinstance(generated, str) or len(generated) > 40
+        or not isinstance(status, str) or status not in {"live", "offline", "replay"}
+        or value.get("page_loaded") is not True or value.get("room_id_matched") is not True
+        or value.get("login_or_captcha_blocked") is not False
+    ):
+        return None
+    try:
+        when = datetime.fromisoformat(generated)
+    except ValueError:
+        return None
+    if when.utcoffset() != timedelta(0):
+        return None
+    return room, when, status
+
+
+def history_line(observation: tuple[str, datetime, str]) -> bytes:
+    room, when, status = observation
+    return (json.dumps({
+        "room_id": room, "generated_at": when.isoformat(), "live_status": status,
+        "page_loaded": True, "room_id_matched": True, "login_or_captcha_blocked": False,
+    }, separators=(",", ":")) + "\n").encode("utf-8")
+
+
+def append_state_history(path: Path, result: dict) -> None:
+    """Append verified evidence and derive observation times for this room only."""
+    result.update(dict.fromkeys(OBSERVED_TIME_FIELDS))
+    observation = verified_history_observation(result)
+    if observation is None and not path.exists():
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    guard = path.with_name(path.name + ".lock")
+    temporary = path.with_name(path.name + ".tmp")
+    guard.touch(exist_ok=False)
+    try:
+        raw = b""
+        if path.exists():
+            with path.open("rb") as history:
+                raw = history.read(HISTORY_LIMIT_BYTES + 1)
+        lines = raw.splitlines()
+        if len(raw) > HISTORY_LIMIT_BYTES or len(lines) > HISTORY_LIMIT_RECORDS or (raw and not raw.endswith(b"\n")):
+            raise ValueError("State history is over its limit or incomplete")
+        previous_observations = []
+        for line in lines:
+            try:
+                row = json.loads(line)
+            except (ValueError, RecursionError) as error:
+                raise ValueError("State history contains an invalid JSONL record") from error
+            previous = verified_history_observation(row)
+            if previous is None or set(row) != HISTORY_FIELDS:
+                raise ValueError("State history contains an unexpected record")
+            previous_observations.append(previous)
+        appended = False
+        if observation is not None:
+            room, when, status = observation
+            since = last_live = last_seen = None
+            for previous in previous_observations:
+                if previous[0] != room or (last_seen and previous[1] <= last_seen):
+                    continue
+                _, last_seen, previous_status = previous
+                if previous_status == "live":
+                    since = since or last_seen
+                    last_live = last_seen
+                else:
+                    since = last_live = None
+            if not last_seen or when > last_seen:
+                previous_observations.append(observation)
+                appended = True
+        canonical = b"".join(history_line(row) for row in previous_observations)
+        if len(previous_observations) > HISTORY_LIMIT_RECORDS or len(canonical) > HISTORY_LIMIT_BYTES:
+            raise ValueError("State history is full")
+        if canonical != raw:
+            temporary.write_bytes(canonical)
+            temporary.replace(path)
+        if not appended:
+            return
+        if status == "live":
+            result["observed_live_since"] = (since or when).isoformat()
+            result["observed_last_live_at"] = when.isoformat()
+        elif since and last_live:
+            result["observed_live_since"] = since.isoformat()
+            result["observed_last_live_at"] = last_live.isoformat()
+            result["observed_ended_at"] = when.isoformat()
+            result["observed_window_seconds"] = (when - last_live).total_seconds()
+    finally:
+        temporary.unlink(missing_ok=True)
+        guard.unlink()
+
+
+def self_test_history() -> None:
+    from tempfile import TemporaryDirectory
+
+    def item(minute: int, status: str, room: str = "49620440", **overrides) -> dict:
+        return {
+            "room_id": room, "generated_at": f"2026-11-20T02:{minute:02d}:00+00:00",
+            "page_loaded": True, "room_id_matched": True, "login_or_captcha_blocked": False,
+            "start_time": None, "end_time": None, "live_status": status, **overrides,
+        }
+
+    with TemporaryDirectory() as temporary:
+        history = Path(temporary) / "state_history.jsonl"
+        first, last = item(10, "live"), item(12, "live")
+        for obs in (first, item(11, "unknown"), item(11, "offline", room_id_matched=False),
+                    item(13, "replay", "49620441"), last, item(11, "offline"), item(12, "replay")):
+            append_state_history(history, obs)
+        end = item(15, "replay")
+        append_state_history(history, end)
+        assert end["observed_live_since"] == first["generated_at"]
+        assert end["observed_last_live_at"] == last["generated_at"]
+        assert end["observed_ended_at"] == end["generated_at"]
+        assert end["observed_window_seconds"] == 180
+        assert end["start_time"] is None and end["end_time"] is None
+        repeated = item(16, "replay")
+        append_state_history(history, repeated)
+        assert not any(repeated[field] is not None for field in OBSERVED_TIME_FIELDS)
+        append_state_history(history, end)
+        assert end["observed_ended_at"] is None
+        restarted = item(17, "live")
+        append_state_history(history, restarted)
+        finish = item(18, "offline")
+        append_state_history(history, finish)
+        assert finish["observed_live_since"] == restarted["generated_at"]
+        assert finish["observed_ended_at"] == finish["generated_at"]
+        rows = [json.loads(line) for line in history.read_text().splitlines()]
+        assert len(rows) == 7 and all("start_time" not in row and "end_time" not in row for row in rows)
+        prior = history.read_bytes()
+        append_state_history(history, item(19, "unknown"))
+        assert history.read_bytes() == prior
+        invalid = Path(temporary) / "invalid.jsonl"
+        invalid.write_text(json.dumps({**rows[0], "not_an_evidence_field": "private"})+"\n")
+        try:
+            append_state_history(invalid, item(20, "unknown"))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Unverified imported history was accepted")
+
+
 def initial_result(room_id: str) -> dict:
     return {
         "generated_at": timestamp(),
@@ -407,7 +584,9 @@ def initial_result(room_id: str) -> dict:
         "item_price": None,
         "evidence_endpoints": [],
         "snapshot_status": "not_taken",
+        "app_prompt_cleanup": "not_attempted",
         "reasons": [],
+        **dict.fromkeys(OBSERVED_TIME_FIELDS),
     }
 
 
@@ -461,17 +640,36 @@ async def snapshot(page, output: Path) -> None:
         image.convert("RGB").save(output, "JPEG", quality=60)
 
 
+async def dismiss_app_prompt(page) -> str:
+    """Use only the public opt-out button attached to the known App promotion."""
+    prompt = page.get_by_text(APP_PROMPT_TITLE)
+    button = page.get_by_text("继续查看", exact=True)
+    try:
+        if not await asyncio.wait_for(prompt.is_visible(), timeout=1.5):
+            return "not_visible"
+        if await asyncio.wait_for(button.count(), timeout=1.5) != 1:
+            return "not_dismissed"
+        await button.click(timeout=1500)
+        visible = await asyncio.wait_for(prompt.is_visible(), timeout=1.5)
+        return "still_visible" if visible else "dismissed"
+    except (PlaywrightError, TimeoutError):
+        return "not_dismissed"
+
+
 async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
     sources = set()
     records = []
     tasks = []
     diagnostics = ProbeDiagnostics()
     response_count = 0
+    live_detail_response_count = 0
     frame_count = 0
     network_blocked = False
     accepting = True
 
-    async def inspect_response(response, seq: int, target: bool, eligible_probe: bool) -> None:
+    async def inspect_response(
+        response, seq: int, target: bool, eligible_probe: bool, inspect_live_detail: bool,
+    ) -> None:
         payload = None
         read_body = False
         try:
@@ -483,6 +681,10 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
                 return
             read_body = True
             payload = decode_json(body.decode("utf-8"))
+            if inspect_live_detail:
+                outcome, keys = live_detail_key_observation(payload, room_id)
+                diagnostics.live_detail_outcomes.add(outcome)
+                diagnostics.live_detail_keys.update(keys)
             if not eligible_probe or not isinstance(payload, (dict, list)):
                 return
             label = source_label(response.url)
@@ -495,6 +697,8 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
         except (ValueError, TimeoutError, PlaywrightError):
             return
         finally:
+            if inspect_live_detail and not read_body:
+                diagnostics.live_detail_outcomes.add("body_unavailable")
             if target and (read_body or not 200 <= response.status < 300):
                 diagnostics.finish(response.request, diagnose_target(response.status, payload, room_id))
 
@@ -503,24 +707,39 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
             diagnostics.register(request)
 
     def on_response(response) -> None:
-        nonlocal response_count, network_blocked
+        nonlocal response_count, live_detail_response_count, network_blocked
         if not accepting or not eligible(response.url):
             return
         target = diagnostics.register(response.request)
         if is_network_gate(response):
             network_blocked = True
         mime = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+        json_mime = mime_category(mime) in {"json", "javascript"}
         eligible_probe = (
-            200 <= response.status < 300 and response_count < MAX_RESPONSES
-            and (mime in {"application/json", "text/javascript", "application/javascript"}
-                 or mime.endswith("+json"))
+            200 <= response.status < 300 and response_count < MAX_RESPONSES and json_mime
         )
+        inspect_live_detail = False
+        ids, _ = request_function_ids(response.request)
+        if LIVE_DETAIL_FUNCTION in ids and live_detail_response_count < MAX_LIVE_DETAIL_RESPONSES:
+            live_detail_response_count += 1
+            if response.url != response.request.url or detail_request_rejection(
+                response.request, LIVE_DETAIL_FUNCTION
+            ) is not None:
+                diagnostics.live_detail_outcomes.add("request_not_admitted")
+            elif not 200 <= response.status < 300:
+                diagnostics.live_detail_outcomes.add("http_not_2xx")
+            elif not json_mime:
+                diagnostics.live_detail_outcomes.add("mime_not_admitted")
+            else:
+                inspect_live_detail = True
         if target:
             diagnostics.sample_response(response, mime, eligible_probe, response_count)
         if eligible_probe:
             response_count += 1
-        if target or eligible_probe:
-            tasks.append(asyncio.create_task(inspect_response(response, response_count, target, eligible_probe)))
+        if target or eligible_probe or inspect_live_detail:
+            tasks.append(asyncio.create_task(inspect_response(
+                response, response_count, target, eligible_probe, inspect_live_detail
+            )))
 
     def on_socket(socket) -> None:
         if not eligible(socket.url):
@@ -578,6 +797,11 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
                 result["snapshot_status"] = "omitted_access_gate"
             elif result["page_loaded"] and result["room_id_matched"] and result["live_status"] != "unknown":
                 try:
+                    result["app_prompt_cleanup"] = await dismiss_app_prompt(page)
+                    snapshot_gate = await gate_state(page, room_id)
+                    if snapshot_gate["page_gate_reason"] != "ok":
+                        result["snapshot_status"] = "omitted_page_changed"
+                        return
                     await snapshot(page, output / "snapshot.jpg")
                     state = await gate_state(page, room_id)
                     result.update(state)
@@ -646,6 +870,29 @@ def self_test() -> None:
     assert public_detail(form_request, payload, room) == live
     assert public_detail(Request(endpoint, "POST", form_data, post_type), payload, room) == live
     assert public_detail(Request(endpoint, "POST", "body=%7B%7D", post_type), payload, room) == live
+    discovery = Request(
+        post_endpoint, "POST", "functionId=liveDetailToM&body=%7B%7D", post_type
+    )
+    assert detail_request_rejection(discovery, LIVE_DETAIL_FUNCTION) is None
+    assert detail_request_rejection(discovery) == "function_id_conflict"
+    assert public_detail(discovery, payload, room) is None
+    assert detail_request_rejection(Request(
+        endpoint, "POST", "functionId=liveDetailToM", post_type
+    ), LIVE_DETAIL_FUNCTION) == "function_id_conflict"
+    assert detail_request_rejection(Request(
+        "https://api.m.jd.com/", "POST", "functionId=liveDetailToM", post_type
+    ), LIVE_DETAIL_FUNCTION) == "path_not_api"
+    assert live_detail_key_observation({"code": 0, "subCode": 0, "data": {
+        "liveId": room, "startTime": "a value must not leave the probe",
+        "userName": "private", "credential": "private", "token": "private",
+    }}, room) == ("accepted", ["liveId", "startTime"])
+    assert live_detail_key_observation(payload, "49620441") == ("room_not_matched", [])
+    assert live_detail_key_observation({"code": 9, "subCode": 0, "data": {}}, room) == (
+        "envelope_not_accepted", []
+    )
+    assert live_detail_key_observation({"code": 0, "subCode": 0, "data": {
+        "liveId": room, "secret": 1, "endTime": "also private",
+    }}, room) == ("restricted", [])
     for request, reason in (
         (Request(endpoint, "POST", "functionId=otherFunction", post_type), "function_id_conflict"),
         (Request(endpoint.replace(TARGET_FUNCTION, "otherFunction"), "POST", form_data, post_type), "function_id_conflict"),
@@ -811,17 +1058,53 @@ def self_test() -> None:
         assert result["live_status"] == "live"
         assert result["start_time"] is None and result["end_time"] is None
 
+    class AppPage:
+        def __init__(self, visible=True, fail=False):
+            self.visible, self.fail, self.clicks = visible, fail, 0
+
+        def get_by_text(self, text, *, exact=False):
+            if isinstance(text, re.Pattern):
+                assert text.fullmatch("快来下载京东 APP")
+            else:
+                assert text == "继续查看" and exact
+            return self
+
+        async def is_visible(self):
+            return self.visible
+
+        async def count(self):
+            return 1
+
+        async def click(self, *, timeout):
+            assert timeout == 1500
+            if self.fail:
+                raise PlaywrightError("expected offline fixture")
+            self.clicks += 1
+            self.visible = False
+
+    async def verify_app_prompt() -> None:
+        page = AppPage()
+        assert await dismiss_app_prompt(page) == "dismissed" and page.clicks == 1
+        no_modal = AppPage(visible=False)
+        assert await dismiss_app_prompt(no_modal) == "not_visible" and no_modal.clicks == 0
+        assert await dismiss_app_prompt(AppPage(fail=True)) == "not_dismissed"
+
     asyncio.run(verify_gates())
-    print("Passed strict GET/POST admission, access gates, route-independent status and key redaction.")
+    asyncio.run(verify_app_prompt())
+    self_test_history()
+    print("Passed strict admission, gates, isolated key discovery, App prompt opt-out and state history.")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--state-history", type=Path, help="Optional local JSONL for accepted observations.")
     args = parser.parse_args()
     if args.self_test:
         self_test()
         return 0
+    if args.state_history is not None and args.state_history.suffix != ".jsonl":
+        parser.error("--state-history requires a .jsonl file")
     output = Path("output")
     output.mkdir(exist_ok=True)
     (output / "snapshot.jpg").unlink(missing_ok=True)
@@ -839,6 +1122,12 @@ def main() -> int:
         exit_code = 1
     finally:
         result["generated_at"] = timestamp()
+        if exit_code == 0 and args.state_history is not None:
+            try:
+                append_state_history(args.state_history, result)
+            except (OSError, ValueError):
+                result["reasons"].append("state_history_unavailable")
+                exit_code = 1
         (output / "result.json").write_text(
             json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
