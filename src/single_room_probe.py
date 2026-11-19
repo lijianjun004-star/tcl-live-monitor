@@ -36,7 +36,7 @@ SENSITIVE_KEY = re.compile(
 )
 DIAGNOSTIC_CODE = re.compile(r"^-?\d{1,8}$|^[A-Z][A-Z0-9_-]{0,23}$")
 JSONP = re.compile(r"^[A-Za-z_$][\w$.]{0,99}\s*\(([\s\S]*)\)\s*;?$")
-ROOM_FRAGMENT = re.compile(r"^/([1-9][0-9]{4,17})(?:/live)?(?:\?.*)?$")
+ROOM_FRAGMENT = re.compile(r"^/([1-9][0-9]{4,17})(?:/(live|replay))?(?:\?.*)?$")
 MAX_BODY = 384 * 1024
 MAX_RESPONSES = 40
 MAX_FRAMES = 40
@@ -174,6 +174,64 @@ def safe_code(value):
     return value if type(value) in (int, str) and DIAGNOSTIC_CODE.fullmatch(str(value)) else "[redacted]"
 
 
+def safe_member_names(value: dict) -> list[str]:
+    return sorted(key for key in value if SAFE_KEY.fullmatch(key) and not SENSITIVE_KEY.search(key))
+
+
+def strict_function_ids(value: str) -> list[str] | None:
+    if re.search(r"%(?![0-9A-Fa-f]{2})", value):
+        return None
+    try:
+        return parse_qs(
+            value, keep_blank_values=True, strict_parsing=True, max_num_fields=120, errors="strict"
+        ).get("functionId", [])
+    except ValueError:
+        return None
+
+
+def detail_request_rejection(request) -> str | None:
+    """Admit exactly one target identity on the official HTTPS detail endpoint."""
+    parts = urlsplit(request.url)
+    if parts.scheme != "https" or parts.netloc != "api.m.jd.com" or parts.path != "/api":
+        return "path_not_api"
+    query_ids = strict_function_ids(parts.query)
+    if query_ids is None:
+        return "malformed_query"
+    if len(query_ids) > 1:
+        return "duplicate_query_function_id"
+    if request.method == "GET":
+        return None if query_ids == [TARGET_FUNCTION] else "function_id_not_in_query"
+    if request.method != "POST":
+        return "method_not_allowed"
+    form_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    if form_type != "application/x-www-form-urlencoded":
+        return "post_form_required"
+    try:
+        body = request.post_data or ""
+        if not body.strip() or len(body) > 64 * 1024 or len(body.encode("utf-8")) > 64 * 1024:
+            return "invalid_post_form"
+    except (PlaywrightError, UnicodeError):
+        return "invalid_post_form"
+    if body.lstrip().startswith(("{", "[")):
+        return "invalid_post_form"
+    post_ids = strict_function_ids(body)
+    if post_ids is None:
+        return "invalid_post_form"
+    if len(post_ids) > 1:
+        return "duplicate_post_function_id"
+    if any(ids and ids != [TARGET_FUNCTION] for ids in (query_ids, post_ids)):
+        return "function_id_conflict"
+    return None if query_ids or post_ids else "function_id_missing"
+
+
+def is_network_gate(response) -> bool:
+    request = response.request
+    return response.status in {401, 403, 429} and (
+        request.is_navigation_request()
+        or (response.url == request.url and detail_request_rejection(request) is None)
+    )
+
+
 def diagnose_target(http_status: int, payload, room_id: str) -> tuple[str, dict]:
     envelope = payload if isinstance(payload, dict) else {}
     codes = [envelope.get(key) for key in ("code", "subCode")]
@@ -188,9 +246,7 @@ def diagnose_target(http_status: int, payload, room_id: str) -> tuple[str, dict]
         or not re.fullmatch(r"[1-9][0-9]{4,17}", str(data["liveId"]))
         or type(data.get("status")) not in (int, str)
     ):
-        return "schema_mismatch", {"http_status": http_status, "top_level_keys": sorted(
-            key for key in envelope if SAFE_KEY.fullmatch(key) and not SENSITIVE_KEY.search(key)
-        )[:16]}
+        return "schema_mismatch", {"http_status": http_status, "top_level_keys": safe_member_names(envelope)[:16]}
     if str(data["liveId"]) != room_id:
         return "room_mismatch", {}
     return "matched", {}
@@ -204,6 +260,7 @@ class ProbeDiagnostics:
         self.targets: dict = {}
         self.sources: dict = {}
         self.samples: dict = {}
+        self.detail_keys: set[str] = set()
         self.truncated = False
 
     def register(self, request) -> bool:
@@ -232,17 +289,12 @@ class ProbeDiagnostics:
         category = mime_category(content)
         reason = None
         if 200 <= response.status < 300:
-            ids = form_function_ids(parts.query)
             if category not in {"json", "javascript"}:
                 reason = "mime_not_allowed"
             elif arrival_count >= MAX_RESPONSES:
                 reason = "max_responses_reached"
-            elif parts.path != "/api":
-                reason = "path_not_api"
-            elif len(ids) > 1:
-                reason = "duplicate_query_function_id"
-            elif ids != [TARGET_FUNCTION]:
-                reason = "function_id_not_in_query"
+            else:
+                reason = detail_request_rejection(request)
         self.samples[request] = {
             "method": request.method,
             "safe_path": parts.path or "/",
@@ -253,9 +305,10 @@ class ProbeDiagnostics:
             "rejected_reason": reason,
         }
 
-    def accepted_by_original_rule(self, request) -> None:
+    def accepted_detail(self, request, data: dict) -> None:
         if request in self.samples:
             self.samples[request]["rejected_reason"] = "accepted"
+        self.detail_keys.update(safe_member_names(data)[:40])
 
     def finish(self, request, outcome: tuple[str, dict]) -> None:
         if request in self.targets and self.targets[request] is None:
@@ -274,16 +327,15 @@ class ProbeDiagnostics:
             "target_error_samples": [detail for kind, detail in outcomes if kind == "error"][:10],
             "target_schema_samples": [detail for kind, detail in outcomes if kind == "schema_mismatch"][:10],
             "target_request_samples": list(self.samples.values()),
+            "detail_data_keys": sorted(self.detail_keys)[:40],
             "truncated": self.truncated,
         }
 
 
-def public_detail(url: str, payload, room_id: str) -> dict | None:
+def public_detail(request, payload, room_id: str) -> dict | None:
     """Only the documented JD page detail's response can establish a state."""
-    parts = urlsplit(url)
     if (
-        parts.scheme != "https" or parts.netloc != "api.m.jd.com" or parts.path != "/api"
-        or form_function_ids(parts.query) != [TARGET_FUNCTION]
+        detail_request_rejection(request) is not None
         or not isinstance(payload, dict)
         or str(payload.get("code")) != "0" or str(payload.get("subCode")) != "0"
     ):
@@ -341,6 +393,7 @@ def initial_result(room_id: str) -> dict:
         "final_path_redacted": None,
         "fragment_matched": False,
         "final_fragment_shape": None,
+        "route_mode": None,
         "body_text_len": None,
         "page_gate_reason": None,
         "diagnostics": ProbeDiagnostics().report(),
@@ -377,7 +430,10 @@ async def gate_state(page, room_id: str) -> dict:
         reason = "login_host"
     elif any(word in title or word in (visible or "") for word in GATE_TEXT):
         reason = "gate_text_hit"
-    elif parts.netloc != "lives.jd.com" or parts.path not in {"", "/"} or not fragment_matched:
+    elif (
+        parts.scheme != "https" or parts.netloc != "lives.jd.com"
+        or parts.path not in {"", "/"} or not fragment_matched
+    ):
         reason = "url_or_fragment_changed"
     elif not visible or not visible.strip():
         reason = "empty_body"
@@ -388,6 +444,7 @@ async def gate_state(page, room_id: str) -> dict:
         "final_path_redacted": redact_path(parts.path) if parts.scheme in {"http", "https"} else None,
         "fragment_matched": fragment_matched,
         "final_fragment_shape": redacted_fragment_shape(parts.fragment),
+        "route_mode": (match.group(2) or "root") if parts.scheme == "https" and parts.netloc == "lives.jd.com" and match else None,
         "body_text_len": len(visible) if visible is not None else None,
         "page_gate_reason": reason,
     }
@@ -430,11 +487,11 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
                 return
             label = source_label(response.url)
             sources.add(label)
-            match = public_detail(response.url, payload, room_id)
+            match = public_detail(response.request, payload, room_id) if response.url == response.request.url else None
             if match is not None:
                 records.append((seq, match))
                 if target and "state" in match:
-                    diagnostics.accepted_by_original_rule(response.request)
+                    diagnostics.accepted_detail(response.request, payload["data"])
         except (ValueError, TimeoutError, PlaywrightError):
             return
         finally:
@@ -450,14 +507,7 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
         if not accepting or not eligible(response.url):
             return
         target = diagnostics.register(response.request)
-        parts = urlsplit(response.url)
-        relevant = (
-            parts.hostname == "api.m.jd.com" and parts.path == "/api"
-            and form_function_ids(parts.query) == [TARGET_FUNCTION]
-        )
-        if response.status in {401, 403, 429} and (
-            relevant or response.request.is_navigation_request()
-        ):
+        if is_network_gate(response):
             network_blocked = True
         mime = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
         eligible_probe = (
@@ -562,6 +612,21 @@ def self_test() -> None:
     room = "49620440"
     endpoint = "https://api.m.jd.com/api?functionId=getImmediatePlayToM&private=hidden"
     payload = {"code": "0", "subCode": 0, "data": {"liveId": room, "status": 1, "nowTime": 123}}
+
+    class Request:
+        def __init__(self, url, method="GET", post_data=None, content_type="", navigation=False):
+            self.url, self.method, self.post_data = url, method, post_data
+            self.headers = {"content-type": content_type}
+            self.navigation = navigation
+
+        def is_navigation_request(self):
+            return self.navigation
+
+    query_get = Request(endpoint)
+    post_endpoint = "https://api.m.jd.com/api"
+    post_type = "application/x-www-form-urlencoded; charset=UTF-8"
+    form_data = "functionId=getImmediatePlayToM&body=%7B%7D"
+    form_request = Request(post_endpoint, "POST", form_data, post_type)
     assert canonical_room(DEFAULT_URL)[1] == room
     for invalid in ("https://example.com/#/49620440", "https://lives.jd.com@else.example/#/49620440"):
         try:
@@ -574,10 +639,31 @@ def self_test() -> None:
     assert decode_json('doUnsafeThing(); callback({"liveId":"49620440"})') is None
     assert eligible(endpoint) and not eligible("https://evil.jd.com/api")
     assert source_label(endpoint) == "https://api.m.jd.com/api"
-    assert public_detail(endpoint.replace("getImmediatePlayToM", "list"), payload, room) is None
-    assert public_detail(endpoint, payload, "49620441") is None
-    assert public_detail(endpoint, {"code": 0, "data": payload["data"]}, room) is None
-    live = public_detail(endpoint, payload, room)
+    assert public_detail(Request(endpoint.replace(TARGET_FUNCTION, "list")), payload, room) is None
+    assert public_detail(query_get, payload, "49620441") is None
+    assert public_detail(query_get, {"code": 0, "data": payload["data"]}, room) is None
+    live = public_detail(query_get, payload, room)
+    assert public_detail(form_request, payload, room) == live
+    assert public_detail(Request(endpoint, "POST", form_data, post_type), payload, room) == live
+    assert public_detail(Request(endpoint, "POST", "body=%7B%7D", post_type), payload, room) == live
+    for request, reason in (
+        (Request(endpoint, "POST", "functionId=otherFunction", post_type), "function_id_conflict"),
+        (Request(endpoint.replace(TARGET_FUNCTION, "otherFunction"), "POST", form_data, post_type), "function_id_conflict"),
+        (Request(endpoint + "&functionId="), "duplicate_query_function_id"),
+        (Request(post_endpoint, "POST", form_data + "&functionId=", post_type), "duplicate_post_function_id"),
+        (Request(post_endpoint, "POST", form_data + "&functionId=" + TARGET_FUNCTION, post_type), "duplicate_post_function_id"),
+        (Request(post_endpoint, "POST", form_data + "&bad=%ZZ", post_type), "invalid_post_form"),
+        (Request(post_endpoint, "POST", form_data + "&bad=%FF", post_type), "invalid_post_form"),
+        (Request(post_endpoint, "POST", form_data + "&long=" + "臨"*22000, post_type), "invalid_post_form"),
+        (Request(post_endpoint, "POST", form_data), "post_form_required"),
+        (Request(endpoint, "POST", '{"functionId":"getImmediatePlayToM"}', "application/json"), "post_form_required"),
+        (Request(post_endpoint, "POST", '{"functionId":"getImmediatePlayToM"}', post_type), "invalid_post_form"),
+        (Request("https://api.m.jd.com/", "POST", form_data, post_type), "path_not_api"),
+        (Request(post_endpoint + "/", "POST", form_data, post_type), "path_not_api"),
+        (Request(endpoint, "OPTIONS"), "method_not_allowed"),
+    ):
+        assert detail_request_rejection(request) == reason
+        assert public_detail(request, payload, room) is None
     result = initial_result(room)
     final_evidence(result, [live], False)
     assert result["room_id_matched"] and result["live_status"] == "live"
@@ -586,7 +672,7 @@ def self_test() -> None:
     final_evidence(result, [live], True)
     assert result["live_status"] == "unknown" and result["login_or_captcha_blocked"]
     payload["data"]["status"] = 2
-    offline = public_detail(endpoint, payload, room)
+    offline = public_detail(query_get, payload, room)
     result = initial_result(room)
     final_evidence(result, [offline], False)
     assert result["live_status"] == "offline"
@@ -595,13 +681,9 @@ def self_test() -> None:
     assert result["live_status"] == "unknown"
     assert "conflicting_detail_states" in result["reasons"]
     payload["data"]["status"] = 3
-    assert public_detail(endpoint, payload, room)["state"] == "replay"
+    assert public_detail(form_request, payload, room)["state"] == "replay"
     payload["data"]["secret"] = 1
-    assert public_detail(endpoint, payload, room) == {"restricted": True}
-
-    class Request:
-        def __init__(self, url, method="GET", post_data=None):
-            self.url, self.method, self.post_data = url, method, post_data
+    assert public_detail(form_request, payload, room) == {"restricted": True}
 
     root_post = Request("https://api.m.jd.com/", "POST", 'functionId=getImmediatePlayToM&a=redact-me')
     json_post = Request("https://api.m.jd.com/api", "POST", '{"functionId":"metadata.test","other":"private"}')
@@ -640,17 +722,22 @@ def self_test() -> None:
     assert report["target_error_samples"] == [{"http_status": 403, "code": 7, "subCode": "ACCESS_DENIED"}]
     assert report["target_schema_samples"] == [{"http_status": 200, "top_level_keys": ["code", "subCode"]}]
     assert diagnose_target(200, {"code": 0, "subCode": 10}, room)[0] == "error"
-    assert public_detail(root_post.url, payload, room) is None
+    assert public_detail(root_post, payload, room) is None
 
     class Response:
         def __init__(self, request, status=200):
-            self.request, self.status = request, status
+            self.request, self.status, self.url = request, status, request.url
+
+    assert all(is_network_gate(Response(form_request, denied)) for denied in (401, 403, 429))
+    assert not is_network_gate(Response(root_post, 403))
+    assert not is_network_gate(Response(form_request, 200))
+    assert is_network_gate(Response(Request(DEFAULT_URL, navigation=True), 429))
 
     post_api = Request("https://api.m.jd.com/api", "POST", '{"functionId":"getImmediatePlayToM"}')
     repeated = Request(endpoint + "&functionId=getImmediatePlayToM")
     sample_cases = (
         (root_post, "application/json", True, 1, "path_not_api"),
-        (post_api, "application/problem+json", True, 2, "function_id_not_in_query"),
+        (post_api, "application/problem+json", True, 2, "post_form_required"),
         (repeated, "application/javascript", True, 3, "duplicate_query_function_id"),
         (Request(endpoint), "text/plain", False, 4, "mime_not_allowed"),
         (Request(endpoint), "application/json", False, MAX_RESPONSES, "max_responses_reached"),
@@ -672,8 +759,12 @@ def self_test() -> None:
     assert another.register(extra)
     another.sample_response(Response(extra), "application/json", True, 0)
     assert another.report()["target_request_samples"][0]["rejected_reason"] is None
-    another.accepted_by_original_rule(extra)
+    another.accepted_detail(extra, {
+        "liveId": room, "status": 3, "nowTime": 123, "accessToken": "private",
+        "secret": 1, "invalid-key-123456": "hidden",
+    })
     assert another.report()["target_request_samples"][0]["rejected_reason"] == "accepted"
+    assert another.report()["detail_data_keys"] == ["liveId", "nowTime", "status"]
     assert redacted_fragment_shape("/49620440/live?private=hide-me") == "/<id>/live"
     assert redacted_fragment_shape("/room/opaque-123456-token?foo=hide-me") == "/room/<segment><id><segment>"
     assert redacted_fragment_shape("") == ""
@@ -694,22 +785,34 @@ def self_test() -> None:
     async def verify_gates() -> None:
         login = await gate_state(GatePage("https://plogin.m.jd.com/login/login?a=secret", "欢迎"), room)
         assert login == {"final_host": "plogin.m.jd.com", "final_path_redacted": "/login/login",
-                         "fragment_matched": False, "final_fragment_shape": "",
+                         "fragment_matched": False, "final_fragment_shape": "", "route_mode": None,
                          "body_text_len": 2, "page_gate_reason": "login_host"}
         altered = await gate_state(GatePage("https://lives.jd.com/12345678/#/49620441", "请按照图中轨迹绘制"), room)
         assert altered["page_gate_reason"] == "gate_text_hit"
         assert altered["final_path_redacted"] == "/[redacted]"
         for url, body, expected in (
             ("https://lives.jd.com/#/49620441", "常规页面", "url_or_fragment_changed"),
+            ("https://lives.jd.com/#/49620441/replay", "常规页面", "url_or_fragment_changed"),
+            ("http://lives.jd.com/#/49620440/replay", "常规页面", "url_or_fragment_changed"),
             (DEFAULT_URL, "  ", "empty_body"),
             (DEFAULT_URL, "常规页面", "ok"),
         ):
             state = await gate_state(GatePage(url, body), room)
             assert state["page_gate_reason"] == expected
             assert state["body_text_len"] == len(body)
+        replay = await gate_state(GatePage(DEFAULT_URL + "/replay", "常规页面"), room)
+        assert replay["route_mode"] == "replay" and replay["fragment_matched"]
+        assert replay["page_gate_reason"] == "ok"
+        result = initial_result(room)
+        result.update(replay)
+        final_evidence(result, [], False)
+        assert result["live_status"] == "unknown"
+        final_evidence(result, [live], False)
+        assert result["live_status"] == "live"
+        assert result["start_time"] is None and result["end_time"] is None
 
     asyncio.run(verify_gates())
-    print("Passed original evidence gates, URL metadata, GET/POST and independent request outcomes.")
+    print("Passed strict GET/POST admission, access gates, route-independent status and key redaction.")
 
 
 def main() -> int:
