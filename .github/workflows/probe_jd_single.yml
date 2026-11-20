@@ -1,6 +1,9 @@
 name: JD single room anonymous probe
 
 on:
+  push:
+    branches: ['experiment/jd-living-live-id-20261120']
+    paths: ['.github/workflows/probe_jd_single.yml']
   workflow_dispatch:
     inputs:
       room_url:
@@ -75,8 +78,67 @@ jobs:
           else
             python src/single_room_probe.py
           fi
+      - name: Compare the nominated session with a fresh anonymous context
+        if: github.event_name == 'push'
+        env:
+          ROOM_URL: 'https://lives.jd.com/#/49654695'
+        run: |
+          if jq -e '.page_loaded == true and .room_id_matched == true and .login_or_captcha_blocked == false' output/result.json >/dev/null; then
+            mkdir "$RUNNER_TEMP/jd-control"
+            cd "$RUNNER_TEMP/jd-control"
+            python "$GITHUB_WORKSPACE/src/single_room_probe.py"
+          fi
+      - name: Package single-run verification
+        if: always() && github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          test -s output/result.json
+          mkdir review
+          cp output/result.json review/result.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          old = json.loads(Path('review/result.json').read_bytes())
+          assert old['room_id'] == '49620440' and 'living_live_id' in old
+          path = Path(os.environ['RUNNER_TEMP']) / 'jd-control/output/result.json'
+          control = json.loads(path.read_bytes()) if path.exists() else None
+          if control is not None:
+              assert control['room_id'] == '49654695' and 'living_live_id' in control
+
+          def admitted(row):
+              return bool(row and row['page_loaded'] and row['room_id_matched']
+                          and not row['login_or_captcha_blocked'] and row['live_status'] != 'unknown')
+
+          observed_id = old['living_live_id'] if admitted(old) else None
+          matches = observed_id == '49654695' if observed_id is not None else None
+          control_live = control['live_status'] == 'live' if admitted(control) else None
+          summary = {
+              'repository': os.environ['GITHUB_REPOSITORY'], 'branch': os.environ['GITHUB_REF_NAME'],
+              'sha': os.environ['GITHUB_SHA'], 'run_id': os.environ['GITHUB_RUN_ID'],
+              'run_attempt': os.environ['GITHUB_RUN_ATTEMPT'], 'event': os.environ['GITHUB_EVENT_NAME'],
+              'history_enabled': False, 'old_room_observed_at': old['generated_at'],
+              'old_room_living_live_id_matches_49654695': matches,
+              'control_live_at_its_own_observation': control_live,
+              'control_result': control,
+          }
+          Path('review/run_summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+          PY
+          cd review
+          sha256sum result.json run_summary.json > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Upload run review ZIP
+        if: always() && github.event_name == 'push' && hashFiles('review/SHA256SUMS.txt') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: JD-living-live-id-49620440-${{ github.run_id }}-${{ github.run_attempt }}
+          path: review/
+          if-no-files-found: error
+          retention-days: 7
       - name: Upload safe evidence
-        if: always()
+        if: always() && github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: jd-single-room-anonymous
