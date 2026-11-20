@@ -393,7 +393,12 @@ def public_detail(request, payload, room_id: str) -> dict | None:
         value = current.get("price")
         if type(value) in {int, float} and 0 <= value <= 1_000_000:
             price = value if math.isfinite(value) else None
-    return {"state": state, "online_count": viewers, "item_title": title, "item_price": price}
+    living_id = data.get("living_live_id")
+    public_id = str(living_id) if type(living_id) in (str, int) else ""
+    return {
+        "state": state, "online_count": viewers, "item_title": title, "item_price": price,
+        "living_live_id": public_id if re.fullmatch(r"[1-9][0-9]{4,17}", public_id) else None,
+    }
 
 
 def final_evidence(result: dict, records: list[dict], blocked: bool) -> None:
@@ -408,6 +413,8 @@ def final_evidence(result: dict, records: list[dict], blocked: bool) -> None:
     if len(states) > 1:
         result["reasons"].append("conflicting_detail_states")
         return
+    ids = {match["living_live_id"] for match in matches if match["living_live_id"] is not None}
+    result["living_live_id"] = matches[-1]["living_live_id"] if len(ids) == 1 else None
     result["live_status"] = matches[-1]["state"]
     for key in ("online_count", "item_title", "item_price"):
         result[key] = matches[-1][key]
@@ -575,6 +582,7 @@ def initial_result(room_id: str) -> dict:
     return {
         "generated_at": timestamp(),
         "room_id": room_id,
+        "living_live_id": None,
         "page_loaded": False,
         "final_host": None,
         "final_path_redacted": None,
@@ -801,6 +809,8 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
             ordered = [record for _, record in sorted(records, key=lambda pair: pair[0])]
             final_evidence(result, ordered, blocked)
             result["page_loaded"] = state["page_gate_reason"] == "ok" and not result["login_or_captcha_blocked"]
+            if not result["page_loaded"]:
+                result["living_live_id"] = None
             result["evidence_endpoints"] = sorted(sources)[:15]
             if result["login_or_captcha_blocked"]:
                 result["reasons"].append("login_or_access_gate")
@@ -811,6 +821,7 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
                     snapshot_gate = await gate_state(page, room_id)
                     if snapshot_gate["page_gate_reason"] != "ok":
                         result["snapshot_status"] = "omitted_page_changed"
+                        result["living_live_id"] = None
                         return
                     await snapshot(page, output / "snapshot.jpg")
                     state = await gate_state(page, room_id)
@@ -821,7 +832,7 @@ async def collect(url: str, room_id: str, output: Path, result: dict) -> None:
                         result["page_loaded"] = False
                         result["login_or_captcha_blocked"] = state["page_gate_reason"] in gate_reasons
                         result["live_status"] = "unknown"
-                        for key in ("online_count", "item_title", "item_price"):
+                        for key in ("living_live_id", "online_count", "item_title", "item_price"):
                             result[key] = None
                     else:
                         result["snapshot_status"] = "saved"
@@ -877,6 +888,28 @@ def self_test() -> None:
     assert public_detail(query_get, payload, "49620441") is None
     assert public_detail(query_get, {"code": 0, "data": payload["data"]}, room) is None
     live = public_detail(query_get, payload, room)
+    assert live["living_live_id"] is None
+    for value, expected in (
+        (49654695, "49654695"), ("10000", "10000"), ("9" * 18, "9" * 18),
+        (None, None), ("", None), (0, None), ("0", None), (True, None), (49654695.0, None),
+        ("01234", None), ("9999", None), ("9" * 19, None), ("１２３４５", None),
+        ("49654695\n", None), (" 49654695", None), ("+49654695", None), ({}, None),
+    ):
+        sample = {**payload, "data": {**payload["data"], "living_live_id": value}}
+        parsed = public_detail(form_request, sample, room)
+        assert parsed["living_live_id"] == expected
+        verdict = initial_result(room)
+        final_evidence(verdict, [parsed], False)
+        assert verdict["living_live_id"] == expected
+    sample["data"]["living_live_id"] = "49654695"
+    parsed = public_detail(query_get, sample, room)
+    for records, blocked in (([parsed], True), ([parsed, dict(parsed, living_live_id="12345")], False)):
+        verdict = initial_result(room)
+        final_evidence(verdict, records, blocked)
+        assert verdict["living_live_id"] is None
+    assert public_detail(query_get, sample, "12345") is None
+    sample["data"]["secret"] = 1
+    assert public_detail(query_get, sample, room) == {"restricted": True}
     assert public_detail(form_request, payload, room) == live
     assert public_detail(Request(endpoint, "POST", form_data, post_type), payload, room) == live
     assert public_detail(Request(endpoint, "POST", "body=%7B%7D", post_type), payload, room) == live
