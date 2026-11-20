@@ -280,7 +280,9 @@ async def observe(browser, sku, mobile, mobile_device=None):
     counts = Counter()
     functions = set()
     allowed, blocked, attributed = set(), set(), set()
-    finished = []
+    capture_tasks, scheduled = set(), set()
+    captured = Evidence()
+    accepting_responses = True
     prior = Evidence()
     out['live_entry_signals'] = []
     out['landing_route'] = None
@@ -336,21 +338,60 @@ async def observe(browser, sku, mobile, mobile_device=None):
                 attributed.add(req)
             await route.continue_()
 
-        def finished_request(req):
-            if gate or parse_url(req.url)[1] != 'api.m.jd.com' or req.resource_type not in {'xhr', 'fetch', 'script', 'document'}:
+        async def capture(req, resp):
+            stage = 'response'
+            try:
+                if resp is None:
+                    resp = await asyncio.wait_for(req.response(), 4)
+                if not resp or gate or resp.status != 200:
+                    return
+                # Reading size metrics after a navigation can lose the original document.
+                # Check the declared wire size first and verify decoded size after ordinary body retrieval.
+                declared = getattr(resp, 'headers', {}).get('content-length', '')
+                if str(declared).isdigit() and int(declared) > LIMIT_BODY:
+                    captured.truncated.add('response_size_limit')
+                    return
+                stage = 'body'
+                raw = await asyncio.wait_for(resp.body(), 6)
+                if gate:
+                    return
+                if len(raw) > LIMIT_BODY:
+                    captured.truncated.add('response_size_limit')
+                    return
+                stage = 'parse'
+                data = json_value(raw)
+                if isinstance(data, (dict, list)):
+                    captured.payload(data, ('public_api_json', func_id(req) or ''))
+                    counts['public_json_responses_parsed'] += 1
+            except (UnicodeError, ValueError, RecursionError):
+                counts['non_json_responses'] += 1
+            except Exception as exc:
+                counts['response_read_errors'] += 1
+                kind = type(exc).__name__
+                kind = kind if kind in {'Error', 'TimeoutError', 'TargetClosedError', 'KeyError', 'RuntimeError'} else 'OtherError'
+                counts['response_read_' + stage + '_' + kind] += 1
+
+        def schedule_capture(req, resp=None):
+            if not accepting_responses or gate or req in scheduled or parse_url(req.url)[1] != 'api.m.jd.com':
+                return
+            if req.resource_type not in {'xhr', 'fetch', 'script', 'document'}:
                 return
             if req not in attributed:
-                counts['responses_without_sku_context_skipped'] += 1
+                if resp is not None:
+                    counts['responses_without_sku_context_skipped'] += 1
                 return
             if PRIVATE.search(func_id(req) or ''):
-                counts['private_responses_skipped'] += 1
-            elif len(finished) < MAX_RESPONSES:
-                finished.append(req)
-            else:
-                evidence.truncated.add('response_count_limit')
+                return
+            if len(scheduled) >= MAX_RESPONSES:
+                captured.truncated.add('response_count_limit')
+                return
+            scheduled.add(req)
+            counts['public_response_captures_started'] += 1
+            capture_tasks.add(asyncio.create_task(capture(req, resp)))
 
         await context.route('**/*', intercept)
-        page.on('requestfinished', finished_request)
+        page.on('response', lambda resp: schedule_capture(resp.request, resp))
+        page.on('requestfinished', schedule_capture)
         response = None
         try:
             response = await page.goto(page_url, wait_until='domcontentloaded', timeout=25_000)
@@ -424,39 +465,38 @@ async def observe(browser, sku, mobile, mobile_device=None):
                             counts['hydration_json_parsed'] += 1
                 except Exception:
                     counts['hydration_read_errors'] += 1
+        accepting_responses = False
         if out['status'] in {'loaded', 'product_content_unconfirmed', 'redirected_elsewhere'}:
-            previous = out['status'] == 'redirected_elsewhere'
-            destination = prior if previous else evidence
-            source = 'prior_sku_public_api_json' if previous else 'public_api_json'
-            for req in list(finished):
-                try:
-                    resp = await req.response()
-                    if not resp or resp.status != 200:
-                        continue
-                    sizes = await req.sizes()
-                    if sizes.get('responseBodySize', 0) > LIMIT_BODY:
-                        evidence.truncated.add('response_size_limit')
-                        continue
-                    raw = await resp.body()
-                    if len(raw) > LIMIT_BODY:
-                        evidence.truncated.add('response_size_limit')
-                        continue
-                    data = json_value(raw)
-                    if isinstance(data, (dict, list)):
-                        destination.payload(data, (source, func_id(req) or ''))
-                        if previous:
-                            out['prior_sku_public_json']['response_count'] += 1
-                        counts['public_json_responses_parsed'] += 1
-                except (UnicodeError, ValueError, RecursionError):
-                    counts['non_json_responses'] += 1
-                except Exception:
-                    counts['response_read_errors'] += 1
+            if capture_tasks:
+                await asyncio.gather(*capture_tasks)
+            if not gate:
+                previous = out['status'] == 'redirected_elsewhere'
+                destination = prior if previous else evidence
+                surface = 'prior_sku_public_api_json' if previous else 'public_api_json'
+                destination.truncated.update(captured.truncated)
+                for candidate, entries in ((True, captured.candidates), (False, captured.numbers)):
+                    for identifier, origins in entries.items():
+                        for _, fid, structure in origins:
+                            destination.record(identifier, (surface, fid, structure), candidate=candidate)
+                if previous:
+                    out['prior_sku_public_json']['response_count'] = counts.get('public_json_responses_parsed', 0)
+
     except Exception:
         out['status'] = gate or 'observation_error'
         out['login_wall'] = gate == 'login_wall'
         out['challenge'] = gate == 'challenge'
     finally:
+        accepting_responses = False
+        for task in capture_tasks:
+            if not task.done():
+                task.cancel()
+        if capture_tasks:
+            await asyncio.gather(*capture_tasks, return_exceptions=True)
         await context.close()
+    if gate:
+        out.update(status=gate, loaded_product_page=False, login_wall=gate == 'login_wall', challenge=gate == 'challenge')
+        evidence, prior = Evidence(), Evidence()
+        out['prior_sku_public_json'] = {'response_count': 0}
     out['observed_function_ids'] = sorted(functions)
     out['api_function_ids'] = {'attempted': sorted(functions), 'allowed': sorted(allowed), 'blocked': sorted(blocked)}
     evidence.prior = prior
