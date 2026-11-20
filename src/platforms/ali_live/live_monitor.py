@@ -66,6 +66,9 @@ class AliLiveMonitor(MonitorEngine):
         self.session = session
         self.block_images = block_images
 
+    async def close(self) -> None:
+        await self.session.close()  # idempotent; both Ali engines share one session
+
     async def monitor_all(self, pairs: list[tuple[Target, dict]], ctx: RunContext) -> dict[str, dict]:
         lookup = {target.key: resolved for target, resolved in pairs}
 

@@ -68,6 +68,9 @@ class AliDiscovery(DiscoveryEngine):
     def __init__(self, session: AliSession):
         self.session = session
 
+    async def close(self) -> None:
+        await self.session.close()  # idempotent; both Ali engines share one session
+
     async def resolve_all(self, targets: list[Target], ctx: RunContext) -> dict[str, Resolution]:
         async def run_group(items: list[Target]) -> dict[str, Resolution]:
             out = {}

@@ -38,7 +38,7 @@ header h1{font-size:18px;margin:4px 0 2px}header p{margin:0;color:var(--muted);f
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .card img{width:100%;aspect-ratio:3/4;object-fit:cover;background:#111;display:block}
-.ph{aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;background:#12151b}
+.ph{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;background:#12151b}
 .body{padding:8px;display:flex;flex-direction:column;gap:4px;flex:1}
 .name{font-weight:600;font-size:13px;word-break:break-all}
 .meta{color:var(--muted);font-size:12px}
