@@ -1,0 +1,40 @@
+name: JD TCL AC SKU live discovery
+on:
+  push:
+    branches:
+      - experiment/jd-tcl-ac-sku-live-20261120
+permissions:
+  contents: read
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned probe dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Check existing control probe offline
+        run: python src/single_room_probe.py --self-test
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Observe short links, independent live control and SKU views
+        run: python experiments/jd_sku_live/run.py
+      - name: Verify sanitized files
+        working-directory: sku-evidence
+        run: sha256sum --strict --check SHA256SUMS.txt
+      - name: Upload experiment evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: JD_TCL_AC_SKU_Live_Discovery_${{ github.run_id }}_a${{ github.run_attempt }}
+          path: |
+            sku-evidence/discovery_result.json
+            sku-evidence/control_live_result.json
+            sku-evidence/run_summary.json
+            sku-evidence/SHA256SUMS.txt
+          retention-days: 7
+          if-no-files-found: error
