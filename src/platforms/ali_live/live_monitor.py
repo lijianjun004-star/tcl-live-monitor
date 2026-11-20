@@ -19,6 +19,7 @@ from core.models import inherited_room, snapshot_room
 from core.network import NetworkAudit, install_policy
 from core.runtime import guarded
 
+from .calibration import livedetail_status_sample
 from .classifier import (classify_tmall, endpoint_evidence, is_access_limit, is_live_detail_url,
                          limit_url_kind, map_sample, parse_json_or_jsonp, pick_best, response_limit,
                          LOGIN_LIMIT)
@@ -112,6 +113,7 @@ class AliLiveMonitor(MonitorEngine):
         started = loop.time()
         deadline = started + ctx.budget
         samples, pending, endpoints = [], [], []
+        status_samples = []
         state = {"limit": None, "why": None, "http": None, "detect_at": None}
         signal = asyncio.Event()
         attached = [True]
@@ -146,6 +148,7 @@ class AliLiveMonitor(MonitorEngine):
             else:
                 if isinstance(payload, dict):
                     detail["json_objects"] += 1
+                    status_samples.append(livedetail_status_sample(payload, res.status, identity))
                 try:
                     sample = classify_tmall(payload, identity)
                 except Exception:
@@ -258,6 +261,7 @@ class AliLiveMonitor(MonitorEngine):
         diagnostics = {
             "cookie_mode": self.session.mode(target.account_group),
             "passive_observation": observation,
+            "livedetail_status_samples": status_samples,
             "http_status": state["http"], "responses": len(samples), "endpoints": endpoints,
             "classifier_reason": (best or {}).get("reason"), "api_ret": api_tokens(best),
             "identity_verified": bool(best and (best.get("state") in ("LIVE", "OFFLINE")

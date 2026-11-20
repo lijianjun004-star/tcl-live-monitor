@@ -55,6 +55,10 @@ config/targets(.example).json ──► [core] 校验
 
 京东游客寻路沿用冻结码 `SCHEMA_MISMATCH`。商品页加载成功，审计和读取完整且未观察到直播入口或候选时，`reason` 为 `no_live_entry_in_guest_h5`。店铺页在同等条件下未观察到候选时，使用 `no_live_candidate_in_guest_shop`。这两种结果的直播状态均为 `unknown`。已复核的评论、上传、日志、令牌和地址接口以及非 API 写请求的拦截不单独触发 `POST_AUDIT_BLOCKED`。接口名单截断、读取不完整、入口可见但缺少场次号和候选冲突各自记录原因。H5 审计内的 `observed_from` 和 `observed_until` 以 UTC 标示商品页采样时间。
 
+京东商品页的 `h5.response_diagnostics.public_api_http_errors` 记录公开接口返回 HTTP 4xx/5xx 的总次数。`public_api_http_error_samples` 最多保留前 10 条，每条只含 `function_id`、`http_status` 和 `host`。无法安全识别的接口名称记为 `null`。
+
+天猫 F 轮使用固定店铺入口的两次真实观测校准下播规则。单次快照记录直播详情的状态枚举、公开场次号的取值类型和身份匹配结果。复核报告将这些字段与较早已确认在播的同一入口对照，给出该店铺的校准结论。开播、下播观测之间的实际切换时刻仍属于未知区间。
+
 ### 3.1 京东监控层映射（基于 `single_room_probe` 的结果字段）
 
 | 条件（按顺序判断） | 码 / reason |

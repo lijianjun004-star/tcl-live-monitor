@@ -106,3 +106,41 @@ def test_page_gates_and_candidate_evidence_take_precedence(monkeypatch, surface,
     audit.record(Decision(False, "post_without_function_id"))
     result = inspect_page(monkeypatch, surface, audit, status=status, candidates=candidates)
     assert (result.code, result.reason) == (code, reason)
+
+
+def test_http_error_samples_are_bounded_and_do_not_replace_total():
+    from collections import Counter
+
+    counts, samples = Counter(), []
+    for i in range(13):
+        request = RequestInfo(f"{API}?tracking=user-{i}&functionId=graphic_detail",
+                              headers={"cookie": "secret-cookie"})
+        discovery._record_public_http_error(counts, samples, request, 404 if i % 2 == 0 else 503)
+    assert counts == {"public_api_http_errors": 13}
+    assert samples == [{"function_id": "graphic_detail", "http_status": status, "host": "api.m.jd.com"}
+                       for status in [404, 503] * 5]
+
+
+@pytest.mark.parametrize("query,body,expected", [
+    ("", "functionId=mcommon_getHeaderInfo&body=private-value", "mcommon_getHeaderInfo"),
+    ("functionId=crosssitesync.syncvisitkey", "", "crosssitesync.syncvisitkey"),
+    ("functionId=querySkuLiveInfo&token=secret", "", "querySkuLiveInfo"),
+    ("", "body=private-value", None),
+    ("functionId=getPageConfig", "functionId=graphic_detail", None),
+    ("functionId=eyJhbGciOiJIUzI1NiJ9.secret.signature", "", None),
+    ("functionId=skuDisplayV13800138000", "", None),
+    ("functionId=opaque-019393482174", "", None),
+])
+def test_error_samples_only_export_recognized_public_operation_labels(query, body, expected):
+    from collections import Counter
+
+    req = RequestInfo(f"{API}?{query}", method="POST", post_data=body, headers={"cookie": "secret"})
+    samples = []
+    discovery._record_public_http_error(Counter(), samples, req, 403)
+    assert samples == [{"function_id": expected, "http_status": 403, "host": "api.m.jd.com"}]
+
+
+def test_empty_http_samples_do_not_change_no_candidate_classification(monkeypatch):
+    result = inspect_page(monkeypatch, "h5", NetworkAudit("jd_discovery"),
+                          response_diagnostics={"public_api_http_error_samples": []})
+    assert (result.code, result.reason) == (Code.SCHEMA_MISMATCH, "no_live_entry_in_guest_h5")

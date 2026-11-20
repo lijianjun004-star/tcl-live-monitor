@@ -115,7 +115,16 @@ def classify_tmall(payload, target: dict) -> dict:
     b = get(d, "broadCaster")
     if not js_truthy(d) or not js_truthy(b):
         return {"state": "UNKNOWN", "reason": "MISSING_BROADCASTER"}
-    room_number = js_string(coalesce(get(b, "roomNum"), get(d, "roomNum"), ""))
+    caster_room = js_string(coalesce(get(b, "roomNum"), ""))
+    data_room = js_string(coalesce(get(d, "roomNum"), ""))
+    room, stream = status_enum(get(d, "roomStatus"), 2), status_enum(get(d, "streamStatus"), 1)
+    if room in (0, 2) and stream == 0:
+        # A stopped room can omit either copy. Explicit disagreements still reject it.
+        room_number = caster_room or data_room
+        conflicting_rooms = bool(caster_room and data_room and caster_room != data_room)
+    else:
+        room_number = js_string(coalesce(get(b, "roomNum"), get(d, "roomNum"), ""))
+        conflicting_rooms = data_room != room_number
     name = get(b, "accountName")
     observed = {"accountId": js_string(coalesce(get(b, "accountId"), "")),
                 "name": js_string(name if js_truthy(name) else ""), "roomNumber": room_number}
@@ -123,9 +132,8 @@ def classify_tmall(payload, target: dict) -> dict:
         return {"state": "UNKNOWN", "reason": "IDENTITY_MISMATCH", "observed": observed}
     if target.get("room_number") and str(target["room_number"]) != room_number:
         return {"state": "UNKNOWN", "reason": "ROOM_MISMATCH", "observed": observed}
-    if js_string(coalesce(get(d, "roomNum"), "")) != room_number:
+    if conflicting_rooms:
         return {"state": "UNKNOWN", "reason": "CONFLICTING_ROOM_NUMBERS", "observed": observed}
-    room, stream = status_enum(get(d, "roomStatus"), 2), status_enum(get(d, "streamStatus"), 1)
     if room is None or stream is None:
         return {"state": "UNKNOWN", "reason": "UNRECOGNIZED_STATUS", "observed": observed}
     live_id = js_string(coalesce(get(d, "liveId"), ""))
@@ -135,6 +143,10 @@ def classify_tmall(payload, target: dict) -> dict:
         source_start = datetime.fromtimestamp(int(start) / 1000, timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
     base = {"state": "UNKNOWN", "reason": "AMBIGUOUS_STATUS", "observed": observed, "roomStatus": room,
             "streamStatus": stream, "liveId": live_id or None, "sourceStartTime": source_start}
+    if room in (0, 2) and stream == 0:
+        account = js_string(coalesce(get(d, "accountId"), ""))
+        if account and account != target["account_id"]:
+            return {"state": "UNKNOWN", "reason": "IDENTITY_MISMATCH", "observed": observed}
     if (room == 1 and stream == 1 and js_string(get(d, "accountId")) == target["account_id"]
             and re.fullmatch(r"\d{5,24}", live_id) and int(live_id) > 0):
         return {**base, "state": "LIVE", "reason": None}

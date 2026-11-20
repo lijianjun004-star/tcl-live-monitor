@@ -22,7 +22,8 @@ from core.runtime import bounded_map, guarded
 from core.timeutil import iso
 
 from . import short_link
-from .policy import ACCESS_HOSTS, PRIVATE, JdDiscoveryPolicy, func_id, jd_host
+from .policy import (ACCESS_HOSTS, API_HOST, DISPLAY_NOUN, EXPLICIT_READS, PRIVATE, PRODUCT_READ,
+                     JdDiscoveryPolicy, func_id, jd_host)
 
 # --- verbatim: experiments/jd_sku_live/discovery.py ------------------------------------------
 DIGITS = re.compile(r"[1-9][0-9]{3,19}\Z")
@@ -219,6 +220,13 @@ def sources(rows):
 # --- end of verbatim block ------------------------------------------------------------------
 
 H5_DEVICE = "Pixel 7"
+MAX_HTTP_ERROR_SAMPLES = 10
+# Existing read-pattern vocabulary plus literal public operation labels observed on the SKU page.
+# The sample may identify a request without changing whether the policy admits it.
+HTTP_SAMPLE_FUNCTIONS = EXPLICIT_READS | {
+    "crosssitesync.syncvisitkey", "item_intruduce_info", "mcommon_getheaderinfo", "pc_recommend",
+    "pingou_webmonitor_biz", "recommend_like_m", "ware_qa", "getimmediateplaytom", "livedetailtom",
+}
 JD_ROOM_URL = "https://lives.jd.com/#/{}"
 PUBLIC_LIVE_ID = re.compile(r"[1-9][0-9]{4,17}\Z")
 APP_DOWNLOAD = ("wqs.jd.com", "/downloadApp/download.html")
@@ -269,6 +277,18 @@ def _links_and_hydration_once(evidence: Evidence, counts: Counter):
     return read
 
 
+def _record_public_http_error(counts, samples, req, status):
+    counts["public_api_http_errors"] += 1
+    if len(samples) >= MAX_HTTP_ERROR_SAMPLES:
+        return
+    # The capture hook accepts only this host. Never serialize an arbitrary URL or body.
+    name = func_id(req)
+    if name and not (name.lower() in HTTP_SAMPLE_FUNCTIONS or PRODUCT_READ.fullmatch(name)
+                     or DISPLAY_NOUN.fullmatch(name) and not re.search(r"[0-9]{3}", name)):
+        name = None
+    samples.append({"function_id": name, "http_status": status, "host": API_HOST})
+
+
 async def observe_h5(factory, sku, *, device=H5_DEVICE):
     """observe(mobile=True) from the experiment, with the discovery policy installed."""
     page_url = f"https://item.m.jd.com/product/{sku}.html"
@@ -280,6 +300,7 @@ async def observe_h5(factory, sku, *, device=H5_DEVICE):
     audit = NetworkAudit(latch.name)
     context = await factory.new_context("jd_h5_mobile", device=device)
     counts = Counter()
+    http_error_samples = []
     attributed, capture_tasks, scheduled = set(), set(), set()
     captured = Evidence()
     prior = Evidence()
@@ -315,7 +336,7 @@ async def observe_h5(factory, sku, *, device=H5_DEVICE):
                     return
                 if resp.status != 200:
                     if resp.status >= 400:
-                        counts["public_api_http_errors"] += 1
+                        _record_public_http_error(counts, http_error_samples, req, resp.status)
                     return
                 declared = getattr(resp, "headers", {}).get("content-length", "")
                 if str(declared).isdigit() and int(declared) > LIMIT_BODY:
@@ -444,6 +465,7 @@ async def observe_h5(factory, sku, *, device=H5_DEVICE):
         evidence, prior = Evidence(), Evidence()
         out["prior_sku_public_json"] = {"response_count": 0}
     out["response_diagnostics"] = dict(sorted(counts.items()))
+    out["response_diagnostics"]["public_api_http_error_samples"] = http_error_samples
     out["limits_reached"] = sorted(evidence.truncated)
     out["observed_until"] = iso()
     return out, evidence, prior, audit

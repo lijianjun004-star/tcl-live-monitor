@@ -1,0 +1,81 @@
+name: TCL V2 F guest observations
+on:
+  push:
+    branches: [feat/v2-modular-architecture]
+    paths:
+      - ci/acceptance/f-20261121-night.json
+      - ci/acceptance/f-20261121-day.json
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: tcl-v2-f-guest-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  observe:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 4
+      - name: Validate the newly added marker and its time window
+        id: request
+        env:
+          F_BEFORE: ${{ github.event.before }}
+        run: python3 ci/v2_f_marker.py
+      - name: Verify offline acceptance of the pinned implementation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODE_SHA: ${{ steps.request.outputs.code_sha }}
+        run: |
+          set -euo pipefail
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/425072647/runs" \
+            -f branch="$GITHUB_REF_NAME" -f event=push -f head_sha="$CODE_SHA" \
+            | jq -e --arg sha "$CODE_SHA" --arg branch "$GITHUB_REF_NAME" --arg repo "$GITHUB_REPOSITORY" '
+                any(.workflow_runs[];
+                  .head_sha == $sha and .head_branch == $branch and .head_repository.full_name == $repo
+                  and .path == ".github/workflows/v2-monitor.yml" and .event == "push"
+                  and .status == "completed" and .conclusion == "success")'
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.request.outputs.code_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned dependencies and Chromium
+        run: |
+          python -m pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Observe the authorized guest targets once
+        id: observation
+        env:
+          F_PHASE: ${{ steps.request.outputs.phase }}
+          F_CODE_SHA: ${{ steps.request.outputs.code_sha }}
+          V2_TARGETS_JSON: ${{ secrets.V2_TARGETS_JSON }}
+          PYTHONUNBUFFERED: '1'
+        run: python ci/v2_guest_acceptance_f.py
+      - name: Verify every available raw evidence manifest
+        if: ${{ always() && steps.observation.outcome != 'skipped' }}
+        run: |
+          set -euo pipefail
+          test -f f-evidence/phase_result.json
+          for part in preflight observation; do
+            if [[ -f "f-evidence/$part/SHA256SUMS.txt" ]]; then
+              (cd "f-evidence/$part" && sha256sum --strict --check SHA256SUMS.txt)
+            fi
+          done
+      - name: Upload original phase evidence
+        if: ${{ always() && steps.observation.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: TCL_V2_F_${{ steps.request.outputs.phase }}_${{ github.run_id }}_a${{ github.run_attempt }}
+          path: f-evidence/
+          retention-days: 7
+          if-no-files-found: error
