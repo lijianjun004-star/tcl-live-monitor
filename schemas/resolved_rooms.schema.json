@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lijianjun004-star/tcl-live-monitor/schemas/resolved_rooms.schema.json",
+  "title": "Discovery layer (B) -> monitor layer (A) handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "run_id", "rooms"],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "run_id": {"type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$"},
+    "rooms": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/room"}}
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|\\+00:00)$"
+    },
+    "code": {
+      "enum": ["OK", "OFFLINE", "REDIRECTED", "LOGIN_REQUIRED", "CAPTCHA_X5SEC", "GROUP_CIRCUIT_OPEN",
+               "NAV_TIMEOUT", "POST_AUDIT_BLOCKED", "SCHEMA_MISMATCH"]
+    },
+    "reason": {"type": ["string", "null"], "pattern": "^[a-z0-9_]{1,64}$"},
+    "public_id": {"type": "string", "pattern": "^[1-9][0-9]{4,17}$"},
+    "room_url": {
+      "type": "string",
+      "pattern": "^https://(lives\\.jd\\.com/#/[1-9][0-9]{4,17}|h5\\.m\\.taobao\\.com/taolive/video\\.html\\?userId=[0-9]{5,16})$"
+    },
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_key", "platform", "account_group", "discovery_mode", "code", "reason", "source",
+                   "live_id", "room_url", "resolved_at", "cache_age_seconds", "verification", "audit"],
+      "properties": {
+        "target_key": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"},
+        "platform": {"enum": ["jd", "tmall", "taobao"]},
+        "account_group": {"enum": [null, 1, 2, 3]},
+        "discovery_mode": {"enum": ["direct", "shop_discover", "sku_discover", "anchor_entry", "short_link"]},
+        "code": {"$ref": "#/$defs/code"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "source": {"enum": ["static", "fresh", "cache", "none"]},
+        "live_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/public_id"}]},
+        "room_url": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/room_url"}]},
+        "resolved_at": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/timestamp"}]},
+        "cache_age_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "verification": {"enum": ["config", "resolved_link", "candidate_unverified", "entry_page", "none"]},
+        "audit": {"type": "object", "maxProperties": 40}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"source": {"const": "none"}}},
+          "then": {"properties": {"room_url": {"type": "null"}, "live_id": {"type": "null"}, "verification": {"const": "none"}}}
+        },
+        {
+          "if": {"properties": {"source": {"enum": ["static", "fresh"]}}},
+          "then": {"properties": {"code": {"const": "OK"}, "room_url": {"$ref": "#/$defs/room_url"}, "cache_age_seconds": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"source": {"const": "cache"}}},
+          "then": {
+            "properties": {
+              "code": {"not": {"const": "OK"}},
+              "room_url": {"$ref": "#/$defs/room_url"},
+              "cache_age_seconds": {"type": "integer"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"code": {"const": "OK"}}},
+          "then": {"properties": {"source": {"enum": ["static", "fresh"]}}}
+        }
+      ]
+    }
+  }
+}
