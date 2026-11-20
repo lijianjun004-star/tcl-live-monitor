@@ -604,8 +604,14 @@ class JdDiscovery(DiscoveryEngine):
         for target in ordered[:1] if ordered and ordered[0].canary else []:
             results[target.key] = await self._guarded(target, ctx)
         rest = [t for t in ordered if t.key not in results]
-        for target, result in zip(rest, await bounded_map(rest, ctx.settings.limits.max_concurrency,
-                                                         lambda t: self._guarded(t, ctx))):
+        resolved = await bounded_map(
+            rest, ctx.settings.limits.max_concurrency, lambda t: self._guarded(t, ctx),
+            should_abort=lambda result: ctx.breaker.is_open(JD_GROUP),
+            aborted=lambda t, started: Resolution.failure(
+                Code.GROUP_CIRCUIT_OPEN, "aborted_after_group_trip" if started else "group_circuit_open",
+                networked=started),
+            failed=lambda t: Resolution.failure(Code.NAV_TIMEOUT, "runtime_exception"))
+        for target, result in zip(rest, resolved):
             results[target.key] = result
         return results
 

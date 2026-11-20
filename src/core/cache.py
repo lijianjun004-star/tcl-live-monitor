@@ -14,6 +14,7 @@ from .timeutil import iso, parse_iso, utcnow
 SCHEMA_VERSION = "2.0"
 ROOM_URL = re.compile(r"^https://(lives\.jd\.com/#/[1-9][0-9]{4,17}|h5\.m\.taobao\.com/taolive/video\.html\?userId=[0-9]{5,16})$")
 PUBLIC_ID = re.compile(r"^[1-9][0-9]{4,23}$")
+RESOLVED_ID = re.compile(r"^[1-9][0-9]{4,17}$")   # the resolved_rooms contract (JD room ids)
 MAX_BYTES = 512 * 1024
 VERIFICATIONS = {"config", "resolved_link", "candidate_unverified", "entry_page"}
 
@@ -47,18 +48,22 @@ class ResolvedCache:
                 pass
             return
         for key, entry in entries.items():
-            if self._valid(entry):
-                self.entries[key] = entry
+            if isinstance(key, str) and self._valid(entry):
+                # Normalise so a restored entry always satisfies the resolved_rooms contract.
+                self.entries[key] = {**entry, "resolved_at": iso(parse_iso(entry["resolved_at"])),
+                                     "verification": entry.get("verification", "resolved_link")}
 
     @staticmethod
     def _valid(entry: object) -> bool:
-        return (
-            isinstance(entry, dict)
-            and isinstance(entry.get("fingerprint"), str)
-            and isinstance(entry.get("room_url"), str) and bool(ROOM_URL.fullmatch(entry["room_url"]))
-            and (entry.get("live_id") is None or (isinstance(entry["live_id"], str) and bool(PUBLIC_ID.fullmatch(entry["live_id"]))))
-            and parse_iso(entry.get("resolved_at")) is not None
-        )
+        if not (isinstance(entry, dict) and isinstance(entry.get("fingerprint"), str)
+                and isinstance(entry.get("room_url"), str) and ROOM_URL.fullmatch(entry["room_url"])
+                and parse_iso(entry.get("resolved_at")) is not None
+                and entry.get("verification", "resolved_link") in VERIFICATIONS):
+            return False
+        live_id = entry.get("live_id")
+        if live_id is None:
+            return not entry["room_url"].startswith("https://lives.jd.com/")
+        return isinstance(live_id, str) and bool(RESOLVED_ID.fullmatch(live_id)) and entry["room_url"].endswith("/#/" + live_id)
 
     def lookup(self, target: Target, now: datetime | None = None) -> dict | None:
         entry = self.entries.get(target.key)
@@ -70,7 +75,7 @@ class ResolvedCache:
 
     def store(self, target: Target, *, live_id: str | None, room_url: str, verification: str,
               at: str | None = None) -> None:
-        if not ROOM_URL.fullmatch(room_url) or (live_id is not None and not PUBLIC_ID.fullmatch(live_id)):
+        if not ROOM_URL.fullmatch(room_url) or (live_id is not None and not RESOLVED_ID.fullmatch(live_id)):
             return
         previous = self.entries.get(target.key, {})
         self.entries[target.key] = {

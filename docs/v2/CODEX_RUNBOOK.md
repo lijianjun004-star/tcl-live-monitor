@@ -11,6 +11,7 @@
 | `feat(v2): four-layer…` | `src/core`、`src/platforms/{jd,ali_live}`、`src/output`、`src/v2_run.py`；`requirements.txt` 新增 `jsonschema==4.26.0`；`.gitignore` |
 | `test(v2): offline…` | `tests/v2/`（13 个测试文件 + `conftest.py`）、`pytest.ini`、`requirements-dev.txt` |
 | `ci(v2): proposed…` | 本文件与 `ci/v2-monitor.yml.proposed` |
+| `fix(v2): …`（2 个） | 关闭阿里分组上下文；独立审查后的 6 项修复（推送失败可重试、京东在途中止、短链码脱敏、退出码 4、缓存严格校验、孤儿任务），并新增 `tests/v2/test_review_fixes.py` |
 
 ## 1. 本地 / Runner 离线验证（无需任何 Secret）
 
@@ -18,7 +19,7 @@
 python -m pip install -r requirements-dev.txt
 python src/single_room_probe.py --self-test          # 旧探针自检，必须仍然通过
 python -m playwright install --with-deps chromium
-python -m pytest                                      # 预期：175 passed
+python -m pytest                                      # 预期：181 passed
 python src/v2_run.py --targets config/targets.example.json --engine fake \
   --out v2-evidence --state-dir state --dashboard docs/index.html --no-notify --no-drive
 (cd v2-evidence && sha256sum --strict --check SHA256SUMS.txt)
@@ -26,11 +27,11 @@ python src/v2_run.py --targets config/targets.example.json --engine fake \
 
 | 预期结果 | 说明 |
 |---|---|
-| `175 passed` | 其中 5 个真浏览器用例全部由本地伪造响应应答，不访问外网。没有 Chromium 时显示 `170 passed, 5 skipped`，同样算通过 |
+| `181 passed` | 其中 5 个真浏览器用例全部由本地伪造响应应答，不访问外网。没有 Chromium 时显示 `176 passed, 5 skipped`，同样算通过 |
 | dry-run 输出 `"verdict": "canary_passed"`，退出码 0 | 假引擎下 8 个示例目标都是 `OK` |
 | `sha256sum` 每行显示 `OK` | 证据包完整 |
 
-Claude 已在 Python 3.11.18 和 3.13 下各跑过一次，结果都是 175 passed（本地 Chromium 153）。
+Claude 已在 Python 3.11.18 和 3.13 下各跑过一次，结果都是 181 passed（本地 Chromium 153）。
 
 ## 2. 落盘工作流（需要 Workflows 权限，由 Codex 或你执行）
 
@@ -95,6 +96,8 @@ v2-state/                     # 供下一轮恢复：resolved_cache.json、monit
 | 缺陷 B：不走 PC | 同上 | `audit.h5.status`，不存在任何 `item.jd.com` 变体 |
 | 熔断 | `run_summary.circuit_breaker` | 某组被熔断后，该组后续房间显示 `GROUP_CIRCUIT_OPEN` 且 `diagnostics.network_requests: 0` |
 | 契约 | `run_summary.contract_validation` | `{"resolved_rooms":"ok","monitor_snapshot":"ok"}` |
+| 推送失败可重试 | `run_summary.notification`、`state_snapshot_advanced` | 推送状态为 `rejected` 或 `transport_error` 时，该值为 `false`，下一轮重新推送 |
+| 运行期故障 | 退出码 4、`verdict: runtime_error` | 只出现在浏览器无法启动等情况；此时没有快照，不可当作停播 |
 | 无密钥外泄 | 整个证据包 | 用 `grep -rE` 搜索你自己的 Cookie 片段、Webhook token、`refresh_token`，结果应为空 |
 
 ## 7. 尚未实测校准的部分（不要把它们的结果当作已证实）

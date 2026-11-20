@@ -24,6 +24,9 @@ VERIFIED_LANDING = ("h5.m.taobao.com", "/taolive/video.html")
 # Query parameter names trusted to carry the anchor account id on the verified landing page.
 # Extend only after a sanitized landing sample shows another name on that page.
 SHORT_LINK_PARAM_HOOKS: tuple[str, ...] = ("userId",)
+STATIC_SEGMENTS = frozenset({"", "taolive", "video.html", "app", "h5", "index.html", "detail", "item.htm", "shop",
+                             "live", "punish", "captcha", "login.htm", "member", "_____tmd_____", "market", "home",
+                             "page", "pages", "redirect", "jump", "downloadApp", "download.html"})
 SENSITIVE_PARAM = re.compile(r"token|tk|sign|session|sid|cookie|ticket|secret|pass|uid|nick|phone|spm|scm|ut_sk", re.I)
 
 
@@ -33,8 +36,8 @@ def route_shape(url: str) -> dict:
         host = (parts.hostname or "").lower()
     except ValueError:
         return {"host": "unparseable"}
-    segments = [re.sub(r"[0-9]{3,}", "{n}", s) if re.fullmatch(r"[A-Za-z0-9_.{}-]{1,40}", s) else "{segment}"
-                for s in parts.path.split("/")[1:8]]
+    # Allow-list like the JD route_shape: a short-link code or any unknown segment never survives.
+    segments = [s if s in STATIC_SEGMENTS else "{segment}" for s in parts.path.split("/")[1:8]]
     keys = sorted({k if not SENSITIVE_PARAM.search(k) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,30}", k) else "{other}"
                    for k, _ in parse_qsl(parts.query[:4096], keep_blank_values=True)})[:20]
     return {"host": host if ali_host(host) else "other", "path": "/" + "/".join(segments), "query_keys": keys}

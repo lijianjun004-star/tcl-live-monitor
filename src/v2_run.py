@@ -34,7 +34,9 @@ from core.timeutil import iso, utcnow  # noqa: E402
 from output import dashboard, diff_push, gdrive_sync, notifiers  # noqa: E402
 
 SCHEMA_VERSION = "2.0"
-EXIT_OK, EXIT_CONTRACT, EXIT_CANARY = 0, 2, 3
+EXIT_OK, EXIT_CONTRACT, EXIT_CANARY, EXIT_RUNTIME = 0, 2, 3, 4
+# A transient push failure keeps the previous diff base so the events are raised again next run.
+RETRY_NOTIFY = {"rejected", "transport_error"}
 CACHEABLE = {"resolved_link", "entry_page"}
 
 
@@ -195,28 +197,36 @@ async def run(args, env: Mapping[str, str]) -> int:
 
         factory_cm = BrowserFactory()
     unique_engines = {id(e): e for pair in engines.values() for e in pair}.values()
-    async with factory_cm as factory:
-        ctx.browser = factory
-        try:
-            resolutions = await discover(settings, engines, ctx)
-            rows = [degrade(target, resolutions[target.key], cache) for target in settings.targets]
-            resolved_doc = {"schema_version": SCHEMA_VERSION, "generated_at": iso(), "run_id": run_id, "rooms": rows}
-            write_json(args.out / "resolved_rooms.json", resolved_doc)
+    try:
+        async with factory_cm as factory:
+            ctx.browser = factory
             try:
-                require("resolved_rooms", resolved_doc)
-                validation["resolved_rooms"] = "ok"
-            except ContractError as error:
-                validation["resolved_rooms"] = error.problems
-                print(json.dumps({"status": "contract_error", "contract": "resolved_rooms", "problems": error.problems}))
-                return EXIT_CONTRACT
-            resolved = {row["target_key"]: row for row in rows}
-            rooms_by_key = await monitor(settings, engines, resolved, ctx)
-        finally:
-            for engine in unique_engines:
+                resolutions = await discover(settings, engines, ctx)
+                rows = [degrade(target, resolutions[target.key], cache) for target in settings.targets]
+                resolved_doc = {"schema_version": SCHEMA_VERSION, "generated_at": iso(), "run_id": run_id, "rooms": rows}
+                write_json(args.out / "resolved_rooms.json", resolved_doc)
                 try:
-                    await engine.close()
-                except Exception:
-                    pass
+                    require("resolved_rooms", resolved_doc)
+                    validation["resolved_rooms"] = "ok"
+                except ContractError as error:
+                    validation["resolved_rooms"] = error.problems
+                    print(json.dumps({"status": "contract_error", "contract": "resolved_rooms", "problems": error.problems}))
+                    return EXIT_CONTRACT
+                resolved = {row["target_key"]: row for row in rows}
+                rooms_by_key = await monitor(settings, engines, resolved, ctx)
+            finally:
+                for engine in unique_engines:
+                    try:
+                        await engine.close()
+                    except Exception:
+                        pass
+    except Exception as error:  # e.g. Chromium cannot start: no browser state can be trusted
+        failure = {**meta, "started_utc": started, "completed_utc": iso(), "schema_version": SCHEMA_VERSION,
+                   "engine": args.engine, "verdict": "runtime_error", "error_type": type(error).__name__,
+                   "contract_validation": validation}
+        write_json(args.out / "run_summary.json", failure)
+        print(json.dumps({"status": "runtime_error", "error_type": type(error).__name__}))
+        return EXIT_RUNTIME
     rooms = [rooms_by_key[target.key] for target in settings.targets]
     for target, room in zip(settings.targets, rooms):
         row = resolved[target.key]
@@ -264,12 +274,14 @@ async def run(args, env: Mapping[str, str]) -> int:
         "contract_validation": validation, "max_detect_ms": snapshot["summary"]["max_detect_ms"],
         "median_detect_ms": snapshot["summary"]["median_detect_ms"],
         "circuit_breaker": ctx.breaker.report(), "cache_problem": cache.load_problem,
-        "notification": notify, "stability_across_runs": "not_measured",
+        "notification": notify, "state_snapshot_advanced": notify["status"] not in RETRY_NOTIFY,
+        "stability_across_runs": "not_measured",
     }
     write_json(args.out / "run_summary.json", summary)
     files = [p for p in args.out.rglob("*") if p.is_file() and p.name not in ("SHA256SUMS.txt", "drive_status.json")]
     write_sums(args.out, files)
-    write_json(args.state_dir / "monitor_snapshot.json", snapshot)
+    if summary["state_snapshot_advanced"]:
+        write_json(args.state_dir / "monitor_snapshot.json", snapshot)
     cache.save()
     ledger.save()
     drive = {"status": "disabled"} if args.no_drive else gdrive_sync.sync(args.out, run_id, env)

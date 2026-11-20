@@ -47,7 +47,12 @@ class BrowserFactory:
         options = {"headless": self.headless}
         if self.executable_path:
             options["executable_path"] = self.executable_path
-        self.browser = await self.playwright.chromium.launch(**options)
+        try:
+            self.browser = await self.playwright.chromium.launch(**options)
+        except BaseException:
+            manager, self._manager = self._manager, None
+            await manager.__aexit__(None, None, None)
+            raise
         return self
 
     async def __aexit__(self, *exc) -> None:

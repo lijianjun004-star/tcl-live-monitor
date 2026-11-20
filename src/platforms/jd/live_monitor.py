@@ -143,8 +143,12 @@ class JdLiveMonitor(MonitorEngine):
         for target, resolved in [p for p in pairs if p[0].canary]:
             results[target.key] = await self._guarded_room(target, resolved, ctx)
         rest = [p for p in pairs if not p[0].canary]
-        rooms = await bounded_map(rest, ctx.settings.limits.max_concurrency,
-                                  lambda pair: self._guarded_room(pair[0], pair[1], ctx))
+        rooms = await bounded_map(
+            rest, ctx.settings.limits.max_concurrency, lambda pair: self._guarded_room(pair[0], pair[1], ctx),
+            should_abort=lambda room: ctx.breaker.is_open(JD_GROUP),
+            aborted=lambda pair, started: self._aborted(pair[0], pair[1], started, ctx),
+            failed=lambda pair: snapshot_room(pair[0], pair[1], code=Code.NAV_TIMEOUT, reason="runtime_exception",
+                                              keywords=ctx.settings.keywords))
         for (target, _), room in zip(rest, rooms):
             results[target.key] = room
         self._attach_sku_verdicts(pairs, results, ctx)
@@ -164,6 +168,16 @@ class JdLiveMonitor(MonitorEngine):
                                           bool((audit.get("h5") or {}).get("limits_reached")),
                                           bool(audit.get("loaded_product_page")))
             results[target.key]["diagnostics"]["sku_control_verdict"] = verdict
+
+    @staticmethod
+    def _aborted(target: Target, resolved: dict, started: bool, ctx: RunContext) -> dict:
+        """A sibling opened the JD breaker while this room was queued or already in flight."""
+        if not resolved.get("room_url"):
+            return inherited_room(target, resolved, keywords=ctx.settings.keywords)
+        if not started:
+            return inherited_room(target, resolved, Code.GROUP_CIRCUIT_OPEN, "group_circuit_open", ctx.settings.keywords)
+        return snapshot_room(target, resolved, code=Code.GROUP_CIRCUIT_OPEN, reason="aborted_after_group_trip",
+                             keywords=ctx.settings.keywords, diagnostics={"aborted_in_flight": True})
 
     async def _guarded_room(self, target: Target, resolved: dict, ctx: RunContext) -> dict:
         keywords = ctx.settings.keywords

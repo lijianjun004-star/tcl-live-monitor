@@ -156,6 +156,16 @@ class AliLiveMonitor(MonitorEngine):
             except Exception:
                 pass
 
+        attached = [True]
+
+        def detach() -> None:
+            if attached[0]:
+                attached[0] = False
+                try:
+                    page.remove_listener("response", on_response)
+                except Exception:
+                    pass
+
         page.on("response", on_response)
         await install_policy(page, policy, audit)
         reasons, thumbnail = [], None
@@ -179,6 +189,7 @@ class AliLiveMonitor(MonitorEngine):
                     pass
             if signal.is_set() and not state["limit"]:
                 await asyncio.sleep(max(0.0, min(GRACE_SECONDS, deadline - loop.time())))
+            detach()
             if pending:
                 await asyncio.wait(pending, timeout=4)
             if not state["limit"] and not samples:
@@ -203,6 +214,7 @@ class AliLiveMonitor(MonitorEngine):
                 except Exception:
                     reasons.append("screenshot_failed")
         finally:
+            detach()
             for task in pending:
                 if not task.done():
                     task.cancel()

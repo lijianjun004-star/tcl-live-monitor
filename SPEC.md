@@ -155,7 +155,7 @@ Schema 之外的业务规则（由 `core/config.py` 校验）：`key` 唯一；�
 | `anchor_entry` | 寻路层无需联网（`source=static`）；监控层打开入口页，被动捕获 `mtop.mediaplatform.live.livedetail/4.0`，`live_id` 取自响应 |
 | `short_link` | 寻路层打开 `m.tb.cn` 链接，只从落地 URL 中读取已实测的参数 `userId`，并记录脱敏后的路由形态；其他参数名留作可扩展钩子（`SHORT_LINK_PARAM_HOOKS`），默认为空 |
 | DOM 兜底 | 只用于识别门禁（滑块、验证、登录文案）；不从 DOM 推断 LIVE |
-| 京东熔断 | `limits.jd_circuit_breaker=true`（默认）时，京东匿名访问共用一个熔断组 `jd:anonymous`，canary 最先执行 |
+| 京东熔断 | `limits.jd_circuit_breaker=true`（默认）时，京东匿名访问共用一个熔断组 `jd:anonymous`，canary 最先执行。京东按 `max_concurrency` 并发：熔断一旦打开，排队中的房间不再发出请求（`group_circuit_open`）；已在请求中的房间立即取消（`aborted_after_group_trip`，`diagnostics.aborted_in_flight=true`）。因此熔断后最多还有 `max_concurrency − 1` 个房间可能已经发出过请求 |
 
 ## 8. 寻路失败的缓存降级
 
@@ -169,7 +169,7 @@ Schema 之外的业务规则（由 `core/config.py` 校验）：`key` 唯一；�
 
 | 模块 | 规定 |
 |---|---|
-| 差分推送 `output/diff_push.py` | 对比 `state/monitor_snapshot.json`。事件类型：`NEW_LIVE`、`PRICE_CHANGE`、`KEYWORD_HIT`、`CIRCUIT_OPEN`、`CAPTCHA`、`CANARY_FAILED`。每条事件计算指纹，在 `notify_dedupe_hours` 内不重复推送；同一轮的所有事件合并成一条消息 |
+| 差分推送 `output/diff_push.py` | 对比 `state/monitor_snapshot.json`。事件类型：`NEW_LIVE`、`PRICE_CHANGE`、`KEYWORD_HIT`、`CIRCUIT_OPEN`、`CAPTCHA`、`CANARY_FAILED`。每条事件计算指纹，在 `notify_dedupe_hours` 内不重复推送；同一轮的所有事件合并成一条消息。推送返回 `rejected` 或 `transport_error` 时，**不更新** `state/monitor_snapshot.json`（`state_snapshot_advanced=false`），下一轮会重新产生这些事件 |
 | 通道 `output/notifiers.py` | `WEBHOOK_URL`（+ 可选 `WEBHOOK_KIND`、`WEBHOOK_SECRET`）。支持钉钉（可加签）、飞书（可加签）、企业微信、Bark。未写 `WEBHOOK_KIND` 时按主机名自动识别。URL 不进入日志 |
 | Drive 同步 `output/gdrive_sync.py` | OAuth 2.0 刷新令牌（`GDRIVE_CLIENT_ID/SECRET/REFRESH_TOKEN`）。令牌响应里的 `scope` 必须**恰好是** `https://www.googleapis.com/auth/drive.file`，否则拒绝执行。报告压缩包永久保留；带 `appProperties.tcl_live_monitor=thumbnail` 且创建时间超过 24 小时的缩略图，调用 `DELETE files/{id}` **永久删除**（不进回收站） |
 | 看板 `output/dashboard.py` | 输出单文件静态页 `docs/index.html`：深色、竖屏，顶部统计，按平台/状态筛选，双列卡片，一键跳转直播间。数据内嵌为 JSON，渲染只用 `textContent`。默认**不发布**到 Pages（含目标清单） |
@@ -180,7 +180,7 @@ Schema 之外的业务规则（由 `core/config.py` 校验）：`key` 唯一；�
 
 `run_summary.json` 字段：`repository, head_sha, branch, event, run_id, run_attempt, started_utc, completed_utc, schema_version, engine, targets_total, by_platform, by_code, positive_live_control, verdict, contract_validation, max_detect_ms, median_detect_ms, stability_across_runs="not_measured"`。
 
-`verdict` 取值：`canary_passed` / `canary_failed` / `no_canary`。退出码：`0` 正常；`2` 契约校验失败；`3` 设置了 `--fail-on-canary` 且 canary 未通过。
+`verdict` 取值：`canary_passed` / `canary_failed` / `no_canary` / `runtime_error`。退出码：`0` 正常；`2` 配置或契约校验失败；`3` 设置了 `--fail-on-canary` 且 canary 未通过；`4` 运行期故障（如 Chromium 无法启动），此时只写出 `run_summary.json`。
 
 ## 11. 环境变量与 Secrets
 
