@@ -106,13 +106,18 @@ def interpret(sku, room, control, discovery):
         return "inconclusive_control_id_unresolved"
     if not control["positive_live_control"]:
         return "inconclusive_no_confirmed_live_control"
+    prior = [p["prior_sku_public_json"] for p in discovery["pages"]
+             if p.get("prior_sku_public_json", {}).get("response_count", 0)]
+    prior_ids = {item["live_id"] for row in prior for item in row.get("live_candidates", [])}
+    if room not in candidates and room in prior_ids:
+        return "matching_live_id_in_sku_response_before_redirect"
     if not pages:
         return "inconclusive_no_product_page_loaded"
     if room in candidates:
-        if candidates == {room} and not truncated:
+        if candidates | prior_ids == {room} and not truncated and not any(row.get("limits_reached") for row in prior):
             return "matching_live_id_uniquely_discovered_in_this_run"
         return "matching_live_id_among_candidates_or_partial_results"
-    if discovery["control_id_observed"]:
+    if any(page.get("control_id_observed") is True for page in pages + prior):
         return "control_id_seen_without_live_context"
     return "no_match_in_inspected_sources"
 
