@@ -48,10 +48,12 @@ config/targets(.example).json ──► [core] 校验
 | `CAPTCHA_X5SEC` | 遇到滑块、x5sec/punish 页、`RGV587`/`USER_VALIDATE` 等限流返回，或 HTTP 403/429 | `unknown` | **是** |
 | `GROUP_CIRCUIT_OPEN` | 同组已熔断，本房间未发出任何网络请求 | `unknown` | — |
 | `NAV_TIMEOUT` | 导航超时、运行期异常，或在预算内没有拿到判定信号 | `unknown` | 否 |
-| `POST_AUDIT_BLOCKED` | 寻路失败，且审计显示有被拦截的写请求（需要排查是否误拦） | `unknown` | 否 |
+| `POST_AUDIT_BLOCKED` | 京东寻路未得到候选，且有未完成独立核对的接口被拦，或接口请求缺少可核对的身份、路径或方法 | `unknown` | 否 |
 | `SCHEMA_MISMATCH` | 输入非法、响应结构不符、状态有歧义或有多个候选 | `unknown` | 否 |
 
 细分原因写在 `reason` 字段里（取值匹配 `^[a-z0-9_]{1,64}$`），例如 `no_independent_room_match`、`ambiguous_live_candidates`、`app_download_landing`。
+
+京东游客寻路沿用冻结码 `SCHEMA_MISMATCH`。商品页加载成功，审计和读取完整且未观察到直播入口或候选时，`reason` 为 `no_live_entry_in_guest_h5`。店铺页在同等条件下未观察到候选时，使用 `no_live_candidate_in_guest_shop`。这两种结果的直播状态均为 `unknown`。已复核的评论、上传、日志、令牌和地址接口以及非 API 写请求的拦截不单独触发 `POST_AUDIT_BLOCKED`。接口名单截断、读取不完整、入口可见但缺少场次号和候选冲突各自记录原因。H5 审计内的 `observed_from` 和 `observed_until` 以 UTC 标示商品页采样时间。
 
 ### 3.1 京东监控层映射（基于 `single_room_probe` 的结果字段）
 

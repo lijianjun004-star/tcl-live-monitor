@@ -23,7 +23,7 @@ from .classifier import (classify_tmall, endpoint_evidence, is_access_limit, is_
                          limit_url_kind, map_sample, parse_json_or_jsonp, pick_best, response_limit,
                          LOGIN_LIMIT)
 from .discovery import grouped
-from .policy import AliMonitorPolicy
+from .policy import MTOP_HOSTS, AliMonitorPolicy, mtop_api
 from .session import AliSession
 
 GRACE_SECONDS = 0.5
@@ -114,6 +114,23 @@ class AliLiveMonitor(MonitorEngine):
         samples, pending, endpoints = [], [], []
         state = {"limit": None, "why": None, "http": None, "detect_at": None}
         signal = asyncio.Event()
+        attached = [True]
+        mtop = {"requests_allowed": 0, "requests_blocked": 0, "responses": 0}
+        detail = {**mtop, "json_objects": 0, "read_or_parse_errors": 0}
+        observation = {"navigation_attempted": False, "mtop": mtop, "livedetail_v4": detail}
+
+        def count_endpoint(url: str, event: str) -> None:
+            if not attached[0]:
+                return
+            try:
+                parts = urlsplit(url)
+                host = (parts.hostname or "").lower().rstrip(".")
+            except ValueError:
+                return
+            if parts.scheme in {"http", "https"} and host in MTOP_HOSTS and mtop_api(parts.path):
+                mtop[event] += 1
+                if is_live_detail_url(url):
+                    detail[event] += 1
 
         def stop(kind: str, why: str) -> None:
             if not state["limit"]:
@@ -122,9 +139,17 @@ class AliLiveMonitor(MonitorEngine):
 
         async def read(res):
             try:
-                sample = classify_tmall(parse_json_or_jsonp(await res.text()), identity)
+                payload = parse_json_or_jsonp(await res.text())
             except Exception:
+                detail["read_or_parse_errors"] += 1
                 sample = {"state": "UNKNOWN", "reason": "API_RESPONSE_PARSE_ERROR"}
+            else:
+                if isinstance(payload, dict):
+                    detail["json_objects"] += 1
+                try:
+                    sample = classify_tmall(payload, identity)
+                except Exception:
+                    sample = {"state": "UNKNOWN", "reason": "API_RESPONSE_PARSE_ERROR"}
             if len(samples) < MAX_SAMPLES:
                 samples.append(sample)
             if is_access_limit(sample):
@@ -137,6 +162,7 @@ class AliLiveMonitor(MonitorEngine):
 
         def on_response(res):
             try:
+                count_endpoint(res.url, "responses")
                 navigation = res.request.is_navigation_request() and res.request.frame == page.main_frame
                 if navigation:
                     state["http"] = res.status
@@ -156,8 +182,6 @@ class AliLiveMonitor(MonitorEngine):
             except Exception:
                 pass
 
-        attached = [True]
-
         def detach() -> None:
             if attached[0]:
                 attached[0] = False
@@ -167,10 +191,15 @@ class AliLiveMonitor(MonitorEngine):
                     pass
 
         page.on("response", on_response)
-        await install_policy(page, policy, audit)
+        await install_policy(
+            page, policy, audit,
+            on_allowed=lambda request, info, decision: count_endpoint(info.url, "requests_allowed"),
+            on_blocked=lambda info, decision: count_endpoint(info.url, "requests_blocked"),
+        )
         reasons, thumbnail = [], None
         try:
             try:
+                observation["navigation_attempted"] = True
                 await page.goto(resolved["room_url"], wait_until="domcontentloaded",
                                 timeout=int(max(3.0, ctx.budget - 2.0) * 1000))
             except Exception:
@@ -228,6 +257,7 @@ class AliLiveMonitor(MonitorEngine):
             live_id = None  # the classifier accepts leading zeros; the contract does not
         diagnostics = {
             "cookie_mode": self.session.mode(target.account_group),
+            "passive_observation": observation,
             "http_status": state["http"], "responses": len(samples), "endpoints": endpoints,
             "classifier_reason": (best or {}).get("reason"), "api_ret": api_tokens(best),
             "identity_verified": bool(best and (best.get("state") in ("LIVE", "OFFLINE")

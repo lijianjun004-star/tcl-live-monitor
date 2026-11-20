@@ -19,6 +19,7 @@ from core.errors import Code
 from core.models import Resolution
 from core.network import GateLatch, NetworkAudit, install_policy
 from core.runtime import bounded_map, guarded
+from core.timeutil import iso
 
 from . import short_link
 from .policy import ACCESS_HOSTS, PRIVATE, JdDiscoveryPolicy, func_id, jd_host
@@ -272,7 +273,7 @@ async def observe_h5(factory, sku, *, device=H5_DEVICE):
     """observe(mobile=True) from the experiment, with the discovery policy installed."""
     page_url = f"https://item.m.jd.com/product/{sku}.html"
     evidence = Evidence()
-    out = {"variant": "h5", "product_url": page_url, "status": "navigation_error",
+    out = {"variant": "h5", "product_url": page_url, "status": "navigation_error", "observed_from": iso(),
            "main_http_status": None, "loaded_product_page": False, "login_wall": False,
            "challenge": False, "product_content_signals": [], "response_diagnostics": {}}
     latch = GateLatch(JdDiscoveryPolicy())
@@ -293,8 +294,11 @@ async def observe_h5(factory, sku, *, device=H5_DEVICE):
         def on_allowed(request, info, decision):
             if info.host == "api.m.jd.com":
                 on_sku = sku_page_url(page.url, sku) and jd_host(parse_url(info.frame_url or "")[1])
-                if on_sku and len(attributed) < 500:
-                    attributed.add(request)
+                if on_sku:
+                    if len(attributed) < 500:
+                        attributed.add(request)
+                    else:
+                        captured.truncated.add("request_attribution_limit")
 
         def on_blocked(info, decision):
             nonlocal gate
@@ -307,7 +311,11 @@ async def observe_h5(factory, sku, *, device=H5_DEVICE):
             try:
                 if resp is None:
                     resp = await asyncio.wait_for(req.response(), 4)
-                if not resp or gate or resp.status != 200:
+                if not resp or gate:
+                    return
+                if resp.status != 200:
+                    if resp.status >= 400:
+                        counts["public_api_http_errors"] += 1
                     return
                 declared = getattr(resp, "headers", {}).get("content-length", "")
                 if str(declared).isdigit() and int(declared) > LIMIT_BODY:
@@ -437,6 +445,7 @@ async def observe_h5(factory, sku, *, device=H5_DEVICE):
         out["prior_sku_public_json"] = {"response_count": 0}
     out["response_diagnostics"] = dict(sorted(counts.items()))
     out["limits_reached"] = sorted(evidence.truncated)
+    out["observed_until"] = iso()
     return out, evidence, prior, audit
 
 
@@ -483,9 +492,12 @@ async def observe_shop(factory, shop_id, vender_id=None, *, budget=12.0, device=
         async def read_hook(resp, name):
             try:
                 if resp.status != 200:
+                    if resp.status >= 400:
+                        counts["hook_http_errors"] += 1
                     return
                 raw = await asyncio.wait_for(resp.body(), 4)
                 if len(raw) > LIMIT_BODY:
+                    evidence.truncated.add("hook_response_size_limit")
                     return
                 data = json_value(raw)
                 if not isinstance(data, (dict, list)):
@@ -503,11 +515,14 @@ async def observe_shop(factory, shop_id, vender_id=None, *, budget=12.0, device=
 
         def on_response(resp):
             req = resp.request
-            if parse_url(req.url)[1] != "api.m.jd.com" or len(tasks) >= 20:
+            if parse_url(req.url)[1] != "api.m.jd.com":
                 return
             name = func_id(req)
             if name in SHOP_FUNCTION_HOOKS:
-                tasks.append(asyncio.create_task(read_hook(resp, name)))
+                if len(tasks) < 20:
+                    tasks.append(asyncio.create_task(read_hook(resp, name)))
+                else:
+                    evidence.truncated.add("hook_response_count_limit")
 
         await install_policy(context, latch, audit, None, on_blocked)
         page.on("response", on_response)
@@ -532,7 +547,9 @@ async def observe_shop(factory, shop_id, vender_id=None, *, budget=12.0, device=
             latch.gate = gate
         out["landing_route"] = landing_route(page.url, shop_id)
         if tasks:
-            await asyncio.wait(tasks, timeout=5)
+            _, pending = await asyncio.wait(tasks, timeout=5)
+            if pending:
+                evidence.truncated.add("hook_read_timeout")
         if gate:
             out["status"] = gate
         elif (parse_url(page.url)[1], urlsplit(page.url).path) == APP_DOWNLOAD:
@@ -588,9 +605,38 @@ def sku_control_verdict(sku, control_id, control_positive, candidates, prior_ids
     return "no_match_in_inspected_sources"
 
 
-def _no_candidate(reason: str, audit: NetworkAudit, details: dict) -> Resolution:
-    if audit.blocked_writes:
-        return Resolution.failure(Code.POST_AUDIT_BLOCKED, reason + "_with_blocked_writes", audit=details)
+# Exact blocked names independently reviewed for the SKU and shop. A name-based policy
+# category alone cannot establish what a previously unseen operation actually does.
+_REVIEWED_BLOCKED_FUNCTIONS = {
+    "comment_getCommentList", "crosssitesync.upload", "reportInvokeLog",
+    "getTokenC", "m_address_cmpnt_queryAddress",
+}
+_UNIDENTIFIED_API_BLOCKS = {"post_without_function_id", "api_write_path_not_allowed", "api_method_not_allowed"}
+_READ_ERRORS = {"response_read_errors", "dom_frame_read_errors", "hydration_read_errors",
+                "invalid_hydration_json", "document_unavailable", "hook_read_errors",
+                "public_api_http_errors", "hook_http_errors"}
+
+
+def _no_candidate(reason: str, audit: NetworkAudit, details: dict, surface: str) -> Resolution:
+    page = details[surface]
+    if reason == "ambiguous_live_candidates":
+        return Resolution.failure(Code.SCHEMA_MISMATCH, reason, audit=details)
+    if audit.blocked - _REVIEWED_BLOCKED_FUNCTIONS or _UNIDENTIFIED_API_BLOCKS.intersection(audit.counts):
+        return Resolution.failure(Code.POST_AUDIT_BLOCKED, "unreviewed_discovery_api_block", audit=details)
+    if audit.truncated or audit.counts["policy_error"] or audit.counts["unparseable_url"]:
+        reason = "discovery_audit_incomplete"
+    elif page.get("limits_reached") or _READ_ERRORS.intersection(page.get("response_diagnostics") or {}):
+        reason = "discovery_observation_incomplete"
+    elif details["candidate_ids"]:
+        reason = "invalid_live_candidate_id"
+    elif surface == "shop":
+        reason = "no_live_candidate_in_guest_shop"
+    elif page["status"] != "loaded":
+        reason = "guest_h5_product_content_unconfirmed"
+    elif page.get("live_entry_signals"):
+        reason = "guest_h5_live_entry_without_candidate"
+    else:
+        reason = "no_live_entry_in_guest_h5"
     return Resolution.failure(Code.SCHEMA_MISMATCH, reason, audit=details)
 
 
@@ -658,7 +704,8 @@ class JdDiscovery(DiscoveryEngine):
     async def _sku(self, target, ctx, sku, link_audit) -> Resolution:
         out, evidence, prior, audit = await observe_h5(ctx.browser, sku)
         details = {**link_audit, "sku_id": sku, "h5": {k: out.get(k) for k in (
-            "status", "main_http_status", "landing_route", "product_content_signals", "live_entry_signals",
+            "status", "observed_from", "observed_until", "main_http_status", "landing_route",
+            "product_content_signals", "live_entry_signals",
             "limits_reached", "response_diagnostics", "prior_sku_public_json")}, "network": audit.report()}
         details["candidate_ids"] = sorted(evidence.candidates)[:10]
         details["prior_candidate_ids"] = sorted(prior.candidates)[:10]
@@ -675,7 +722,7 @@ class JdDiscovery(DiscoveryEngine):
             code, why = STATUS_CODES.get(status, (Code.NAV_TIMEOUT, "observation_error"))
             return Resolution.failure(code, why, audit=details)
         if live_id is None:
-            return _no_candidate(why, audit, details)
+            return _no_candidate(why, audit, details, "h5")
         return Resolution(Code.OK, why, live_id=live_id, room_url=JD_ROOM_URL.format(live_id),
                           verification="candidate_unverified", networked=True, audit=details)
 
@@ -690,6 +737,6 @@ class JdDiscovery(DiscoveryEngine):
             return Resolution.failure(code, why, audit=details)
         live_id, why = pick_candidate(evidence)
         if live_id is None:
-            return _no_candidate(why, audit, details)
+            return _no_candidate(why, audit, details, "shop")
         return Resolution(Code.OK, why, live_id=live_id, room_url=JD_ROOM_URL.format(live_id),
                           verification="candidate_unverified", networked=True, audit=details)

@@ -1,0 +1,23 @@
+name: Dispatch V2 guest acceptance E once
+on:
+  push:
+    branches: [feat/v2-modular-architecture]
+    paths: ['.github/workflows/v2-dispatch-e-once.yml']
+permissions:
+  actions: write
+  contents: read
+jobs:
+  dispatch:
+    if: github.event.before == '4f9e2a9416e858335a2170974c86fd811dd3d595' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Dispatch the reviewed tip once with a fresh state and strict canary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/feat/v2-modular-architecture" --jq .object.sha)" = "$GITHUB_SHA"
+          gh api --method POST "repos/$GITHUB_REPOSITORY/actions/workflows/425072647/dispatches" \
+            -f ref=feat/v2-modular-architecture \
+            -f 'inputs[engine]=live' -f 'inputs[fail_on_canary]=true' -f 'inputs[guest_anchor_acceptance_e]=true'

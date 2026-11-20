@@ -24,6 +24,10 @@ on:
         description: Fail the job when the JD positive control is not live
         type: boolean
         default: true
+      guest_anchor_acceptance_e:
+        description: Run the five-target guest acceptance profile with a fresh state and strict canary
+        type: boolean
+        default: false
       restore_state_run_id:
         description: Earlier successful run of this workflow on this branch whose v2-state to continue
         type: string
@@ -88,7 +92,7 @@ jobs:
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
       - name: Restore chosen state (cache, previous snapshot, notify ledger)
-        if: ${{ inputs.restore_state_run_id != '' }}
+        if: ${{ !inputs.guest_anchor_acceptance_e && inputs.restore_state_run_id != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           STATE_RUN_ID: ${{ inputs.restore_state_run_id }}
@@ -102,7 +106,15 @@ jobs:
             ' >/dev/null
           gh run download "$STATE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name v2-state --dir state
           test -f state/monitor_snapshot.json
+      - name: E guest acceptance (fresh state, no cookies or external delivery)
+        if: inputs.guest_anchor_acceptance_e
+        env:
+          V2_TARGETS_JSON: ${{ secrets.V2_TARGETS_JSON }}
+          RESTORE_STATE_RUN_ID: ${{ inputs.restore_state_run_id }}
+          FAIL_ON_CANARY: ${{ inputs.fail_on_canary }}
+        run: python ci/v2_guest_acceptance_e.py
       - name: Live V2 run
+        if: ${{ !inputs.guest_anchor_acceptance_e }}
         env:
           V2_TARGETS_JSON: ${{ secrets.V2_TARGETS_JSON }}
           ALI_COOKIE_GROUP_1: ${{ secrets.ALI_COOKIE_GROUP_1 }}

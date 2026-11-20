@@ -127,6 +127,8 @@ class JdDiscoveryPolicy(NetworkPolicy):
             if not name:
                 return Decision(False, "post_without_function_id")
             return Decision(True, "readonly_post_audited", name=name, known_read=known)
+        if host == API_HOST:
+            return Decision(False, "api_method_not_allowed", name=name)
         return Decision(False, "non_api_write_blocked")
 
 

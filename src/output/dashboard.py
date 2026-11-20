@@ -67,6 +67,8 @@ header h1{font-size:18px;margin:4px 0 2px}header p{margin:0;color:var(--muted);f
   var PLATFORM = {jd:'京东', tmall:'天猫', taobao:'淘宝'};
   var CODE = {OK:'直播中', OFFLINE:'未开播', REDIRECTED:'跳转', LOGIN_REQUIRED:'需登录', CAPTCHA_X5SEC:'滑块/验证',
     GROUP_CIRCUIT_OPEN:'组熔断', NAV_TIMEOUT:'超时', POST_AUDIT_BLOCKED:'写拦截', SCHEMA_MISMATCH:'结构不符'};
+  var NO_ENTRY = new Map([['no_live_entry_in_guest_h5', '商品页未见直播入口'],
+                          ['no_live_candidate_in_guest_shop', '店铺页未见直播间']]);
   var BLOCKED = {LOGIN_REQUIRED:1, CAPTCHA_X5SEC:1, GROUP_CIRCUIT_OPEN:1};
   function bucket(r){ return r.code === 'OK' ? 'live' : r.code === 'OFFLINE' ? 'offline' : 'abnormal'; }
   function el(tag, cls, text){ var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
@@ -110,7 +112,8 @@ header h1{font-size:18px;margin:4px 0 2px}header p{margin:0;color:var(--muted);f
       var body = el('div', 'body');
       body.appendChild(el('div', 'name', r.display_name || r.target_key));
       var line = el('div', 'meta'), kind = BLOCKED[r.code] ? 'blocked' : bucket(r);
-      line.appendChild(el('span', 'badge s-' + kind, CODE[r.code] || r.code));
+      var label = r.code === 'SCHEMA_MISMATCH' && NO_ENTRY.get(r.reason);
+      line.appendChild(el('span', 'badge s-' + kind, label || CODE[r.code] || r.code));
       line.appendChild(document.createTextNode(PLATFORM[r.platform] || r.platform));
       body.appendChild(line);
       var extra = [];
