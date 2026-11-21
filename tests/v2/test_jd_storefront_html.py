@@ -115,7 +115,7 @@ def test_denial_and_navigation_are_terminal_even_with_usable_later_html(connecti
     reply(SHOP + '<iframe src="/unread-document"/>'), reply(ITEM),
     reply(SHOP, headers={"Content-Type": "application/json"}),
     reply(SHOP, headers={"Content-Type": "text/html", "Content-Encoding": "gzip"}),
-    reply(b"\xff"), reply(SHOP + ("x" * storefront._MAX_HTML)),
+    reply(b"\xff"), reply(SHOP + ("x" * storefront._MAX_HTML)), reply("<div>" * 257 + SHOP),
     reply(SHOP, status=206), reply(SHOP, status=503),
 ])
 def test_uncertain_guest_page_never_receives_credentials(connections, response):
@@ -134,6 +134,12 @@ def test_credential_outside_scope_leaves_only_guest_sample(connections):
     assert factory.call_count == 1 and result["page_observed"]
     assert result["scope_available"] is False and result["cookie_injected_count"] == 0
     assert not result["authenticated_request_sent"]
+
+
+def test_scheme_relative_anchor_uses_the_document_base_without_loading_it(connections):
+    factory, _ = connections(reply(SHOP), reply(SHOP + '<a href="//lives.jd.com/#/87654321">直播</a>'))
+    result = storefront.observe_entry(FLAGSHIP, scoped())
+    assert result["candidate_live_ids"] == [ROOM] and factory.call_count == 2
 
 
 @pytest.mark.parametrize("response,gate", [
@@ -172,6 +178,7 @@ def test_transport_failure_drops_message_and_does_not_retry(connections):
     with pytest.raises(storefront.StorefrontError) as caught:
         storefront.observe_entry(FLAGSHIP, scoped())
     assert str(caught.value) == "STOREFRONT_READ_FAILED" and factory.call_count == 2
+    assert caught.value.__context__ is None
     objects[1].close.assert_called_once()
 
 

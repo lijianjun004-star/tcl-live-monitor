@@ -57,6 +57,7 @@ class _Document(HTMLParser):
     def __init__(self, url):
         super().__init__(convert_charrefs=True)
         self.url = url
+        self.base = None
         self.stack = []
         self.text = []
         self.titles = []
@@ -74,9 +75,13 @@ class _Document(HTMLParser):
             self.gate = self.gate or _refresh_gate(self.url, attrs.get("content") or "")
         elif tag == "input" and (attrs.get("type") or "").casefold() == "password":
             self.gate = self.gate or "LOGIN_REQUIRED"
+        elif tag == "base" and self.base is None and attrs.get("href"):
+            self.base = urljoin(self.url, attrs["href"])
 
         if tag in _VOID:
             return
+        if len(self.stack) >= 256:
+            raise ValueError("excessive HTML nesting")
         css = re.sub(r"\s+", "", attrs.get("style") or "").casefold()
         hidden = bool(self.stack and self.stack[-1][1]) or (
             tag in _INERT or "hidden" in attrs or (attrs.get("aria-hidden") or "").casefold() == "true"
@@ -130,14 +135,17 @@ def _read(entry_id, cookie_header=None):
                 if charset in {"utf-8", "utf8", "us-ascii", "gb2312", "gbk", "gb18030"}:
                     try:
                         _inspect_html(sample, entry_id, body.decode(charset, errors="strict"))
-                    except (UnicodeDecodeError, AssertionError):
+                    except (ValueError, AssertionError):
                         # An undecodable or malformed document cannot establish access.
                         pass
     except (OSError, http.client.HTTPException, ValueError):
-        raise StorefrontError("STOREFRONT_READ_FAILED") from None
+        pass
+    else:
+        return inspect_page(sample, entry_id)
     finally:
         connection.close()
-    return inspect_page(sample, entry_id)
+    # Outside the handler so an exception carrying field text is not chained.
+    raise StorefrontError("STOREFRONT_READ_FAILED")
 
 
 def _inspect_html(sample, entry_id, html):
@@ -148,7 +156,7 @@ def _inspect_html(sample, entry_id, html):
     text = re.sub(r"\s+", "", body)
     labels = re.sub(r"\s+", "", "".join(doc.titles)) + "\n" + text
     gate = doc.gate or _gate({"visible_text": labels}, sample["final_url"])
-    if not gate and re.search(r"验证码|captcha|verifyyouarehuman", labels, re.I):
+    if not gate and re.search(r"验证码|滑块验证|安全校验|请完成验证|captcha|verifyyouarehuman", labels, re.I):
         gate = "CAPTCHA_X5SEC"
     if not gate and re.search(r"请先登录|请登录|登录后(?:可见|查看)|signinto(?:view|continue)", labels, re.I):
         gate = "LOGIN_REQUIRED"
@@ -159,8 +167,9 @@ def _inspect_html(sample, entry_id, html):
     elif not doc.has_unread_frame and not _LOADING_TEXT.search(text) and _TARGET_TEXT[entry_id].search(text):
         # Raw text, untrusted link destinations and response headers never leave inspect_page.
         sections = _PRODUCT_CONTENT if entry_id == SKU else _SHOP_CONTENT
-        if any(section in text for section in sections) or any(_room_id(href) for href in doc.links):
-            sample.update(visible_text=text, dom_hrefs=doc.links, document_observed=True)
+        links = [urljoin(doc.base or sample["final_url"], href) for href in doc.links]
+        if any(section in text for section in sections) or any(_room_id(href) for href in links):
+            sample.update(visible_text=text, dom_hrefs=links, document_observed=True)
 
 
 def observe_entry(entry_id, session):
