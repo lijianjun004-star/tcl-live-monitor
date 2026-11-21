@@ -1,0 +1,69 @@
+# GitHub registers workflow_dispatch workflows on the default branch. This
+# branch-only template can also be exercised locally with the commands below.
+name: JD discovery offline fixtures
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    if: github.ref == 'refs/heads/experiment/jd-cookie-live-discovery'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src
+      EVIDENCE_DIR: jd-discovery-offline
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install V2 test dependencies
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
+      - name: Replay simulated inputs
+        run: |
+          mkdir -p "$EVIDENCE_DIR"
+          python -m experiments.jd_cookie_live.run --out "$EVIDENCE_DIR"
+          test -s "$EVIDENCE_DIR/jd_cookie_experiment_result.json"
+          test -s "$EVIDENCE_DIR/summary.md"
+      - name: Run V2 offline tests and check for skips
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest tests/v2 -ra --junitxml="$RUNNER_TEMP/jd-pytest.xml" 2>&1 | tee "$EVIDENCE_DIR/pytest.log"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          report = Path(os.environ["RUNNER_TEMP"]) / "jd-pytest.xml"
+          suites = ET.parse(report).findall(".//testsuite")
+          tests = sum(int(suite.get("tests", 0)) for suite in suites)
+          skipped = sum(int(suite.get("skipped", 0)) for suite in suites)
+          if not tests or skipped:
+              raise SystemExit(f"Offline test counts: {tests} total, {skipped} skipped")
+          PY
+      - name: Hash and verify offline evidence
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          cd "$EVIDENCE_DIR"
+          find . -type f ! -name SHA256SUMS.txt -print0 |
+            LC_ALL=C sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt
+          test -s SHA256SUMS.txt
+          sha256sum --strict --check SHA256SUMS.txt
+      - name: Archive offline evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: JD_Discovery_Offline_${{ github.run_id }}_a${{ github.run_attempt }}
+          path: ${{ env.EVIDENCE_DIR }}/
+          if-no-files-found: error
+          retention-days: 7
