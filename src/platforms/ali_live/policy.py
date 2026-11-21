@@ -8,6 +8,8 @@ from urllib.parse import urlsplit
 from core.network import Decision, NetworkPolicy, RequestInfo
 from core.safety import classify_unsafe_name
 
+from .business import ITEM_PATH
+
 ALI_ROOTS = ("taobao.com", "tmall.com", "tb.cn", "alicdn.com", "tbcdn.cn", "taobaocdn.com")
 MTOP_HOSTS = {"h5api.m.taobao.com", "h5api.m.tmall.com"}
 MTOP_API = re.compile(r"^/h5/(mtop\.[a-z0-9._-]{1,160})/\d+\.\d+/?$", re.I)
@@ -59,10 +61,14 @@ class AliMonitorPolicy(NetworkPolicy):
 
     def __init__(self, block_images: bool = False):
         self.block_images = block_images
+        self.block_itemlist = False
 
     def decide(self, request: RequestInfo) -> Decision:
         try:
-            path = urlsplit(request.url).path
+            parts = urlsplit(request.url)
+            path = parts.path
+            if self.block_itemlist and parts.hostname in MTOP_HOSTS and path.rstrip("/") == ITEM_PATH:
+                return Decision(False, "itemlist_access_limited")
         except ValueError:
             return Decision(False, "unparseable_url")
         if request.resource_type == "media" or MEDIA.search(path):

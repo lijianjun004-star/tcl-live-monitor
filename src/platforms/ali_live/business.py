@@ -91,9 +91,12 @@ def business_sample(source, status, payload, live_id=None):
     return (shape, str(live_id) if live_id is not None else None, result if success else {})
 
 
-def business_report(samples, verified_live_id, stop_reason=None):
+def business_report(samples, verified_live_id, stop_reason=None, item_limit=None):
     values, reasons = {}, {}
     for field, source in FIELD_SOURCE.items():
+        if source == "itemlist" and item_limit:
+            values[field], reasons[field] = None, item_limit
+            continue
         entries = samples.get(source, [])
         ok = [(room, fields) for shape, room, fields in entries if shape["status"] == "ok"]
         matched = [fields for room, fields in ok if verified_live_id and room == verified_live_id]

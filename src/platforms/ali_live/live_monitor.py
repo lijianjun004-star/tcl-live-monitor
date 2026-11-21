@@ -1,8 +1,8 @@
 """Tmall/Taobao monitor (A): passive livedetail capture on the guest/cookie entry page.
 
 Flow follows probes/r329/tmall-daily-once.mjs: mobile context, read only the livedetail JSON
-the page itself requests, stop on any limit signal. "Stop the whole run" becomes "open this
-group's breaker"; rooms in a group run one after another with a delay between them.
+the page itself requests. Login and challenge signals stop further access to the gated
+resource. An optional product-list denial affects product fields only.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from core.browser import masked_thumbnail
 from core.config import Target
 from core.errors import DETERMINED_CODES, Code
 from core.models import inherited_room, snapshot_room
-from core.network import NetworkAudit, install_policy
+from core.network import GateLatch, NetworkAudit, install_policy
 from core.runtime import guarded
 
 from .business import business_report, business_sample, endpoint, request_live_id
@@ -67,6 +67,7 @@ class AliLiveMonitor(MonitorEngine):
     def __init__(self, session: AliSession, block_images: bool = False):
         self.session = session
         self.block_images = block_images
+        self._item_limits: dict[int, str] = {}
 
     async def close(self) -> None:
         await self.session.close()  # idempotent; both Ali engines share one session
@@ -113,6 +114,8 @@ class AliLiveMonitor(MonitorEngine):
         context = await self.session.context(ctx.browser, target.account_group)
         page = await context.new_page()
         policy = AliMonitorPolicy(block_images=self.block_images)
+        policy.block_itemlist = target.account_group in self._item_limits
+        page_policy = GateLatch(policy)
         audit = NetworkAudit(policy.name)
         loop = asyncio.get_running_loop()
         started = loop.time()
@@ -121,7 +124,7 @@ class AliLiveMonitor(MonitorEngine):
         status_samples = []
         business = {"livedetail": [], "itemlist": []}
         item_tasks = []
-        state = {"limit": None, "why": None, "http": None, "detect_at": None}
+        state = {"limit": None, "why": None, "page_gate": False, "http": None, "detect_at": None}
         signal = asyncio.Event()
         attached = [True]
         mtop = {"requests_allowed": 0, "requests_blocked": 0, "responses": 0}
@@ -141,23 +144,31 @@ class AliLiveMonitor(MonitorEngine):
                 if is_live_detail_url(url):
                     detail[event] += 1
 
-        def stop(kind: str, why: str) -> None:
-            if not state["limit"]:
-                state["limit"], state["why"] = kind, why
+        def stop(kind: str, why: str, *, page_gate=False) -> None:
+            page_policy.gate = kind
+            if page_gate or not state["limit"]:
+                state["limit"], state["why"], state["page_gate"] = kind, why, page_gate
             signal.set()
+
+        def stop_itemlist(why: str) -> None:
+            policy.block_itemlist = True
+            self._item_limits.setdefault(target.account_group, why)
 
         async def read_item(res):
             try:
                 payload = parse_json_or_jsonp(await res.text())
             except Exception:
                 payload = None
-            request_id = request_live_id(res.url, res.request.post_data)
-            business["itemlist"].append(business_sample("itemlist", res.status, payload, request_id))
             if isinstance(payload, dict):
                 gate = classify_tmall({"ret": payload.get("ret")}, identity)
                 if is_access_limit(gate):
                     login = any(LOGIN_LIMIT.search(x) for x in gate["apiRet"])
-                    stop("login" if login else "challenge", "api_need_login" if login else "api_access_limit")
+                    stop_itemlist("api_need_login" if login else "api_access_limit")
+            try:
+                request_id = request_live_id(res.url, res.request.post_data)
+            except Exception:
+                request_id = None
+            business["itemlist"].append(business_sample("itemlist", res.status, payload, request_id))
 
         async def read(res):
             payload = None
@@ -172,6 +183,10 @@ class AliLiveMonitor(MonitorEngine):
                     status_samples.append(livedetail_status_sample(payload, res.status, identity))
                 try:
                     sample = classify_tmall(payload, identity)
+                    if sample.get("state") in ("LIVE", "OFFLINE") and res.status != 200:
+                        sample = {"state": "UNKNOWN", "reason": "HTTP_ERROR"}
+                    if sample.get("state") == "LIVE" and not re.fullmatch(r"[1-9][0-9]{4,23}", sample["liveId"]):
+                        sample = {"state": "UNKNOWN", "reason": "INVALID_LIVE_ID"}
                 except Exception:
                     sample = {"state": "UNKNOWN", "reason": "API_RESPONSE_PARSE_ERROR"}
             business["livedetail"].append(business_sample("livedetail", res.status, payload, sample.get("liveId")
@@ -196,19 +211,19 @@ class AliLiveMonitor(MonitorEngine):
                 if evidence and len(endpoints) < 30 and evidence not in endpoints:
                     endpoints.append(evidence)
                 source = endpoint(res.url)
-                if source == "itemlist" and res.status in (401, 403, 429):
+                if source == "itemlist" and not navigation and res.status in (401, 403, 429):
                     business[source].append(business_sample(source, res.status, None))
-                    stop("login" if res.status == 401 else "challenge", f"http_{res.status}")
+                    stop_itemlist(f"http_{res.status}")
                     return
                 denied = response_limit(res.url, res.status, navigation)
                 if denied:
                     if source:
                         business[source].append(business_sample(source, res.status, None))
-                    stop("login" if res.status == 401 else "challenge", denied.lower())
+                    stop("login" if res.status == 401 else "challenge", denied.lower(), page_gate=navigation)
                     return
                 kind = limit_url_kind(res.url) if navigation else None
                 if kind:
-                    stop(kind, "login_redirect" if kind == "login" else "platform_challenge")
+                    stop(kind, "login_redirect" if kind == "login" else "platform_challenge", page_gate=True)
                     return
                 if source == "itemlist" and len(item_tasks) < MAX_SAMPLES:
                     item_tasks.append(asyncio.create_task(read_item(res)))
@@ -227,7 +242,7 @@ class AliLiveMonitor(MonitorEngine):
 
         page.on("response", on_response)
         await install_policy(
-            page, policy, audit,
+            page, page_policy, audit,
             on_allowed=lambda request, info, decision: count_endpoint(info.url, "requests_allowed"),
             on_blocked=lambda info, decision: count_endpoint(info.url, "requests_blocked"),
         )
@@ -242,7 +257,7 @@ class AliLiveMonitor(MonitorEngine):
             while not signal.is_set():
                 kind = limit_url_kind(page.url)
                 if kind:
-                    stop(kind, "login_redirect" if kind == "login" else "platform_challenge")
+                    stop(kind, "login_redirect" if kind == "login" else "platform_challenge", page_gate=True)
                     break
                 remaining = deadline - loop.time()
                 if remaining <= 0:
@@ -255,7 +270,10 @@ class AliLiveMonitor(MonitorEngine):
                 await asyncio.sleep(max(0.0, min(GRACE_SECONDS, deadline - loop.time())))
             detach()
             if pending or item_tasks:
-                await asyncio.wait(pending + item_tasks, timeout=4)
+                _, unfinished = await asyncio.wait(pending + item_tasks, timeout=4)
+                for task in unfinished:
+                    task.cancel()
+                await asyncio.gather(*unfinished, return_exceptions=True)
             if not state["limit"] and not samples:
                 try:
                     text = await page.locator("body").inner_text(timeout=1500)
@@ -263,14 +281,13 @@ class AliLiveMonitor(MonitorEngine):
                     text = ""
                 kind = dom_gate(text or "")
                 if kind:
-                    stop(kind, "dom_" + kind)
+                    stop(kind, "dom_" + kind, page_gate=True)
             best = pick_best(samples)
-            if state["limit"]:
+            code, why = map_sample(best)
+            if state["page_gate"] or (state["limit"] and code not in DETERMINED_CODES):
                 code, why = limit_code(state["limit"], state["why"])
-            else:
-                code, why = map_sample(best)
-                if code is Code.NAV_TIMEOUT and reasons:
-                    why = reasons[0]
+            elif code is Code.NAV_TIMEOUT and reasons:
+                why = reasons[0]
             if code is Code.OK and ctx.settings.thumbnails:
                 try:
                     await masked_thumbnail(page, ctx.thumbnail_path(target))
@@ -288,9 +305,8 @@ class AliLiveMonitor(MonitorEngine):
         detect = None if state["detect_at"] is None else int((state["detect_at"] - started) * 1000)
         determined = code in DETERMINED_CODES
         live_id = best.get("liveId") if best and code is Code.OK else None
-        if live_id is not None and not re.fullmatch(r"[1-9][0-9]{4,23}", str(live_id)):
-            live_id = None  # the classifier accepts leading zeros; the contract does not
-        fields, field_evidence = business_report(business, live_id, None if code is Code.OK else why)
+        fields, field_evidence = business_report(business, live_id, None if code is Code.OK else why,
+                                                 item_limit=self._item_limits.get(target.account_group))
         diagnostics = {
             "business_evidence": field_evidence,
             "cookie_mode": self.session.mode(target.account_group),

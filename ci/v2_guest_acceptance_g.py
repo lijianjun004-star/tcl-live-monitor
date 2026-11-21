@@ -1,4 +1,4 @@
-"""Observe the approved SKU directly, optionally alongside the two fixed guest anchors."""
+"""Observe the selected fixed guest targets once, using fresh anonymous state."""
 import argparse
 import json
 import os
@@ -14,9 +14,11 @@ ALI = {"tmall-group": ("tmall", "anchor_entry", "2050532947", 1),
        "tmall-ac": ("tmall", "anchor_entry", "2098070993", 1)}
 
 
-def diagnostic_targets(raw, include_tmall=False):
+def diagnostic_targets(raw, include_tmall=False, *, tmall_only=False):
     document = json.loads(raw)
     expected = {**JD, **ALI} if include_tmall else JD
+    if tmall_only:
+        expected = ALI
     document["targets"] = [row for row in document["targets"] if row["key"] in expected]
     settings = parse_settings(document)
     actual = {t.key: (t.platform, t.mode, t.sku_id or t.account_id, t.account_group)
@@ -28,12 +30,16 @@ def diagnostic_targets(raw, include_tmall=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--sku-diagnostic", required=True, action="store_true")
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--sku-diagnostic", action="store_true")
+    mode.add_argument("--tmall-only", action="store_true")
     parser.add_argument("--include-tmall", action="store_true")
     args = parser.parse_args()
-    selected = diagnostic_targets(os.environ["V2_TARGETS_JSON"], args.include_tmall)
+    selected = diagnostic_targets(os.environ["V2_TARGETS_JSON"], args.include_tmall, tmall_only=args.tmall_only)
     env = {k: v for k, v in os.environ.items() if not k.startswith(("ALI_COOKIE_GROUP_", "WEBHOOK_", "GDRIVE_"))}
-    env.update(V2_TARGETS_JSON=selected, V2_JD_ALL_HTTP_ERROR_SAMPLES="1")
+    env["V2_TARGETS_JSON"] = selected
+    if args.sku_diagnostic:
+        env["V2_JD_ALL_HTTP_ERROR_SAMPLES"] = "1"
     out = Path("g-evidence/observation")
     out.mkdir(parents=True, exist_ok=False)
     if Path("g-state").exists():
