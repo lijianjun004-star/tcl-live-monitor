@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from functools import partial
 
 import pytest
 
@@ -80,6 +81,45 @@ def test_repeat_run_sends_nothing_new_and_canary_failure_sets_exit_code(tmp_path
         assert read(tmp_path, "run_summary.json")["verdict"] == "canary_failed"
     finally:
         v2_run.notifiers.send = original
+
+
+@pytest.mark.parametrize(("url", "flags", "expected_status"), [
+    ("http://example.invalid/device", [], "config_error"),
+    ("", [], "not_configured"),
+    ("https://example.invalid/device", ["--no-notify"], "disabled"),
+])
+def test_unsent_change_is_retried_after_recovery(tmp_path, monkeypatch, url, flags, expected_status):
+    delivered = []
+
+    def accept(url, body, headers):
+        delivered.append(json.loads(body)["body"])
+        return 200, b'{"code":200}'
+
+    monkeypatch.setattr(v2_run.notifiers, "send", partial(v2_run.notifiers.send, transport=accept))
+    valid = {"WEBHOOK_KIND": "bark", "WEBHOOK_URL": "https://example.invalid/device"}
+    assert run(tmp_path, env=valid) == 0
+    baseline = tmp_path / "state" / "monitor_snapshot.json"
+    ledger = tmp_path / "state" / "notify_ledger.json"
+    original_baseline, original_ledger = baseline.read_bytes(), ledger.read_bytes()
+
+    changed = {"jd-canary": {"monitor": {"code": "OFFLINE"}}}
+    assert run(tmp_path, *flags, scenario=changed, env={**valid, "WEBHOOK_URL": url}) == 0
+    summary = read(tmp_path, "run_summary.json")
+    assert summary["notification"]["status"] == expected_status
+    assert summary["notification"]["event_types"] == ["CANARY_FAILED"]
+    assert summary["state_snapshot_advanced"] is False
+    assert baseline.read_bytes() == original_baseline and ledger.read_bytes() == original_ledger
+    assert read(tmp_path, "monitor_snapshot.json")["canary"]["passed"] is False
+    assert len(delivered) == 1
+
+    assert run(tmp_path, scenario=changed, env=valid) == 0
+    summary = read(tmp_path, "run_summary.json")
+    assert summary["notification"]["status"] == "sent" and summary["state_snapshot_advanced"] is True
+    assert len(delivered) == 2 and "【对照失败】" in delivered[-1]
+    assert run(tmp_path, scenario=changed, env=valid) == 0
+    summary = read(tmp_path, "run_summary.json")
+    assert summary["notification"]["status"] == "no_changes" and summary["state_snapshot_advanced"] is True
+    assert len(delivered) == 2
 
 
 def test_breaker_in_the_pipeline(tmp_path):

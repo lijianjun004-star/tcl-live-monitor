@@ -35,8 +35,6 @@ from output import dashboard, diff_push, gdrive_sync, notifiers  # noqa: E402
 
 SCHEMA_VERSION = "2.0"
 EXIT_OK, EXIT_CONTRACT, EXIT_CANARY, EXIT_RUNTIME = 0, 2, 3, 4
-# A transient push failure keeps the previous diff base so the events are raised again next run.
-RETRY_NOTIFY = {"rejected", "transport_error"}
 CACHEABLE = {"resolved_link", "entry_page"}
 
 
@@ -274,16 +272,18 @@ async def run(args, env: Mapping[str, str]) -> int:
         "contract_validation": validation, "max_detect_ms": snapshot["summary"]["max_detect_ms"],
         "median_detect_ms": snapshot["summary"]["median_detect_ms"],
         "circuit_breaker": ctx.breaker.report(), "cache_problem": cache.load_problem,
-        "notification": notify, "state_snapshot_advanced": notify["status"] not in RETRY_NOTIFY,
+        "notification": notify, "state_snapshot_advanced": notify["status"] in {"sent", "no_changes"},
         "stability_across_runs": "not_measured",
     }
     write_json(args.out / "run_summary.json", summary)
     files = [p for p in args.out.rglob("*") if p.is_file() and p.name not in ("SHA256SUMS.txt", "drive_status.json")]
     write_sums(args.out, files)
+    # An empty ledger is valid restorable state before the first successful delivery.
+    if notify["status"] == "sent" or not ledger.path.exists():
+        ledger.save()
     if summary["state_snapshot_advanced"]:
         write_json(args.state_dir / "monitor_snapshot.json", snapshot)
     cache.save()
-    ledger.save()
     drive = {"status": "disabled"} if args.no_drive else gdrive_sync.sync(args.out, run_id, env)
     write_json(args.out / "drive_status.json", drive)
     step_summary(env, summary, snapshot)
