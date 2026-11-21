@@ -29,7 +29,7 @@ config/targets(.example).json ──► [core] 校验
   交付层    output/  差分推送 · Drive 同步 · docs/index.html · 证据包
 ```
 
-| 规则 | 约束（由 `tests/v2/test_layer_isolation.py` 静态检查） |
+| 规则 | 约束（由 `tests/v2/test_dashboard_and_layers.py` 静态检查） |
 |---|---|
 | R1 | `platforms/jd` 与 `platforms/ali_live` 之间严禁互相 import |
 | R2 | `output/` 严禁 import `platforms/`，只读取契约 JSON |
@@ -127,7 +127,7 @@ Schema 之外的业务规则（由 `core/config.py` 校验）：`key` 唯一；�
 
 不变式（Schema 强制）：`code=OK` ⇒ `live_status=live`；`code=OFFLINE` ⇒ `live_status ∈ {offline, replay}`；其他码 ⇒ `live_status=unknown` 且 `thumbnail=null`。
 
-字段来源：`online_count`、`item_title`、`item_price` 只来自京东 `getImmediatePlayToM` 已准入的响应（沿用旧 `public_detail` 的取值和清洗规则）。阿里的这几个字段在未实测校准前恒为 `null`。`keywords_hit` 只匹配 `item_title`。
+京东从已准入的 `getImmediatePlayToM` 响应提取在线人数、商品标题和价格。阿里从与已核验场次匹配的成功 `livedetail/4.0` 响应提取在线人数，从同场 `itemlist/1.0` 响应提取商品标题和价格。缺失值为 `null`，原因记录在 `diagnostics.business_evidence.fields`。`keywords_hit` 只匹配 `item_title`。
 
 ## 7. 平台引擎设计
 
@@ -158,6 +158,7 @@ Schema 之外的业务规则（由 `core/config.py` 校验）：`key` 唯一；�
 |---|---|
 | Cookie 池 | 读 `ALI_COOKIE_GROUP_1..3`（原始 `k=v; k2=v2` 字符串）。组内只要有天猫目标，就把同一份 Cookie 同时注入 `.taobao.com` 和 `.tmall.com`；纯淘宝组只注入 `.taobao.com`。每组一个独立的浏览器上下文。Cookie 值不进入任何日志、`repr` 或证据 |
 | 组级熔断 | 组内任意房间（无论寻路层还是监控层）返回 `LOGIN_REQUIRED` 或 `CAPTCHA_X5SEC`，该组立即熔断；组内剩余房间直接标记 `GROUP_CIRCUIT_OPEN`，**不发出任何网络请求**。组内串行执行，房间之间间隔 `inter_room_delay_seconds`；不同组可以并行 |
+| 辅助商品接口 | 商品列表要求登录时，商品字段降级，同组后续请求停止访问该商品接口。已核验的主接口在播状态和场次号保留，同组下一家店仍可独立观测房间详情。 |
 | `anchor_entry` | 寻路层无需联网（`source=static`）；监控层打开入口页，被动捕获 `mtop.mediaplatform.live.livedetail/4.0`，`live_id` 取自响应 |
 | `short_link` | 寻路层打开 `m.tb.cn` 链接，只从落地 URL 中读取已实测的参数 `userId`，并记录脱敏后的路由形态；其他参数名留作可扩展钩子（`SHORT_LINK_PARAM_HOOKS`），默认为空 |
 | DOM 兜底 | 只用于识别门禁（滑块、验证、登录文案）；不从 DOM 推断 LIVE |

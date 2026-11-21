@@ -1,18 +1,6 @@
 name: TCL V2 monitor
 
 on:
-  push:
-    branches:
-      - feat/v2-modular-architecture
-    paths:
-      - '.github/workflows/v2-monitor.yml'
-      - 'src/**'
-      - 'tests/v2/**'
-      - 'schemas/**'
-      - 'config/targets.example.json'
-      - 'SPEC.md'
-      - 'pytest.ini'
-      - 'requirements*.txt'
   workflow_dispatch:
     inputs:
       engine:
@@ -24,10 +12,6 @@ on:
         description: Fail the job when the JD positive control is not live
         type: boolean
         default: true
-      guest_anchor_acceptance_e:
-        description: Run the five-target guest acceptance profile with a fresh state and strict canary
-        type: boolean
-        default: false
       restore_state_run_id:
         description: Earlier successful run of this workflow on this branch whose v2-state to continue
         type: string
@@ -43,37 +27,7 @@ concurrency:
 
 jobs:
   offline:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.11'
-      - name: Install pinned dependencies
-        run: python -m pip install -r requirements-dev.txt
-      - name: Legacy JD probe self-test (must stay green)
-        run: python src/single_room_probe.py --self-test
-      - name: Install Chromium
-        run: python -m playwright install --with-deps chromium
-      - name: Offline pytest (browser tests answer every request locally)
-        run: python -m pytest
-      - name: Fake-engine dry run on the example targets
-        run: >-
-          python src/v2_run.py --targets config/targets.example.json --engine fake
-          --out v2-evidence --state-dir state --dashboard docs/index.html --no-notify --no-drive
-      - name: Verify evidence checksums
-        working-directory: v2-evidence
-        run: sha256sum --strict --check SHA256SUMS.txt
-      - name: Upload dry-run evidence
-        uses: actions/upload-artifact@v7
-        with:
-          name: TCL_V2_DryRun_${{ github.run_id }}_a${{ github.run_attempt }}
-          path: v2-evidence/
-          retention-days: 7
-          if-no-files-found: error
+    uses: ./.github/workflows/v2-offline.yml
 
   live:
     needs: offline
@@ -92,7 +46,7 @@ jobs:
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
       - name: Restore chosen state (cache, previous snapshot, notify ledger)
-        if: ${{ !inputs.guest_anchor_acceptance_e && inputs.restore_state_run_id != '' }}
+        if: ${{ inputs.restore_state_run_id != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           STATE_RUN_ID: ${{ inputs.restore_state_run_id }}
@@ -106,15 +60,7 @@ jobs:
             ' >/dev/null
           gh run download "$STATE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name v2-state --dir state
           test -f state/monitor_snapshot.json
-      - name: E guest acceptance (fresh state, no cookies or external delivery)
-        if: inputs.guest_anchor_acceptance_e
-        env:
-          V2_TARGETS_JSON: ${{ secrets.V2_TARGETS_JSON }}
-          RESTORE_STATE_RUN_ID: ${{ inputs.restore_state_run_id }}
-          FAIL_ON_CANARY: ${{ inputs.fail_on_canary }}
-        run: python ci/v2_guest_acceptance_e.py
       - name: Live V2 run
-        if: ${{ !inputs.guest_anchor_acceptance_e }}
         env:
           V2_TARGETS_JSON: ${{ secrets.V2_TARGETS_JSON }}
           ALI_COOKIE_GROUP_1: ${{ secrets.ALI_COOKIE_GROUP_1 }}

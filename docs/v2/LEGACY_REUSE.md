@@ -2,13 +2,13 @@
 
 - 基线：`experiment/jd-tcl-ac-sku-live-20261120` @ `7dd3decd723238dfee37ba17952723f274e0b846`（= `main` 38b21a7 + 3 个 SKU 实验提交）
 - V2 工作分支：`feat/v2-modular-architecture`
-- 原则：**保核换壳**。已实测的判定规则通过 `import` 或原样移植复用，只在缺陷 A / B 两处定点修复；旧文件**一个都不删、不改**，旧工作流保持原有行为。
+- 本文记录 Step 1 的代码来源与迁移关系。H 轮收口后，保留历史解析模块作离线回归，退休一次性实盘入口。当前操作见[运行手册](CODEX_RUNBOOK.md)。
 
 ## 0. 核心结论
 
 | 结论 | 说明 |
 |---|---|
-| 回归风险 | **低**。V2 只新增文件。改动的旧文件只有 `requirements.txt`（新增 `jsonschema`）和 `.gitignore`（新增 V2 输出目录） |
+| 回归验证 | `tests/v2/test_legacy_regression.py` 将 V2 实现与保留的 `experiments/jd_sku_live/resolve.py`、`discovery.py` 对照，并验证旧探针自检。 |
 | 京东判活核心 | `src/single_room_probe.py` **零改动**。V2 直接 `import` 其中的纯函数（严格准入、门禁判定、状态判定），旧的 `probe_jd_single.yml` 照常可用 |
 | 缺陷 A 修复点 | 旧 `collect()` 每间房单独启动一个浏览器，`goto` 超时 25s，固定轮询 7×1s，且不屏蔽字体。V2 改为共享浏览器、每间房 12s 总预算、屏蔽视频流和字体、命中 `getImmediatePlayToM` 匹配信号即提前返回 |
 | 缺陷 B 修复点 | 旧 `observe()` 同时跑 PC 和 H5；H5 写请求采用白名单（只放行 `public_post_read()` 且 `on_sku` 的请求），其余 POST 一律记入 `non_allowlisted_writes_blocked`。V2 **删除 PC 变体**，并把白名单改成「不安全写黑名单 + 只读放行审计」 |
@@ -57,7 +57,9 @@
 | `discover()` | 简化 | `JdDiscovery._sku_discover()` | 只跑 H5；候选必须唯一才输出，多个候选判为 SCHEMA_MISMATCH（`ambiguous_live_candidates`） |
 | 原文件 | 保留不动 | — | |
 
-## 4. `experiments/jd_sku_live/run.py`（编排）——拆解进 V2 各层
+## 4. 历史 SKU 实验编排规则的迁移
+
+下表记录已退休的 `experiments/jd_sku_live/run.py` 在基线提交中的实现。当前仓库保留第 2、3 节的解析模块供回归测试使用。
 
 | 规则 | 处理 | V2 位置 |
 |---|---|---|
@@ -86,8 +88,9 @@
 | 抖音相关 `probes/*douyin*`、`probes/r3xx/*`、`config/*douyin*` | 不在京东/天猫/淘宝范围内 |
 | `probes/tcl-jd-all.mjs`、`probes/lib/tcl-ops.mjs`、`jd-r23-scheduled.yml` | 内部运营源巡检，属于正式生产链路，V2 不触碰 |
 | `external/cloudflare-jd-clock` | 外部时钟中继 |
-| `.github/workflows/*` | 按用户红线不写工作流；V2 工作流以 `ci/v2-monitor.yml.proposed` 形式提供，由 Codex 核对后落盘 |
 | `config/probe-targets.json` | 不改。其中天猫字段可按 `accountId→account_id`、`displayName→display_name`、`roomNumber→room_number` 映射进 V2 Secret |
+
+V2 的 [v2-offline.yml](../../.github/workflows/v2-offline.yml) 在实验分支推送时运行离线检查，并供手动工作流复用；[v2-monitor.yml](../../.github/workflows/v2-monitor.yml) 负责手动触发运行，合入后选择 `main` 试运行。
 
 ## 7. 参考但不在基线上的实测结论（来自其他实验分支，只读）
 

@@ -1,11 +1,8 @@
 import json
-import sys
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ci"))
-from v2_guest_acceptance_g import diagnostic_targets
+from archived_guest_policies import diagnostic_targets
 
 
 def test_sku_diagnostic_needs_no_control_and_rejects_wrong_sku():
