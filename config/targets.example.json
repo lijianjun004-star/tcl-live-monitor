@@ -1,0 +1,83 @@
+{
+  "schema_version": "2.0",
+  "limits": {
+    "max_targets": 20,
+    "max_concurrency": 4,
+    "per_group_max": 7,
+    "room_budget_seconds": 12,
+    "inter_room_delay_seconds": 3,
+    "jd_circuit_breaker": true,
+    "cache_stale_hours": 72
+  },
+  "keywords": ["TCL", "空调", "新风"],
+  "output": {
+    "thumbnails": true,
+    "notify_dedupe_hours": 12
+  },
+  "targets": [
+    {
+      "key": "jd-canary",
+      "platform": "jd",
+      "mode": "direct",
+      "display_name": "京东阳性对照（占位）",
+      "canary": true,
+      "live_id": "99000000001"
+    },
+    {
+      "key": "jd-clip-link",
+      "platform": "jd",
+      "mode": "direct",
+      "display_name": "京东切片短链（占位）",
+      "short_link": "https://3.cn/EXAMPLE-clip",
+      "short_link_role": "clip"
+    },
+    {
+      "key": "jd-sku-ac",
+      "platform": "jd",
+      "mode": "sku_discover",
+      "display_name": "京东 SKU 寻路（占位）",
+      "sku_id": "990000000001"
+    },
+    {
+      "key": "jd-sku-link",
+      "platform": "jd",
+      "mode": "sku_discover",
+      "display_name": "京东商品短链寻路（占位）",
+      "short_link": "https://3.cn/EXAMPLE-product",
+      "short_link_role": "product"
+    },
+    {
+      "key": "jd-shop",
+      "platform": "jd",
+      "mode": "shop_discover",
+      "display_name": "京东店铺寻路（占位，未实测校准）",
+      "shop_id": "990001",
+      "vender_id": "990002"
+    },
+    {
+      "key": "tmall-flagship",
+      "platform": "tmall",
+      "mode": "anchor_entry",
+      "display_name": "天猫旗舰店（占位）",
+      "account_id": "9900000001",
+      "room_number": "990001",
+      "account_group": 1
+    },
+    {
+      "key": "taobao-anchor",
+      "platform": "taobao",
+      "mode": "anchor_entry",
+      "display_name": "淘宝主播（占位）",
+      "account_id": "9900000002",
+      "account_group": 2
+    },
+    {
+      "key": "taobao-share",
+      "platform": "taobao",
+      "mode": "short_link",
+      "display_name": "淘宝分享短链（占位，未实测校准）",
+      "short_link": "https://m.tb.cn/h.EXAMPLE",
+      "account_group": 2
+    }
+  ]
+}

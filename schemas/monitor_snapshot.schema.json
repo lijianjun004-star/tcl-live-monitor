@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lijianjun004-star/tcl-live-monitor/schemas/monitor_snapshot.schema.json",
+  "title": "Monitor layer (A) -> delivery layer handoff (state/monitor_snapshot.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "run_id", "canary", "summary", "rooms"],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "run_id": {"type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$"},
+    "canary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_key", "passed", "code", "live_status"],
+      "properties": {
+        "target_key": {"type": ["string", "null"]},
+        "passed": {"type": ["boolean", "null"]},
+        "code": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/code"}]},
+        "live_status": {"enum": [null, "live", "offline", "replay", "unknown"]}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "live", "offline", "abnormal", "by_code", "by_platform", "circuit_open_groups",
+                   "max_detect_ms", "median_detect_ms"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0, "maximum": 20},
+        "live": {"type": "integer", "minimum": 0},
+        "offline": {"type": "integer", "minimum": 0},
+        "abnormal": {"type": "integer", "minimum": 0},
+        "by_code": {"type": "object", "propertyNames": {"$ref": "#/$defs/code"}, "additionalProperties": {"type": "integer", "minimum": 0}},
+        "by_platform": {
+          "type": "object",
+          "propertyNames": {"enum": ["jd", "tmall", "taobao"]},
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "circuit_open_groups": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z_]+:[a-z0-9_]+$"}},
+        "max_detect_ms": {"type": ["integer", "null"], "minimum": 0},
+        "median_detect_ms": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "rooms": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/room"}}
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|\\+00:00)$"
+    },
+    "code": {
+      "enum": ["OK", "OFFLINE", "REDIRECTED", "LOGIN_REQUIRED", "CAPTCHA_X5SEC", "GROUP_CIRCUIT_OPEN",
+               "NAV_TIMEOUT", "POST_AUDIT_BLOCKED", "SCHEMA_MISMATCH"]
+    },
+    "reason": {"type": ["string", "null"], "pattern": "^[a-z0-9_]{1,64}$"},
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_key", "platform", "display_name", "account_group", "live_id", "room_url", "code",
+                   "reason", "live_status", "observed_at", "elapsed_ms", "detect_ms", "online_count",
+                   "item_title", "item_price", "keywords_hit", "thumbnail", "discovery", "diagnostics"],
+      "properties": {
+        "target_key": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"},
+        "platform": {"enum": ["jd", "tmall", "taobao"]},
+        "display_name": {"type": ["string", "null"], "maxLength": 60},
+        "account_group": {"enum": [null, 1, 2, 3]},
+        "live_id": {"type": ["string", "null"], "pattern": "^[1-9][0-9]{4,23}$"},
+        "room_url": {
+          "type": ["string", "null"],
+          "pattern": "^https://(lives\\.jd\\.com/#/[1-9][0-9]{4,17}|h5\\.m\\.taobao\\.com/taolive/video\\.html\\?userId=[0-9]{5,16})$"
+        },
+        "code": {"$ref": "#/$defs/code"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "live_status": {"enum": ["live", "offline", "replay", "unknown"]},
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "elapsed_ms": {"type": "integer", "minimum": 0},
+        "detect_ms": {"type": ["integer", "null"], "minimum": 0},
+        "online_count": {"type": ["integer", "null"], "minimum": 0},
+        "item_title": {"type": ["string", "null"], "maxLength": 100},
+        "item_price": {"type": ["number", "null"], "minimum": 0},
+        "keywords_hit": {"type": "array", "uniqueItems": true, "items": {"type": "string", "maxLength": 40}},
+        "thumbnail": {"type": ["string", "null"], "pattern": "^thumbs/[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\\.jpg$"},
+        "discovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "reason", "source", "mode"],
+          "properties": {
+            "code": {"$ref": "#/$defs/code"},
+            "reason": {"$ref": "#/$defs/reason"},
+            "source": {"enum": ["static", "fresh", "cache", "none"]},
+            "mode": {"enum": ["direct", "shop_discover", "sku_discover", "anchor_entry", "short_link"]}
+          }
+        },
+        "diagnostics": {"type": "object", "maxProperties": 40}
+      },
+      "allOf": [
+        {"if": {"properties": {"code": {"const": "OK"}}}, "then": {"properties": {"live_status": {"const": "live"}}}},
+        {"if": {"properties": {"code": {"const": "OFFLINE"}}}, "then": {"properties": {"live_status": {"enum": ["offline", "replay"]}}}},
+        {
+          "if": {"properties": {"code": {"not": {"enum": ["OK", "OFFLINE"]}}}},
+          "then": {"properties": {"live_status": {"const": "unknown"}, "thumbnail": {"type": "null"}}}
+        }
+      ]
+    }
+  }
+}

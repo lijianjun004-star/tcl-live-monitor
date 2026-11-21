@@ -1,3 +1,8 @@
 node_modules/
 probe-report.json
 probe-summary.md
+# V2 runtime output (state is restored from artifacts, never committed)
+v2-evidence/
+state/
+docs/index.html
+__pycache__/

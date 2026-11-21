@@ -1,0 +1,54 @@
+name: TCL V2 offline checks
+
+on:
+  workflow_call:
+  push:
+    branches: [feat/v2-modular-architecture]
+    paths:
+      - '.github/workflows/v2-*.yml'
+      - 'src/**'
+      - 'tests/v2/**'
+      - 'schemas/**'
+      - 'config/targets.example.json'
+      - 'experiments/jd_sku_live/**'
+      - 'pytest.ini'
+      - 'requirements*.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Legacy JD probe self-test (must stay green)
+        run: python src/single_room_probe.py --self-test
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Offline pytest (browser tests answer every request locally)
+        run: |
+          python -m pytest -ra --junitxml=pytest.xml
+          python -c "import xml.etree.ElementTree as E; s=E.parse('pytest.xml').findall('.//testsuite'); assert s and sum(int(x.get('tests')) for x in s) > 0 and all(int(x.get('skipped')) == 0 for x in s)"
+      - name: Fake-engine dry run on the example targets
+        run: >-
+          python src/v2_run.py --targets config/targets.example.json --engine fake
+          --out v2-evidence --state-dir state --dashboard docs/index.html --no-notify --no-drive
+      - name: Verify evidence checksums
+        working-directory: v2-evidence
+        run: sha256sum --strict --check SHA256SUMS.txt
+      - name: Upload dry-run evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: TCL_V2_DryRun_${{ github.run_id }}_a${{ github.run_attempt }}
+          path: v2-evidence/
+          retention-days: 7
+          if-no-files-found: error
