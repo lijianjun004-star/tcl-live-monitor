@@ -53,7 +53,7 @@ def test_missing_cookie_has_explicit_diagnostic(raw):
     "private_key=NEVER_OUTPUT_THIS", "fixture_one=NEVER_OUTPUT_THIS",
     '[{"name": "NEVER_OUTPUT_THIS"}]',
     '[{"name":"fixture_one","value":"example-a","domain":".jd.com","path":"/"}]',
-])
+], ids=["unlisted-pair", "wrong-value", "malformed-record", "wider-scope"])
 def test_reject_nonfixture_values_or_widened_scope_without_leaking(raw, capsys):
     with pytest.raises(FixtureCookieError, match="^invalid_cookie_fixture$") as error:
         load_fixture_session(raw)

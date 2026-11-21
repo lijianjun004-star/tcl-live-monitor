@@ -4,10 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       engine:
-        description: fake = offline dry run, live = real public pages (uses secrets)
+        description: fake = offline, live = V2 monitor, jd-storefront = three JD entrances
         type: choice
-        options: [fake, live]
+        options: [fake, live, jd-storefront]
         default: fake
+      jd_raw_origin:
+        description: Original host of a raw iPhone Cookie (ignored for scoped JSON)
+        type: choice
+        options: [item.m.jd.com, shop.m.jd.com]
+        default: item.m.jd.com
       fail_on_canary:
         description: Fail the job when the JD positive control is not live
         type: boolean
@@ -103,3 +108,44 @@ jobs:
           path: state/
           retention-days: 7
           if-no-files-found: warn
+
+  jd-storefront:
+    needs: offline
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/experiment/jd-cookie-live-discovery' && inputs.engine == 'jd-storefront'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Read the three fixed storefronts
+        env:
+          JD_COOKIES_JSON: ${{ secrets.JD_COOKIES_JSON }}
+          JD_RAW_ORIGIN: ${{ inputs.jd_raw_origin || 'item.m.jd.com' }}
+          PYTHONPATH: src
+        run: python -m experiments.jd_cookie_live.manual --out jd-storefront-evidence
+      - name: Verify the report files
+        id: verify
+        if: ${{ !cancelled() && hashFiles('jd-storefront-evidence/SHA256SUMS.txt') != '' }}
+        working-directory: jd-storefront-evidence
+        run: sha256sum --strict --check SHA256SUMS.txt
+      - name: Upload the verified reports
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: JD_Storefront_${{ github.run_id }}_a${{ github.run_attempt }}
+          path: |
+            jd-storefront-evidence/jd_cookie_experiment_result.json
+            jd-storefront-evidence/summary.md
+            jd-storefront-evidence/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7

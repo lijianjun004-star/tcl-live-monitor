@@ -1,9 +1,10 @@
 import json
+from types import SimpleNamespace
 
 import pytest
 
 from experiments.jd_cookie_live import run
-from experiments.jd_cookie_live.fixture_session import RAW_COOKIE_FIXTURE
+from experiments.jd_cookie_live.fixture_session import JSON_COOKIE_FIXTURE, RAW_COOKIE_FIXTURE
 from experiments.jd_cookie_live.fixtures import FLAGSHIP, LIGHTING, LIVE_ROOM, PAGES, SKU, VERIFICATIONS
 
 
@@ -24,6 +25,56 @@ def test_default_cli_generates_matching_offline_reports(tmp_path, monkeypatch):
     assert [r["code"] for r in report["entries"]] == ["ROOM_STATUS_OBSERVED", "CANDIDATE_ONLY", "LOGIN_REQUIRED"]
     assert report["entries"][0]["verifications"][0]["live_status"] == "live"
     assert "HTTP 503" in markdown and "HTTP 403" in markdown and "模拟" in markdown
+
+
+@pytest.mark.parametrize("cookie_fixture", [RAW_COOKIE_FIXTURE, JSON_COOKIE_FIXTURE],
+                         ids=["raw-header", "playwright-json"])
+@pytest.mark.parametrize("stage", ["entry", "candidate"])
+def test_adapter_error_is_reported_without_disclosing_cookie_data(
+    stage, cookie_fixture, tmp_path, monkeypatch, capsys,
+):
+    calls = []
+    next_candidate = "900000000099"
+
+    def read_entry(entry_id):
+        calls.append(("entry", entry_id))
+        if stage == "entry":
+            raise RuntimeError(f"synthetic adapter error: {RAW_COOKIE_FIXTURE}")
+        return {**PAGES[SKU], "dom_live_ids": [LIVE_ROOM, next_candidate]}
+
+    def read_candidate(candidate):
+        calls.append(("candidate", candidate))
+        raise RuntimeError(f"synthetic adapter error: {RAW_COOKIE_FIXTURE}")
+
+    monkeypatch.setattr(run, "PAGES", SimpleNamespace(get=read_entry))
+    monkeypatch.setattr(run, "VERIFICATIONS", SimpleNamespace(get=read_candidate))
+    monkeypatch.setattr(run, "JSON_COOKIE_FIXTURE", cookie_fixture)
+    monkeypatch.setattr("sys.argv", ["experiment", "--out", str(tmp_path)])
+    assert run.main() != 0
+
+    json_text = (tmp_path / "jd_cookie_experiment_result.json").read_text()
+    markdown = (tmp_path / "summary.md").read_text()
+    stdout, stderr = capsys.readouterr()
+    output = json_text + markdown + stdout + stderr
+    for pair in RAW_COOKIE_FIXTURE.split("; "):
+        name, value = pair.split("=", 1)
+        assert name not in output and value not in output
+    assert "synthetic adapter error" not in output
+
+    report = json.loads(json_text)
+    assert report["stop"] == {"entry_id": SKU, "stage": stage, "code": "OBSERVATION_ERROR"}
+    assert [r["code"] for r in report["entries"]] == [
+        "OBSERVATION_ERROR", "SKIPPED_AFTER_ERROR", "SKIPPED_AFTER_ERROR",
+    ]
+    first = report["entries"][0]
+    if stage == "entry":
+        assert calls == [("entry", SKU)]
+        assert not first["page_observed"] and not first["verifications"]
+    else:
+        assert calls == [("entry", SKU), ("candidate", LIVE_ROOM)]
+        assert first["verifications"][0]["code"] == "OBSERVATION_ERROR"
+        assert first["verifications"][0]["live_status"] == "unknown"
+        assert first["unattempted_candidate_ids"] == [next_candidate]
 
 
 @pytest.mark.parametrize("gate", ["LOGIN_REQUIRED", "CAPTCHA_X5SEC", "ACCESS_RESTRICTED"])

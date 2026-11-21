@@ -17,6 +17,7 @@ ENTRIES = (
 
 LABELS = {
     "CONFIG_ERROR": "模拟会话配置错误",
+    "OBSERVATION_ERROR": "读取观测时发生错误",
     "NO_PAGE_EVIDENCE": "缺少对应入口的页面证据",
     "NO_ENTRY_OBSERVED": "已观察此页，未发现可确认场次的入口",
     "CANDIDATE_ONLY": "发现候选场次，状态待定",
@@ -25,6 +26,7 @@ LABELS = {
     "CAPTCHA_X5SEC": "遇到人机验证",
     "ACCESS_RESTRICTED": "访问受限",
     "SKIPPED_AFTER_GATE": "因前序门禁跳过",
+    "SKIPPED_AFTER_ERROR": "因前序读取错误跳过",
 }
 
 
@@ -53,10 +55,18 @@ def replay(page_for, verification_for, cookie_fixture):
             row["code"] = "CONFIG_ERROR"
             continue
         if report["stop"]:
-            row["code"] = "SKIPPED_AFTER_GATE"
+            row["code"] = ("SKIPPED_AFTER_ERROR" if report["stop"]["code"] == "OBSERVATION_ERROR"
+                           else "SKIPPED_AFTER_GATE")
             continue
 
-        observation = inspect_page(page_for(entry_id) or {}, entry_id)
+        # An adapter exception may contain request details. Only the stage and code are public.
+        try:
+            sample = page_for(entry_id)
+        except Exception:
+            row["code"] = "OBSERVATION_ERROR"
+            report["stop"] = {"entry_id": entry_id, "stage": "entry", "code": row["code"]}
+            continue
+        observation = inspect_page(sample or {}, entry_id)
         gate = observation.pop("gate")
         row.update(observation)
         if gate:
@@ -70,16 +80,22 @@ def replay(page_for, verification_for, cookie_fixture):
         row["code"] = "CANDIDATE_ONLY" if row["candidate_live_ids"] else "NO_ENTRY_OBSERVED"
         for index, candidate in enumerate(row["candidate_live_ids"]):
             if candidate not in cache:
-                check = classify_candidate(candidate, verification_for(candidate))
+                try:
+                    sample = verification_for(candidate)
+                except Exception:
+                    check = classify_candidate(candidate, None)
+                    check["code"] = "OBSERVATION_ERROR"
+                else:
+                    check = classify_candidate(candidate, sample)
                 cache[candidate] = (entry_id, check)
                 row["observed_function_ids"] = sorted(set(row["observed_function_ids"]) | set(check["observed_function_ids"]))
                 row["http_error_samples"].extend(check["http_error_samples"])
             source_id, check = cache[candidate]
             row["verifications"].append({**check, "observed_for_entry_id": source_id})
-            if check["gate"]:
-                row["code"] = check["gate"]
+            if check["gate"] or check["code"] == "OBSERVATION_ERROR":
+                row["code"] = check["code"]
                 row["unattempted_candidate_ids"] = row["candidate_live_ids"][index + 1:]
-                report["stop"] = {"entry_id": entry_id, "stage": "candidate", "code": check["gate"]}
+                report["stop"] = {"entry_id": entry_id, "stage": "candidate", "code": row["code"]}
                 break
             if check["live_status"] in {"live", "replay", "offline"} and check["room_id_matched"]:
                 row["code"] = "ROOM_STATUS_OBSERVED"
@@ -111,7 +127,7 @@ def summary(report):
             lines.append(f'- 场次 {check["live_id"]}：{check["live_status"]}（{check["code"]}），'
                          f'{timing}，场次身份{matched}。')
         if row["unattempted_candidate_ids"]:
-            lines.append("- 门禁后跳过的候选：" + ", ".join(row["unattempted_candidate_ids"]) + "。")
+            lines.append("- 跳过的候选：" + ", ".join(row["unattempted_candidate_ids"]) + "。")
         lines.append(f'- 已观察的公开接口：{", ".join(row["observed_function_ids"]) or "无"}。')
         if row["http_error_samples"]:
             for error in row["http_error_samples"]:
@@ -134,7 +150,7 @@ def main():
     (args.out / "jd_cookie_experiment_result.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     (args.out / "summary.md").write_text(summary(report), encoding="utf-8")
-    return int("config_error" in report)
+    return int("config_error" in report or (report["stop"] or {}).get("code") == "OBSERVATION_ERROR")
 
 
 if __name__ == "__main__":
