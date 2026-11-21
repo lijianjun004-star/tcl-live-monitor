@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from collections import Counter
 from urllib.parse import parse_qs, urljoin, urlsplit
@@ -279,7 +280,9 @@ def _links_and_hydration_once(evidence: Evidence, counts: Counter):
 
 def _record_public_http_error(counts, samples, req, status):
     counts["public_api_http_errors"] += 1
-    if len(samples) >= MAX_HTTP_ERROR_SAMPLES:
+    # The independent SKU diagnostic retains one row per captured error. The
+    # response capture itself remains bounded by MAX_RESPONSES in either mode.
+    if os.getenv("V2_JD_ALL_HTTP_ERROR_SAMPLES") != "1" and len(samples) >= MAX_HTTP_ERROR_SAMPLES:
         return
     # The capture hook accepts only this host. Never serialize an arbitrary URL or body.
     name = func_id(req)

@@ -73,3 +73,35 @@ def test_http_gate_has_a_response_but_no_parsed_body(make_settings):
     assert evidence == {"requests_allowed": 1, "requests_blocked": 0, "responses": 1,
                         "json_objects": 0, "read_or_parse_errors": 0}
     assert (room["code"], room["reason"]) == ("CAPTCHA_X5SEC", "http_403")
+
+
+def test_public_fields_use_matching_session_and_expose_only_bounded_shape(make_settings):
+    live_id = "456789"
+    detail = {"ret": ["SUCCESS"], "data": {
+        "accountId": "1234567", "broadCaster": {"accountId": "1234567", "accountName": "SYNTH", "roomNum": "1"},
+        "roomNum": "1", "roomStatus": 1, "streamStatus": 1, "liveId": live_id,
+        "onlineCount": "0", "viewCount": 9500, "private-dynamic-key": "secret-value"}}
+    item_url = DETAIL.replace("live.livedetail/4.0", "video.livedetail.itemlist/1.0")
+    items = {"ret": ["SUCCESS"], "data": {"liveId": live_id, "itemList": [{"itemTitle": "TCL 空调", "price": "1299.90"}]}}
+    room = observe(make_settings, [(item_url, "fetch", 200, json.dumps(items)), (DETAIL, "fetch", 200, json.dumps(detail))])
+    assert (room["online_count"], room["item_title"], room["item_price"]) == (0, "TCL 空调", 1299.9)
+    evidence = room["diagnostics"]["business_evidence"]
+    assert set(evidence["fields"].values()) == {"extracted"}
+    shape = evidence["responses"]["livedetail"][0]
+    assert "onlineCount" in shape["data_keys"] and shape["other_data_key_count"] == 1
+    assert "private-dynamic-key" not in json.dumps(room) and "secret-value" not in json.dumps(room)
+
+    items["data"]["liveId"] = "999999"
+    del detail["data"]["onlineCount"]
+    room = observe(make_settings, [(item_url, "fetch", 200, json.dumps(items)), (DETAIL, "fetch", 200, json.dumps(detail))])
+    assert [room[k] for k in ("online_count", "item_title", "item_price")] == [None, None, None]
+    assert room["diagnostics"]["business_evidence"]["fields"] == {
+        "online_count": "field_missing_or_unsupported", "item_title": "session_not_verified", "item_price": "session_not_verified"}
+
+
+def test_business_gate_explains_absent_fields(make_settings):
+    room = observe(make_settings, [(DETAIL, "fetch", 200, '{"ret":["FAIL_SYS_USER_VALIDATE"],"data":{}}')])
+    evidence = room["diagnostics"]["business_evidence"]
+    assert set(evidence["fields"].values()) == {"api_access_limit"}
+    assert evidence["responses"]["livedetail"][0]["top_keys"] == ["data", "ret"]
+    assert evidence["responses"]["itemlist"] == []

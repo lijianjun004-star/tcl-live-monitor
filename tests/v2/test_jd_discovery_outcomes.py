@@ -108,9 +108,11 @@ def test_page_gates_and_candidate_evidence_take_precedence(monkeypatch, surface,
     assert (result.code, result.reason) == (code, reason)
 
 
-def test_http_error_samples_are_bounded_and_do_not_replace_total():
+@pytest.mark.parametrize("all_errors,expected_rows", [(False, 10), (True, 13)])
+def test_http_error_samples_match_selected_diagnostic_mode(monkeypatch, all_errors, expected_rows):
     from collections import Counter
 
+    monkeypatch.setenv("V2_JD_ALL_HTTP_ERROR_SAMPLES", "1" if all_errors else "0")
     counts, samples = Counter(), []
     for i in range(13):
         request = RequestInfo(f"{API}?tracking=user-{i}&functionId=graphic_detail",
@@ -118,7 +120,7 @@ def test_http_error_samples_are_bounded_and_do_not_replace_total():
         discovery._record_public_http_error(counts, samples, request, 404 if i % 2 == 0 else 503)
     assert counts == {"public_api_http_errors": 13}
     assert samples == [{"function_id": "graphic_detail", "http_status": status, "host": "api.m.jd.com"}
-                       for status in [404, 503] * 5]
+                       for status in ([404, 503] * 7)[:expected_rows]]
 
 
 @pytest.mark.parametrize("query,body,expected", [

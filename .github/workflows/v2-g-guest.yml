@@ -1,0 +1,57 @@
+name: TCL V2 G guest diagnosis
+on:
+  push:
+    branches: [feat/v2-modular-architecture]
+    paths: [ci/acceptance/g-20261121-day.json]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify single-use day marker
+        env:
+          BEFORE: ${{ github.event.before }}
+          TZ: Asia/Shanghai
+        run: |
+          set -euo pipefail
+          file=ci/acceptance/g-20261121-day.json
+          test "$(git rev-parse HEAD^)" = "$BEFORE"
+          test "$(git diff --name-status "$BEFORE" HEAD)" = "$(printf 'A\t%s' "$file")"
+          jq -e --arg sha "$BEFORE" '. == {code_sha: $sha, phase: "day"}' "$file"
+          test "$(date +%F)" = 2026-11-21
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned test and browser dependencies
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
+      - name: Run full offline suite
+        run: |
+          set -euo pipefail
+          mkdir g-evidence
+          python -m pytest -ra --junitxml=g-evidence/pytest.xml | tee g-evidence/pytest.txt
+          python -c "import xml.etree.ElementTree as E; s=E.parse('g-evidence/pytest.xml').findall('.//testsuite'); assert s and sum(int(x.get('tests')) for x in s)>0 and all(int(x.get('skipped'))==0 for x in s)"
+      - name: Observe SKU independently and both fixed Tmall guest anchors once
+        env:
+          V2_TARGETS_JSON: ${{ secrets.V2_TARGETS_JSON }}
+        run: python ci/v2_guest_acceptance_g.py --sku-diagnostic --include-tmall
+      - name: Verify observation evidence
+        working-directory: g-evidence/observation
+        run: sha256sum --strict --check SHA256SUMS.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: TCL_V2_G_day_${{ github.run_id }}_a${{ github.run_attempt }}
+          path: g-evidence/
+          if-no-files-found: warn
+          retention-days: 7

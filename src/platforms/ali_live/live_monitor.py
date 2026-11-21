@@ -19,6 +19,7 @@ from core.models import inherited_room, snapshot_room
 from core.network import NetworkAudit, install_policy
 from core.runtime import guarded
 
+from .business import business_report, business_sample, endpoint, request_live_id
 from .calibration import livedetail_status_sample
 from .classifier import (classify_tmall, endpoint_evidence, is_access_limit, is_live_detail_url,
                          limit_url_kind, map_sample, parse_json_or_jsonp, pick_best, response_limit,
@@ -89,14 +90,18 @@ class AliLiveMonitor(MonitorEngine):
 
     async def room(self, target: Target, resolved: dict, ctx: RunContext) -> tuple[dict, bool]:
         keywords = ctx.settings.keywords
-        if not resolved.get("room_url"):
-            return inherited_room(target, resolved, keywords=keywords), False
-        if ctx.breaker.is_open(target.group_key):
-            return inherited_room(target, resolved, Code.GROUP_CIRCUIT_OPEN, "group_circuit_open", keywords), False
+        if not resolved.get("room_url") or ctx.breaker.is_open(target.group_key):
+            if not resolved.get("room_url"):
+                room = inherited_room(target, resolved, keywords=keywords)
+            else:
+                room = inherited_room(target, resolved, Code.GROUP_CIRCUIT_OPEN, "group_circuit_open", keywords)
+            room["diagnostics"]["business_evidence"] = business_report({}, None, room["reason"] or room["code"])[1]
+            return room, False
 
         def failed(code, why):
             return snapshot_room(target, resolved, code=code, reason=why, keywords=keywords,
-                                 diagnostics={"cookie_mode": self.session.mode(target.account_group)})
+                                 diagnostics={"cookie_mode": self.session.mode(target.account_group),
+                                              "business_evidence": business_report({}, None, why or code.value)[1]})
 
         room = await guarded(lambda: self.observe_room(target, resolved, ctx), ctx.budget + 20, failed)
         ctx.breaker.record(target.group_key, room["code"], target_key=target.key, layer="monitor")
@@ -114,6 +119,8 @@ class AliLiveMonitor(MonitorEngine):
         deadline = started + ctx.budget
         samples, pending, endpoints = [], [], []
         status_samples = []
+        business = {"livedetail": [], "itemlist": []}
+        item_tasks = []
         state = {"limit": None, "why": None, "http": None, "detect_at": None}
         signal = asyncio.Event()
         attached = [True]
@@ -139,7 +146,21 @@ class AliLiveMonitor(MonitorEngine):
                 state["limit"], state["why"] = kind, why
             signal.set()
 
+        async def read_item(res):
+            try:
+                payload = parse_json_or_jsonp(await res.text())
+            except Exception:
+                payload = None
+            request_id = request_live_id(res.url, res.request.post_data)
+            business["itemlist"].append(business_sample("itemlist", res.status, payload, request_id))
+            if isinstance(payload, dict):
+                gate = classify_tmall({"ret": payload.get("ret")}, identity)
+                if is_access_limit(gate):
+                    login = any(LOGIN_LIMIT.search(x) for x in gate["apiRet"])
+                    stop("login" if login else "challenge", "api_need_login" if login else "api_access_limit")
+
         async def read(res):
+            payload = None
             try:
                 payload = parse_json_or_jsonp(await res.text())
             except Exception:
@@ -153,6 +174,8 @@ class AliLiveMonitor(MonitorEngine):
                     sample = classify_tmall(payload, identity)
                 except Exception:
                     sample = {"state": "UNKNOWN", "reason": "API_RESPONSE_PARSE_ERROR"}
+            business["livedetail"].append(business_sample("livedetail", res.status, payload, sample.get("liveId")
+                                                           if sample.get("state") == "LIVE" else None))
             if len(samples) < MAX_SAMPLES:
                 samples.append(sample)
             if is_access_limit(sample):
@@ -172,14 +195,23 @@ class AliLiveMonitor(MonitorEngine):
                 evidence = endpoint_evidence(res.url, res.status)
                 if evidence and len(endpoints) < 30 and evidence not in endpoints:
                     endpoints.append(evidence)
+                source = endpoint(res.url)
+                if source == "itemlist" and res.status in (401, 403, 429):
+                    business[source].append(business_sample(source, res.status, None))
+                    stop("login" if res.status == 401 else "challenge", f"http_{res.status}")
+                    return
                 denied = response_limit(res.url, res.status, navigation)
                 if denied:
+                    if source:
+                        business[source].append(business_sample(source, res.status, None))
                     stop("login" if res.status == 401 else "challenge", denied.lower())
                     return
                 kind = limit_url_kind(res.url) if navigation else None
                 if kind:
                     stop(kind, "login_redirect" if kind == "login" else "platform_challenge")
                     return
+                if source == "itemlist" and len(item_tasks) < MAX_SAMPLES:
+                    item_tasks.append(asyncio.create_task(read_item(res)))
                 if is_live_detail_url(res.url) and len(pending) < MAX_SAMPLES:
                     pending.append(asyncio.create_task(read(res)))
             except Exception:
@@ -222,8 +254,8 @@ class AliLiveMonitor(MonitorEngine):
             if signal.is_set() and not state["limit"]:
                 await asyncio.sleep(max(0.0, min(GRACE_SECONDS, deadline - loop.time())))
             detach()
-            if pending:
-                await asyncio.wait(pending, timeout=4)
+            if pending or item_tasks:
+                await asyncio.wait(pending + item_tasks, timeout=4)
             if not state["limit"] and not samples:
                 try:
                     text = await page.locator("body").inner_text(timeout=1500)
@@ -247,10 +279,10 @@ class AliLiveMonitor(MonitorEngine):
                     reasons.append("screenshot_failed")
         finally:
             detach()
-            for task in pending:
+            for task in pending + item_tasks:
                 if not task.done():
                     task.cancel()
-            await asyncio.gather(*pending, return_exceptions=True)
+            await asyncio.gather(*pending, *item_tasks, return_exceptions=True)
             await page.close()
         elapsed = int((loop.time() - started) * 1000)
         detect = None if state["detect_at"] is None else int((state["detect_at"] - started) * 1000)
@@ -258,7 +290,9 @@ class AliLiveMonitor(MonitorEngine):
         live_id = best.get("liveId") if best and code is Code.OK else None
         if live_id is not None and not re.fullmatch(r"[1-9][0-9]{4,23}", str(live_id)):
             live_id = None  # the classifier accepts leading zeros; the contract does not
+        fields, field_evidence = business_report(business, live_id, None if code is Code.OK else why)
         diagnostics = {
+            "business_evidence": field_evidence,
             "cookie_mode": self.session.mode(target.account_group),
             "passive_observation": observation,
             "livedetail_status_samples": status_samples,
@@ -275,4 +309,4 @@ class AliLiveMonitor(MonitorEngine):
             status = "live" if code is Code.OK else "offline"
         return snapshot_room(target, resolved, code=code, reason=why, live_status=status, elapsed_ms=elapsed,
                              detect_ms=detect, live_id=live_id, thumbnail=thumbnail, diagnostics=diagnostics,
-                             keywords=ctx.settings.keywords)
+                             keywords=ctx.settings.keywords, **fields)
