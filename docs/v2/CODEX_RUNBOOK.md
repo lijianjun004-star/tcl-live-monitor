@@ -24,7 +24,7 @@
 3. **核对 Drive。** 在 GitHub 原件中查 `drive_status.json` 的 `status=synced` 与 `report_file_id`。从指定目录打开对应批次的报告 ZIP，核对快照和校验清单。清单中的 `thumbs/*.jpg` 对应同批独立上传的 JPEG。同步只清理该目录下由应用标记且超过 24 小时的独立缩略图，报告 ZIP 保留。
 4. **第二次运行**沿用首次配置，`restore_state_run_id` 填首次成功的同分支 live 运行编号（运行页网址末尾的数字）。这会恢复 `v2-state` 中的快照与已推送记录。没有新事件时核对 `notification.status=no_changes`、`fresh_events=0` 且群中无重复消息。如果两次之间确有新事件，按新事件核对送达，保留真实观测。
 
-GitHub 工件 `v2-state` 保留 7 天。推送失败时检查 `notification.status` 与 `state_snapshot_advanced`，记录哪次成功运行可用于恢复。
+GitHub 工件 `v2-state` 保留 7 天。推送失败后，若作业成功且 `state_snapshot_advanced=false`，修正配置并在下一轮恢复该次运行，系统会从上次有效基线重试仍可观测到的变化。首次失败时允许恢复发现缓存和空发送账本。对于旧版本中推送失败但 `state_snapshot_advanced=true` 的运行，改选失败前最近一次通知状态为 `sent` 或 `no_changes` 的有效基线；若为首次运行，则留空恢复编号。
 
 ## 4. 扩到 20 路真实目标
 

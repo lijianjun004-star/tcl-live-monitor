@@ -59,7 +59,11 @@ jobs:
               and .status == "completed" and .conclusion == "success"
             ' >/dev/null
           gh run download "$STATE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name v2-state --dir state
-          test -f state/monitor_snapshot.json
+          if [[ ! -f state/monitor_snapshot.json ]]; then
+            # A first run with pending, unsent alerts has a cache and an empty ledger.
+            jq -es 'length == 1 and (.[0].entries | type == "object")' state/resolved_cache.json >/dev/null
+            jq -es 'length == 1 and .[0].sent == {}' state/notify_ledger.json >/dev/null
+          fi
       - name: Live V2 run
         env:
           V2_TARGETS_JSON: ${{ secrets.V2_TARGETS_JSON }}

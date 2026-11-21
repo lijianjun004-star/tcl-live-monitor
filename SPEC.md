@@ -176,7 +176,7 @@ Schema 之外的业务规则（由 `core/config.py` 校验）：`key` 唯一；�
 
 | 模块 | 规定 |
 |---|---|
-| 差分推送 `output/diff_push.py` | 对比 `state/monitor_snapshot.json`。事件类型：`NEW_LIVE`、`PRICE_CHANGE`、`KEYWORD_HIT`、`CIRCUIT_OPEN`、`CAPTCHA`、`CANARY_FAILED`。每条事件计算指纹，在 `notify_dedupe_hours` 内不重复推送；同一轮的所有事件合并成一条消息。推送返回 `rejected` 或 `transport_error` 时，**不更新** `state/monitor_snapshot.json`（`state_snapshot_advanced=false`），下一轮会重新产生这些事件 |
+| 差分推送 `output/diff_push.py` | 对比 `state/monitor_snapshot.json`。事件类型：`NEW_LIVE`、`PRICE_CHANGE`、`KEYWORD_HIT`、`CIRCUIT_OPEN`、`CAPTCHA`、`CANARY_FAILED`。每条事件计算指纹，在 `notify_dedupe_hours` 内不重复推送；同一轮的所有事件合并成一条消息。仅当通知状态为 `sent` 或 `no_changes` 时推进 `state/monitor_snapshot.json`。其余状态保留上次基线和已发送记录（`state_snapshot_advanced=false`），本轮采样仍写入证据；下次采样会重新比较仍可观测到的变化 |
 | 通道 `output/notifiers.py` | `WEBHOOK_URL`（+ 可选 `WEBHOOK_KIND`、`WEBHOOK_SECRET`）。支持钉钉（可加签）、飞书（可加签）、企业微信、Bark。未写 `WEBHOOK_KIND` 时按主机名自动识别。URL 不进入日志 |
 | Drive 同步 `output/gdrive_sync.py` | OAuth 2.0 刷新令牌（`GDRIVE_CLIENT_ID/SECRET/REFRESH_TOKEN`）。令牌响应里的 `scope` 必须**恰好是** `https://www.googleapis.com/auth/drive.file`，否则拒绝执行。报告压缩包永久保留；带 `appProperties.tcl_live_monitor=thumbnail` 且创建时间超过 24 小时的缩略图，调用 `DELETE files/{id}` **永久删除**（不进回收站） |
 | 看板 `output/dashboard.py` | 输出单文件静态页 `docs/index.html`：深色、竖屏，顶部统计，按平台/状态筛选，双列卡片，一键跳转直播间。数据内嵌为 JSON，渲染只用 `textContent`。默认**不发布**到 Pages（含目标清单） |
