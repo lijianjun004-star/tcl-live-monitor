@@ -43,7 +43,10 @@ def test_captcha_in_group_one_skips_its_later_rooms_without_requests(make_settin
     rooms = asyncio.run(engine.monitor_all(pairs, ctx))
     assert rooms["g1-a"]["code"] == "CAPTCHA_X5SEC"
     assert rooms["g1-b"]["code"] == rooms["g1-c"]["code"] == "GROUP_CIRCUIT_OPEN"
-    assert rooms["g1-b"]["diagnostics"] == {"network_requests": 0}
+    skipped = rooms["g1-b"]["diagnostics"]
+    assert skipped["network_requests"] == 0
+    assert set(skipped["business_evidence"]["fields"].values()) == {"group_circuit_open"}
+    assert skipped["business_evidence"]["responses"] == {"livedetail": [], "itemlist": []}
     assert rooms["g2-a"]["code"] == rooms["g2-b"]["code"] == "OK"
     assert engine.visits.count("g1-a") == 1 and "g1-b" not in engine.visits and "g1-c" not in engine.visits
     assert ctx.breaker.open_groups() == ["ali:group_1"]
