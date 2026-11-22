@@ -1,0 +1,69 @@
+{
+  "input_kind": "synthetic",
+  "store_page": {
+    "final_url": "https://mall.jd.com/index-721631.html",
+    "title": "TCL官方旗舰店 - 京东",
+    "gate": "clear",
+    "http_status": 200,
+    "observed_at": "2026-11-10T04:00:00Z",
+    "visible_links": [
+      {
+        "heading_path": [
+          "本店直播"
+        ],
+        "href": "https://lives.jd.com/#/10000001"
+      }
+    ]
+  },
+  "room_page": {
+    "final_url": "https://lives.jd.com/#/10000001",
+    "gate": "clear",
+    "http_status": 200,
+    "observed_at": "2026-11-10T04:00:30Z",
+    "visible_links": [
+      {
+        "heading_path": [
+          "主播店铺"
+        ],
+        "href": "https://shop.m.jd.com/?shopId=721631"
+      }
+    ]
+  },
+  "strict_room_result": {
+    "final_host": "lives.jd.com",
+    "room_id": "10000001",
+    "room_id_matched": true,
+    "fragment_matched": true,
+    "page_loaded": true,
+    "page_gate_reason": "ok",
+    "login_or_captcha_blocked": false,
+    "live_status": "live",
+    "generated_at": "2026-11-10T04:01:00Z",
+    "diagnostics": {
+      "target_matched_count": 1,
+      "target_request_samples": [
+        {
+          "safe_path": "/api",
+          "rejected_reason": "accepted",
+          "method": "POST",
+          "function_id_source": "post_form",
+          "mime_category": "json",
+          "eligible_probe": true
+        }
+      ],
+      "observed_function_ids": [
+        "getImmediatePlayToM"
+      ],
+      "target_request_seen": 1,
+      "detail_data_keys": [
+        "liveId",
+        "status"
+      ],
+      "truncated": false
+    },
+    "evidence_endpoints": [
+      "https://api.m.jd.com/api"
+    ],
+    "reasons": []
+  }
+}
