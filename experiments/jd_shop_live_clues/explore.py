@@ -17,7 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 from playwright.async_api import async_playwright
 
 SHOP_ID = "721631"
-KNOWN_LIVE_ID = "49620440"  # user-shared session (PR #112), replay on 2026-11-20
+KNOWN_LIVE_ID = "49675703"  # replay the user shared from the TCL官方旗舰店 app page, 2026-11-22
 PAGES = [
     ("replay_pc", f"https://lives.jd.com/#/{KNOWN_LIVE_ID}", "desktop"),
     ("replay_m", f"https://lives.jd.com/#/{KNOWN_LIVE_ID}", "mobile"),
