@@ -1,0 +1,33 @@
+name: JD shop 721631 live clues (one-shot)
+# Branch-scoped, push-triggered, one anonymous read-only observation. Remove after use.
+on:
+  push:
+    branches:
+      - claude/shop-livestream-access-ff953r
+    paths:
+      - experiments/jd_shop_live_clues/**
+      - .github/workflows/jd-shop-live-clues.yml
+permissions:
+  contents: read
+concurrency:
+  group: jd-shop-live-clues
+  cancel-in-progress: false
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Observe shop and known live room once
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python experiments/jd_shop_live_clues/explore.py
