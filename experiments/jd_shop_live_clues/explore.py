@@ -17,10 +17,10 @@ from urllib.parse import parse_qs, urlsplit
 from playwright.async_api import async_playwright
 
 SHOP_ID = "721631"
-KNOWN_LIVE_ID = "49691143"
+KNOWN_LIVE_ID = "49620440"  # user-shared session (PR #112), replay on 2026-11-20
 PAGES = [
-    ("live_room_pc", f"https://lives.jd.com/#/{KNOWN_LIVE_ID}", "desktop"),
-    ("live_room_m", f"https://lives.jd.com/#/{KNOWN_LIVE_ID}", "mobile"),
+    ("replay_pc", f"https://lives.jd.com/#/{KNOWN_LIVE_ID}", "desktop"),
+    ("replay_m", f"https://lives.jd.com/#/{KNOWN_LIVE_ID}", "mobile"),
 ]
 DESKTOP_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36")
