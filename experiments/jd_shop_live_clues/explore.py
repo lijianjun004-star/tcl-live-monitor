@@ -123,7 +123,8 @@ async def observe(browser, name, url, kind):
             p = urlsplit(resp.url)
             if not jd_host(p.hostname) or req.resource_type not in ("xhr", "fetch", "script", "document"):
                 return
-            post = req.post_data if req.method == "POST" else None
+            buf = req.post_data_buffer if req.method == "POST" else None
+            post = buf.decode("utf-8", errors="replace") if buf else None
             fid = function_id(resp.url, post)
             if fid and fid not in seen_fids:
                 seen_fids.add(fid)
