@@ -1,0 +1,11 @@
+{
+  "name": "tcl-v2-clock",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-11",
+  "workers_dev": false,
+  "triggers": {
+    "crons": [
+      "7,37 * * * *"
+    ]
+  }
+}

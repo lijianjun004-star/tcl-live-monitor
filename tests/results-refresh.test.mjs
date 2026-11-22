@@ -99,6 +99,7 @@ test('untrusted run IDs cannot enter JSON or issue a request', t => {
 test('workflow preserves completion triggers, escaped plus and trust boundaries', () => {
   const wf=fs.readFileSync(path.join(ROOT,'.github/workflows/refresh-results-site.yml'),'utf8');
   assert.match(wf,/4 scoring \\\+ 3 monitor-only/);
+  assert.match(wf,/\n      - "TCL V2 monitor"\n/);
   assert.match(wf,/types: \[completed\]/);
   assert.match(wf,/head_branch == 'main'/);
   assert.match(wf,/github\.event_name != 'pull_request'/);

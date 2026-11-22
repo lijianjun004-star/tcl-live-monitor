@@ -19,7 +19,8 @@ def test_only_requested_utc_schedule_and_manual_entry_are_enabled():
     assert set(events) == {'schedule', 'workflow_dispatch'}
     assert sorted(entry['cron'] for entry in events['schedule']) == ['0 16 * * *', '0,30 0-15 * * *']
     inputs = events['workflow_dispatch']['inputs']
-    assert set(inputs) == {'engine', 'fail_on_canary', 'restore_state_run_id'}
+    assert set(inputs) == {'engine', 'fail_on_canary', 'restore_state_run_id', 'continue_main_state'}
+    assert inputs['continue_main_state']['type'] == 'boolean' and inputs['continue_main_state']['default'] == 'false'
     assert inputs['engine']['options'] == ['fake', 'live'] and inputs['engine']['default'] == 'fake'
     assert inputs['fail_on_canary']['type'] == 'boolean' and inputs['fail_on_canary']['default'] == 'true'
     assert inputs['restore_state_run_id']['required'] == 'false' and not inputs['restore_state_run_id'].get('default')
@@ -37,7 +38,10 @@ def test_schedule_requires_state_before_live_and_preserves_manual_restore():
     auto = next(step for step in steps if 'scripts/restore_v2_state.py' in step.get('run', ''))
     manual = next(step for step in steps if 'gh run download' in step.get('run', ''))
     collect = next(step for step in steps if '--engine live' in step.get('run', ''))
-    assert auto['if'] == "github.event_name == 'schedule'"
+    assert auto['if'] == (
+        "github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' "
+        "&& inputs.continue_main_state && inputs.restore_state_run_id == '' && github.ref == 'refs/heads/main')"
+    )
     assert auto.get('continue-on-error', 'false') == 'false'
     assert manual['if'] == "github.event_name == 'workflow_dispatch' && inputs.restore_state_run_id != ''"
     assert steps.index(auto) < steps.index(collect) and steps.index(manual) < steps.index(collect)
