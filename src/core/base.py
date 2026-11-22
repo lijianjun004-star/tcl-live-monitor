@@ -19,6 +19,7 @@ class RunContext:
     run_id: str = "local"
     browser: object | None = None   # core.browser.BrowserFactory, or None for offline engines
     legacy_results: dict = field(default_factory=dict)  # target_key -> legacy JD probe result (canary)
+    human: object | None = None     # core.human_verify.HumanVerifier when a person may finish challenges
 
     @property
     def budget(self) -> float:

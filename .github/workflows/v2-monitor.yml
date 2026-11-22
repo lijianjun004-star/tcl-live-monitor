@@ -41,7 +41,8 @@ jobs:
     needs: offline
     if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.engine == 'live')
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Room checks take a few minutes; a person may need up to 3 x 5 minutes for challenges.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
         with:
@@ -62,6 +63,13 @@ jobs:
         run: python scripts/restore_v2_state.py
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
+      - name: Download cloudflared for phone verification (quick tunnel, no account)
+        if: vars.HUMAN_VERIFY != '0'
+        continue-on-error: true
+        run: |
+          curl -fsSL -o cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x cloudflared
+          ./cloudflared --version
       - name: Restore chosen state (cache, previous snapshot, notify ledger)
         if: github.event_name == 'workflow_dispatch' && inputs.restore_state_run_id != ''
         env:
@@ -96,6 +104,9 @@ jobs:
           GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
           GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
           FAIL_ON_CANARY: ${{ github.event_name == 'workflow_dispatch' && inputs.fail_on_canary }}
+          # Phone verification of slider / drawn-path challenges (src/core/human_verify.py).
+          # Set the repository variable HUMAN_VERIFY to 0 to turn it off.
+          HUMAN_VERIFY: ${{ vars.HUMAN_VERIFY != '0' && '1' || '0' }}
           PYTHONUNBUFFERED: '1'
         run: |
           flag=""
