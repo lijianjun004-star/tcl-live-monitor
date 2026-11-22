@@ -19,16 +19,17 @@ from playwright.async_api import async_playwright
 SHOP_ID = "721631"
 KNOWN_LIVE_ID = "49691143"
 PAGES = [
-    ("pc_shop", f"https://mall.jd.com/index-{SHOP_ID}.html", "desktop"),
-    ("m_shop", f"https://shop.m.jd.com/?shopId={SHOP_ID}", "mobile"),
-    ("live_room", f"https://lives.jd.com/#/{KNOWN_LIVE_ID}", "desktop"),
+    ("live_room_pc", f"https://lives.jd.com/#/{KNOWN_LIVE_ID}", "desktop"),
+    ("live_room_m", f"https://lives.jd.com/#/{KNOWN_LIVE_ID}", "mobile"),
 ]
 DESKTOP_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36")
 MOBILE_UA = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 "
              "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")
 ROOTS = ("jd.com", "3.cn", "jd.hk", "360buyimg.com", "jdcdn.com")
-INTEREST = re.compile(r"live|zhibo|living|broadcast|room|anchor|author|vender|shopid|shop_id|直播", re.I)
+INTEREST = re.compile(r"live|zhibo|living|broadcast|room|anchor|author|vender|shopid|shop_id|直播|"
+                      r"lottery|lucky|draw|prize|award|preview|trailer|forecast|notice|appoint|reserve|"
+                      r"subscribe|next|start|begin|plan|schedule|抽奖|预告|预约|开播", re.I)
 PRIVATE = re.compile(r"token|cookie|pin$|^pin|uuid|phone|mobile|mail|openid|unionid|nick|user|"
                      r"sign|h5st|^eid$|^fp$|^ip$|addr|sharer|^gx", re.I)
 LIVE_ID = re.compile(r"(?<![0-9])4[6-9][0-9]{6}(?![0-9])")
@@ -132,7 +133,13 @@ async def observe(browser, name, url, kind):
                 return
             if not any(x in ctype for x in ("json", "javascript", "text/plain", "text/html")):
                 return
-            text = await resp.text()
+            raw = await resp.body()
+            text = raw.decode("utf-8", errors="replace")
+            if fid:
+                rec.setdefault("bodies", []).append({
+                    "source": fid, "status": resp.status, "ctype": ctype[:40], "bytes": len(raw),
+                    "looks_text": text[:1].strip() in ("{", "[") or text.lstrip()[:1] in ("{", "["),
+                    "replacement_chars": text.count("\ufffd")})
             for m in list(dict.fromkeys(LIVE_ID.findall(text)))[:10]:
                 i = text.find(m)
                 ctx_txt = re.sub(r"\s+", " ", text[max(0, i - 60):i + 20])
@@ -144,8 +151,20 @@ async def observe(browser, name, url, kind):
                 return
             paths: list = []
             walk(data, "", paths)
+            keys = []
+            def key_walk(n, pre="", d=0):
+                if d > 4 or len(keys) > 150:
+                    return
+                if isinstance(n, dict):
+                    for k, v in list(n.items())[:80]:
+                        if not PRIVATE.search(str(k)):
+                            keys.append(f"{pre}.{k}" if pre else str(k))
+                            key_walk(v, f"{pre}.{k}" if pre else str(k), d + 1)
+                elif isinstance(n, list) and n:
+                    key_walk(n[0], pre + "[]", d + 1)
+            key_walk(data)
             rec["responses"].append({"source": fid or f"{p.netloc}{p.path}"[:100], "status": resp.status,
-                                     "matched_paths": paths[:60]})
+                                     "matched_paths": paths[:80], "key_paths": keys[:150] if fid else []})
         except Exception as exc:  # noqa: BLE001 - evidence only
             rec.setdefault("handler_errors", []).append(type(exc).__name__)
 
@@ -171,8 +190,8 @@ async def observe(browser, name, url, kind):
               out.live_links.push({text: t.slice(0, 30), href: h.split('?')[0].slice(0, 120) + (h.includes('#') ? '#' + h.split('#')[1].split('?')[0].slice(0, 30) : '')});
           }
           const body = (document.body && document.body.innerText) || '';
-          const re = /.{0,20}直播.{0,20}/g; let m; let n = 0;
-          while ((m = re.exec(body)) && n < 15) { out.live_text.push(m[0].replace(/\\s+/g, ' ')); n++; }
+          const re = /.{0,20}(直播|预告|抽奖|预约|开播|下一场|福袋|红包).{0,30}/g; let m; let n = 0;
+          while ((m = re.exec(body)) && n < 25) { out.live_text.push(m[0].replace(/\\s+/g, ' ')); n++; }
           for (const f of Array.from(document.querySelectorAll('iframe')).slice(0, 20)) out.iframes.push((f.src || '').split('?')[0].slice(0, 120));
           out.live_links = out.live_links.slice(0, 20);
           out.body_len = body.length;
@@ -182,7 +201,7 @@ async def observe(browser, name, url, kind):
         rec["error"] = f"{type(exc).__name__}: {str(exc)[:160]}"
     if tasks:
         await asyncio.gather(*tasks, return_exceptions=True)
-    rec["responses"] = [r for r in rec["responses"] if r["matched_paths"]][:40]
+    rec["responses"] = [r for r in rec["responses"] if r["matched_paths"] or r["key_paths"]][:40]
     await ctx.close()
     return rec
 
