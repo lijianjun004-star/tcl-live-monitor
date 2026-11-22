@@ -2,6 +2,13 @@ name: TCL V2 offline checks
 
 on:
   workflow_call:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/v2-monitor.yml'
+      - '.github/workflows/v2-offline.yml'
+      - 'scripts/restore_v2_state.py'
+      - 'tests/v2/**'
   push:
     branches: [feat/v2-modular-architecture]
     paths:
@@ -30,6 +37,9 @@ jobs:
           python-version: '3.11'
       - name: Install pinned dependencies
         run: python -m pip install -r requirements-dev.txt
+      - name: Check V2 workflow syntax on pull requests
+        if: github.event_name == 'pull_request'
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -shellcheck= -pyflakes= .github/workflows/v2-monitor.yml .github/workflows/v2-offline.yml
       - name: Legacy JD probe self-test (must stay green)
         run: python src/single_room_probe.py --self-test
       - name: Install Chromium
