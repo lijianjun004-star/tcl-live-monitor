@@ -1,0 +1,71 @@
+name: Taobao Live search page probe (Google Chrome, manual)
+# Feasibility probe, user-approved 2026-11-23: one read of tbzb.taobao.com/search in Google Chrome
+# with the dedicated monitoring account's cookies (secret TAOBAO_SEARCH_COOKIE).
+# No schedule, no retries, no clicks: a login or verification response stops the run.
+# The 30-minute schedule is added only after this probe succeeds and the live field is calibrated.
+on:
+  workflow_dispatch:
+    inputs:
+      authorized_probe:
+        description: Explicitly authorize one read of the search page with the monitoring account
+        required: true
+        type: boolean
+        default: false
+      headless:
+        description: Headless Chrome instead of Chrome on a virtual display
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: taobao-search
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/main' && inputs.authorized_probe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install Python dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Offline tests for the search page logic
+        run: python -m pytest tests/v2/test_ali_search_page.py
+      - name: Ensure Google Chrome and a virtual display
+        run: |
+          command -v google-chrome >/dev/null || python -m playwright install --with-deps chrome
+          command -v xvfb-run >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q xvfb; }
+          google-chrome --version
+      - name: Read the search page once, stop on login or verification
+        env:
+          TAOBAO_SEARCH_COOKIE: ${{ secrets.TAOBAO_SEARCH_COOKIE }}
+          HEADLESS: ${{ inputs.headless }}
+        run: |
+          test -n "$TAOBAO_SEARCH_COOKIE" || { echo "::error::Secret TAOBAO_SEARCH_COOKIE is not set"; exit 2; }
+          set +e
+          if [ "$HEADLESS" = "true" ]; then
+            python src/taobao_search_probe.py --headless --out out/taobao-search
+          else
+            xvfb-run -a --server-args="-screen 0 1366x900x24" python src/taobao_search_probe.py --out out/taobao-search
+          fi
+          code=$?
+          set -e
+          test -f out/taobao-search/receipt.json || exit 1
+          echo "probe_exit=$code"
+          case "$code" in
+            0) ;;
+            3) echo "::warning::Stopped by a Taobao login or verification gate; no retry." ;;
+            5) echo "::warning::No usable search response within the budget." ;;
+            *) exit "$code" ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: taobao-search-probe-${{ github.run_id }}
+          path: out/taobao-search/
+          retention-days: 7
+          if-no-files-found: ignore

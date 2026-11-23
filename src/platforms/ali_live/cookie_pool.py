@@ -40,6 +40,10 @@ class CookieGroup:
     def names(self) -> list[str]:
         return sorted({name for name, _ in self._pairs})
 
+    def holds(self, name: str, value: str) -> bool:
+        """True when cookie ``name`` has exactly ``value``; lets callers compare without reading it."""
+        return bool(value) and any(n == name and v == value for n, v in self._pairs)
+
     def playwright_cookies(self, domains: Iterable[str]) -> list[dict]:
         return [
             {"name": name, "value": value, "domain": domain, "path": "/", "secure": True,
@@ -48,9 +52,11 @@ class CookieGroup:
         ]
 
 
-def parse_cookie_header(raw: str, group: int) -> CookieGroup:
+def parse_cookie_header(raw: str, group: int, label: str | None = None) -> CookieGroup:
+    """Parse a raw ``k=v; k2=v2`` header. ``label`` names the secret in errors (defaults to the group's)."""
+    label = label or ENV_NAME.format(group)
     if len(raw) > MAX_HEADER or any(ch in raw for ch in "\r\n\x00"):
-        raise CookieError(f"ALI_COOKIE_GROUP_{group} is too long or contains control characters")
+        raise CookieError(f"{label} is too long or contains control characters")
     pairs = []
     for chunk in raw.split(";"):
         chunk = chunk.strip()
@@ -59,10 +65,10 @@ def parse_cookie_header(raw: str, group: int) -> CookieGroup:
         name, sep, value = chunk.partition("=")
         name, value = name.strip(), value.strip()
         if not sep or not NAME.fullmatch(name) or not VALUE.fullmatch(value):
-            raise CookieError(f"ALI_COOKIE_GROUP_{group} has a malformed cookie pair")
+            raise CookieError(f"{label} has a malformed cookie pair")
         pairs.append((name, value))
     if not pairs or len(pairs) > MAX_COOKIES:
-        raise CookieError(f"ALI_COOKIE_GROUP_{group} must hold 1..{MAX_COOKIES} cookies")
+        raise CookieError(f"{label} must hold 1..{MAX_COOKIES} cookies")
     return CookieGroup(group, tuple(pairs))
 
 

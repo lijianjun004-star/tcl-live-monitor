@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "note": "淘宝直播 PC 搜索页白名单（用户 2026-11-23 确认：固定白名单，按主播 ID 匹配）。verified 的 ID 取自 config/probe-targets.json；pending_user_confirmation 的店铺按店名精确匹配，只记录候选 ID、不推送，待用户确认后改为 verified。api_live_rule 待首次成功采集后校准，校准前所有店铺判为 UNKNOWN。",
+  "query": "TCL",
+  "api_live_rule": null,
+  "anchors": [
+    {
+      "key": "tcl-group",
+      "display_name": "TCL集团官方旗舰店",
+      "account_id": "2050532947",
+      "id_status": "verified",
+      "id_source": "config/probe-targets.json userConfirmed"
+    },
+    {
+      "key": "tmall-tcl-tv-official",
+      "display_name": "TCL电视官方旗舰店",
+      "account_id": "395601843",
+      "id_status": "verified",
+      "id_source": "config/probe-targets.json (livedetail run 42052553183)"
+    },
+    {
+      "key": "tmall-tcl-ac-official",
+      "display_name": "TCL空调官方旗舰店",
+      "account_id": "2098070993",
+      "id_status": "verified",
+      "id_source": "config/probe-targets.json (livedetail run 42052553183)"
+    },
+    {
+      "key": "tmall-tcl-smarthome",
+      "display_name": "TCL智能家居旗舰",
+      "account_id": "2210516382103",
+      "id_status": "verified",
+      "id_source": "config/probe-targets.json (livedetail run 42052553183)"
+    },
+    {
+      "key": "tcl-fridge",
+      "display_name": "TCL冰箱旗舰店",
+      "account_id": null,
+      "id_status": "pending_user_confirmation",
+      "id_source": "user 2026-11-23 search page observation"
+    },
+    {
+      "key": "tcl-washer",
+      "display_name": "TCL洗衣机官方旗舰店",
+      "account_id": null,
+      "id_status": "pending_user_confirmation",
+      "id_source": "user 2026-11-23 search page observation"
+    }
+  ]
+}
