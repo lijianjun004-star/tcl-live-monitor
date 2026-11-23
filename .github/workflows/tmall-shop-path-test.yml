@@ -1,0 +1,42 @@
+name: Tmall shop-to-live path test (one-shot, TCL TV official store)
+# Branch-scoped push trigger for one real observation of the PC path shop -> live entry -> live page.
+# A challenge on the way is pushed to the operator's phone (src/core/human_verify.py). Remove after use.
+on:
+  push:
+    branches:
+      - claude/shop-livestream-access-ff953r
+    paths:
+      - experiments/tmall_shop_path/**
+      - .github/workflows/tmall-shop-path-test.yml
+permissions:
+  contents: read
+concurrency:
+  group: tmall-shop-path-test
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Download cloudflared (quick tunnel, no account)
+        run: |
+          curl -fsSL -o cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x cloudflared
+      - name: Shop -> live entry -> live page, with phone verification
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_KIND: ${{ secrets.WEBHOOK_KIND }}
+          HUMAN_VERIFY: '1'
+          HUMAN_VERIFY_TUNNEL: ./cloudflared
+          PYTHONUNBUFFERED: '1'
+        run: python experiments/tmall_shop_path/shop_path.py
