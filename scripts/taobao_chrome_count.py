@@ -1,6 +1,7 @@
-"""One anonymous Chromium-channel=chrome visit to the TCL anchor search results."""
+"""One anonymous Google Chrome visit to the TCL anchor search results."""
 import asyncio
 import sys
+import re
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -27,6 +28,19 @@ class Inconclusive(Exception):
     pass
 
 
+def diagnostic(exc):
+    detail = str(exc)
+    network = re.search(r"net::ERR_[A-Z0-9_]+", detail)
+    if network:
+        return network.group()
+    for phrase in ("Execution context was destroyed", "Target page, context or browser has been closed",
+                   "Executable doesn't exist", "Missing X server", "Timeout", "SyntaxError",
+                   "TypeError", "ReferenceError", "strict mode violation", "interrupted by another navigation"):
+        if phrase.lower() in detail.lower():
+            return phrase
+    return type(exc).__name__
+
+
 async def check_page(page):
     url = urlsplit(page.url)
     if url.hostname != "tbzb.taobao.com" or url.path.rstrip("/") != "/search" or parse_qs(url.query).get("searchQuery") != ["TCL"]:
@@ -37,9 +51,12 @@ async def check_page(page):
 
 async def count(page):
     js = PARSER.read_text(encoding="utf-8")
-    response = await page.goto(SEARCH, wait_until="domcontentloaded", timeout=45000)
+    try:
+        response = await page.goto(SEARCH, wait_until="domcontentloaded", timeout=45000)
+    except Error as exc:
+        raise Inconclusive(f"打开淘宝搜索页失败（{diagnostic(exc)}）") from None
     if response is None or not response.ok:
-        raise Inconclusive("搜索页面加载失败")
+        raise Inconclusive(f"搜索页 HTTP 状态 {response.status if response else '无响应'}")
     names = {}
     quiet = 0
     for _ in range(100):
@@ -75,7 +92,10 @@ async def main():
         browser = await pw.chromium.launch(channel="chrome", headless=False)
         try:
             page = await browser.new_page(locale="zh-CN", viewport={"width": 1440, "height": 960})
-            names = await count(page)
+            try:
+                names = await count(page)
+            except Error as exc:
+                raise Inconclusive(f"读取搜索结果失败（{diagnostic(exc)}）") from None
             print(f"开播总数：{len(names)}")
             print("开播店铺：" + ("、".join(names) or "无"))
         finally:
@@ -88,4 +108,4 @@ if __name__ == "__main__":
     except Inconclusive as exc:
         sys.exit(f"无法判定：{exc}")
     except Error as exc:
-        sys.exit(f"无法判定：Chrome 启动、导航或页面读取失败（{type(exc).__name__}）")
+        sys.exit(f"无法判定：Chrome 启动或创建访客页面失败（{diagnostic(exc)}）")

@@ -13,7 +13,7 @@
   for (const el of document.body.querySelectorAll('*')) {
     if (el.children.length > 4 || el.textContent.length > 24 ||
         !actions.has(compact(el.textContent)) || !visible(el) ||
-        el.closest('header,nav,footer,[role=navigation],:disabled,[aria-disabled=true]')) continue;
+        el.closest('header,nav,footer,[role=navigation]')) continue;
     const label = compact(el.innerText);
     if (!actions.has(label)) continue;
     // The innermost label is enough if several nested spans repeat the same text.
@@ -64,6 +64,15 @@
     }
     return null;
   }
+  function isAction(el, card) {
+    if (el.closest(':disabled,[aria-disabled=true]')) return false;
+    for (let node = el; node && card.contains(node); node = node.parentElement) {
+      if (node.matches('a,button,[role=button],[role=link],[onclick]') ||
+          getComputedStyle(node).cursor === 'pointer' ||
+          [...node.classList].some(c => /btn|button/i.test(c))) return true;
+    }
+    return false;
+  }
   const groups = new Map();
   let unresolved = 0;
   for (const marker of markers) {
@@ -77,7 +86,8 @@
     const shared = [...groups.keys()].some(other => other !== card && card.contains(other));
     const name = cardName(card);
     const liveCount = group.filter(m => m.live).length;
-    if (shared || !name || liveCount > 1 || group.length - liveCount > 1) {
+    if (shared || !name || group.some(m => !isAction(m.el, card)) ||
+        liveCount > 1 || group.length - liveCount > 1) {
       unresolved++;
       continue;
     }
