@@ -1,0 +1,35 @@
+name: Taobao Chrome guest search (single check)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'scripts/taobao_chrome_count.py'
+      - 'scripts/taobao_count_cards.js'
+      - '.github/workflows/taobao-chrome-search.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  guest-search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Check installed Google Chrome
+        run: |
+          version="$(/opt/google/chrome/chrome --version)"
+          [[ "$version" == "Google Chrome "* ]]
+          echo "$version"
+      - name: Count visible live cards as a guest
+        run: xvfb-run -a python scripts/taobao_chrome_count.py
