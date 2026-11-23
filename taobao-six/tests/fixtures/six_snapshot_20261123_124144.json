@@ -1,0 +1,13 @@
+{
+  "updatedAt": "2026-11-23T04:41:44.000Z",
+  "liveCount": 6,
+  "totalCount": 6,
+  "shops": [
+    {"name": "TCL电视官方旗舰店", "isLive": true, "liveUrl": "https://tbzb.taobao.com/live?liveId=1395749701542483", "startTime": "2026-11-23T04:41:44.000Z"},
+    {"name": "TCL集团官方旗舰店", "isLive": true, "liveUrl": "https://tbzb.taobao.com/live?liveId=3275552239423375", "startTime": "2026-11-23T04:41:44.000Z"},
+    {"name": "TCL空调官方旗舰店", "isLive": true, "liveUrl": "https://tbzb.taobao.com/live?liveId=4498727350153741", "startTime": "2026-11-23T04:41:44.000Z"},
+    {"name": "TCL冰箱旗舰店", "isLive": true, "liveUrl": "https://tbzb.taobao.com/live?liveId=1879940921420635", "startTime": "2026-11-23T04:41:44.000Z"},
+    {"name": "TCL洗衣机官方旗舰店", "isLive": true, "liveUrl": "https://tbzb.taobao.com/live?liveId=1127180169987657", "startTime": "2026-11-23T04:41:44.000Z"},
+    {"name": "TCL智能家居旗舰", "isLive": true, "liveUrl": "https://tbzb.taobao.com/live?liveId=4374599017660154", "startTime": "2026-11-23T04:41:44.000Z"}
+  ]
+}

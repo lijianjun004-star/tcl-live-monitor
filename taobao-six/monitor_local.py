@@ -12,13 +12,16 @@ from urllib.parse import urlsplit
 
 from playwright.sync_api import Error as BrowserError, sync_playwright
 
-from search_page import SEARCH_URL, ScanError, check_access, on_search, scan
+from search_page import SEARCH_URL, ScanError, check_access, on_search, room_url, scan
 from verified_scan import read_verified, read_verified_links
 from wall import VideoWall
 
 ROOT = Path(__file__).resolve().parent
 PROFILE = ROOT / "chrome_profile"
 STATE = ROOT / "runtime" / "latest.json"
+# Six-shop snapshots stay apart from the 20-shop page snapshots; both feed the same dashboard
+# document, so only one of the two modes may push to a given cloud environment.
+SIX_STATE = ROOT / "runtime" / "six-latest.json"
 INTERVAL = 120
 ENABLE_VIDEO_WALL = False
 
@@ -59,6 +62,59 @@ def make_snapshot(rows, expected, previous, now, interrupted=False):
         shops.append({**row, "startTime": start})
     return {"updatedAt": iso(now), "liveCount": sum(s["isLive"] for s in shops),
             "totalCount": len(shops), "shops": shops}
+
+
+def verified_rows(records, targets):
+    """Same-tab six-shop results -> snapshot rows, only when every shop is verifiable.
+
+    ``records`` is the output of ``read_verified_links``. Any unknown or missing shop (login or
+    verification prompt, missing card, conflicting cards) and any live card without exactly one
+    verified room link raises ScanError, so the caller keeps the last valid snapshot. All six at
+    zero is accepted only because each shop then carries an explicit 主页-only result.
+    """
+    targets = list(targets)
+    if not targets or len(set(targets)) != len(targets):
+        raise ScanError("已核对店铺名单必须非空且店名唯一")
+    extra = set(records) - set(targets)
+    if extra:
+        raise ScanError("出现名单外的店铺：" + "、".join(sorted(extra)))
+    rows, links = [], {}
+    for name in targets:
+        row = records.get(name) or {}
+        status = row.get("status")
+        if status == "offline":
+            rows.append({"name": name, "isLive": False, "liveUrl": None})
+            continue
+        if status != "live":
+            raise ScanError(f"「{name}」状态未知：{row.get('reason') or '本轮未取得卡片证据'}")
+        url = row.get("liveUrl")
+        if not url or room_url(url) != url or url != "https://tbzb.taobao.com/live?liveId=" + str(row.get("liveId")):
+            raise ScanError(f"「{name}」开播但直播间链接未核实")
+        if url in links:
+            raise ScanError(f"「{links[url]}」与「{name}」指向同一直播间，无法归属")
+        links[url] = name
+        rows.append({"name": name, "isLive": True, "liveUrl": url})
+    return rows
+
+
+def verified_snapshot(records, targets, previous, now, interrupted=False):
+    """Snapshot for the dashboard from one same-tab read; raises ScanError when incomplete."""
+    return make_snapshot(verified_rows(records, targets), set(targets), previous, now, interrupted)
+
+
+def advance_verified(state, records, targets, now, push=False):
+    """Apply one same-tab read to collector state. Returns ``(state, error)``.
+
+    Success replaces the snapshot (pending when it should be pushed). Failure keeps the last valid
+    snapshot and its pending flag, and marks the series interrupted so a later good read does not
+    carry a live start time across the gap.
+    """
+    try:
+        snapshot = verified_snapshot(records, targets, state.get("snapshot"), now,
+                                     interrupted=state.get("interrupted", False))
+    except ScanError as exc:
+        return {**state, "interrupted": True}, str(exc)
+    return {"snapshot": snapshot, "pending": push}, None
 
 
 def read_state(path):
@@ -116,6 +172,22 @@ def sync_pending(state, url, token, path):
     return True
 
 
+class SnapshotSink:
+    """Dashboard delivery for same-tab rounds: advance only on complete rounds, then push."""
+
+    def __init__(self, targets, url, token, path=None):
+        self.targets, self.url, self.token, self.path = list(targets), url, token, path or SIX_STATE
+        self.state = read_state(self.path)
+
+    def record(self, records, now=None):
+        self.state, error = advance_verified(self.state, records, self.targets, now or utc_now(),
+                                             push=self.url is not None)
+        write_state(self.state, self.path)
+        if error:
+            print(f"看板快照未推进，保留上次有效结果：{error}", file=sys.stderr, flush=True)
+        return sync_pending(self.state, self.url, self.token, self.path)
+
+
 def debug_screen(page, label):
     if page.is_closed():
         return
@@ -139,6 +211,8 @@ def args_and_config():
                    help="手动确认卡片后，在同一有头标签页读取已核对的店铺，仅输出本地结果")
     p.add_argument("--once", action="store_true", help="读取一次后退出")
     p.add_argument("--local-only", action="store_true", help="仅验证本地采集，停用云端推送")
+    p.add_argument("--push", action="store_true",
+                   help="同页模式：六店结果完整可核对时写入云端看板（需 CLOUDBASE_UPDATE_URL 与令牌）")
     p.add_argument("--video-wall", action=argparse.BooleanOptionalAction, default=ENABLE_VIDEO_WALL)
     p.add_argument("--width", type=int, default=1920)
     p.add_argument("--height", type=int, default=1080)
@@ -149,7 +223,11 @@ def args_and_config():
     if args.same_tab:
         if args.login or args.video_wall or args.expected_shops is not None:
             p.error("--same-tab 使用内置核对名单，单独完成登录与本地计数，请移除 --login、--video-wall 和 --expected-shops")
-        args.local_only = True
+        if args.push and args.local_only:
+            p.error("--push 与 --local-only 不能同时使用")
+        args.local_only = not args.push
+    elif args.push:
+        p.error("--push 仅用于 --same-tab；全页模式默认推送，可用 --local-only 停用")
     if min(args.width, args.height) <= 0:
         p.error("屏幕宽高必须为正整数")
     url = None
@@ -190,7 +268,7 @@ def print_verified_rows(targets, records, unavailable="本轮未取得卡片证�
     return complete
 
 
-def poll_verified(context, targets, once):
+def poll_verified(context, targets, once, sink=None):
     pages = [p for p in context.pages if not p.is_closed()]
     page = next((p for p in pages if on_search(p)), None)
     if page is None:
@@ -227,7 +305,7 @@ def poll_verified(context, targets, once):
                 response = page.reload(wait_until="domcontentloaded", timeout=45000)
                 if response is None or not response.ok:
                     raise ScanError("搜索页刷新失败")
-            if once:
+            if once or sink is not None:
                 records = read_verified_links(page, targets)
                 states = {name: row["status"] for name, row in records.items()}
             else:
@@ -255,8 +333,9 @@ def poll_verified(context, targets, once):
         complete = print_verified_rows(targets, records, reason) if once else True
         if (unknown or not live or not complete) and on_search(page):
             debug_screen(page, "unknown" if unknown or not complete else "zero")
+        delivered = sink.record(records) if sink is not None else True
         if once:
-            return 0 if complete else 2
+            return 0 if complete and delivered else 2
         refresh = True
         time.sleep(max(1, INTERVAL - (time.monotonic() - started)))
     print("计数标签页已关闭，本地监控结束。", file=sys.stderr)
@@ -267,7 +346,8 @@ def poll_verified(context, targets, once):
 
 def poll(context, args, expected, url, token):
     if args.same_tab:
-        return poll_verified(context, expected, args.once)
+        sink = SnapshotSink(expected, url, token) if url is not None else None
+        return poll_verified(context, expected, args.once, sink)
     page = context.pages[0] if context.pages else context.new_page()
     if args.login:
         page.goto(SEARCH_URL, wait_until="commit", timeout=60000)

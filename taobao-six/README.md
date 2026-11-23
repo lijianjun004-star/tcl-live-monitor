@@ -28,6 +28,10 @@ DISPLAY=:1 python monitor_local.py --same-tab --once --local-only
 
 需要连续观察时，在同一条命令里去掉 `--once`。终端进程和 Codespace 运行期间，每约两分钟核对一次。按 Ctrl+C 结束。
 
+### 六店结果写入手机看板（需另行确认后启用）
+
+把 `--local-only` 换成 `--push`，并设置 `CLOUDBASE_UPDATE_URL` 与 `CLOUDBASE_API_TOKEN`。终端输出不变。只有六家都得到明确结果、每家开播店都有唯一核实的直播间链接时，才生成新快照并写入 `runtime/six-latest.json` 后推送；缺店、登录或验证提示、链接有歧义时保留上次有效快照，并在标准错误输出原因。推送失败会在下一轮重试同一份有效快照。全页模式与六店模式写同一个看板文档，同一云环境只启用其中一种推送。离线测试：`python -m unittest discover -s tests` 与 `node --test cloud/test/status.test.js cloud/test/six_snapshot.test.js`。
+
 ## 第一步　在本地验证全页采集
 
 准备 Python 3.10 或更新版本，以及通过官方渠道安装的桌面版 Google Chrome Stable。在解压后的目录打开终端。首次使用建议新建虚拟环境。
