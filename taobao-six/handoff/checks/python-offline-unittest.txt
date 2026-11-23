@@ -1,0 +1,30 @@
+test_duration_restart_and_new_session (test_collector.CollectorTests.test_duration_restart_and_new_session) ... ok
+test_offline_and_missing_differ (test_collector.CollectorTests.test_offline_and_missing_differ) ... ok
+test_pending_recovery_preserves_observation_timestamp (test_collector.CollectorTests.test_pending_recovery_preserves_observation_timestamp) ... 推送未确认，保留最近一次有效快照：TimeoutError
+ok
+test_cli_uses_headed_chrome_and_never_opens_cloud_write_path (test_same_tab.SameTabTests.test_cli_uses_headed_chrome_and_never_opens_cloud_write_path) ... ok
+test_live_link_missing_returns_incomplete_while_preserving_status (test_same_tab.SameTabTests.test_live_link_missing_returns_incomplete_while_preserving_status) ... ok
+test_login_gate_yields_unknown_without_zero_or_reload (test_same_tab.SameTabTests.test_login_gate_yields_unknown_without_zero_or_reload) ... ok
+test_login_popup_can_be_the_actual_search_tab (test_same_tab.SameTabTests.test_login_popup_can_be_the_actual_search_tab) ... ok
+test_manual_page_is_retained_and_partial_count_is_labelled (test_same_tab.SameTabTests.test_manual_page_is_retained_and_partial_count_is_labelled) ... ok
+test_only_later_cycle_reloads_same_page (test_same_tab.SameTabTests.test_only_later_cycle_reloads_same_page) ... ok
+test_rendered_buttons_and_isolated_store_url (test_search_page.LocalDOM.test_rendered_buttons_and_isolated_store_url) ... skipped 'requires installed Google Chrome'
+test_click_result_cannot_be_assigned_to_two_tabs (test_search_page.SearchChecks.test_click_result_cannot_be_assigned_to_two_tabs) ... ok
+test_only_one_public_room_id (test_search_page.SearchChecks.test_only_one_public_room_id) ... ok
+test_population_cannot_change_status_mid_scan (test_search_page.SearchChecks.test_population_cannot_change_status_mid_scan) ... ok
+test_visible_login_frame_overrides_cards (test_search_page.SearchChecks.test_visible_login_frame_overrides_cards) ... ok
+test_author_identity_and_visible_controls (test_verified_scan.VerifiedDOMChecks.test_author_identity_and_visible_controls) ... skipped 'requires installed Google Chrome'
+test_browser_error_discards_partial_snapshot (test_verified_scan.VerifiedScanChecks.test_browser_error_discards_partial_snapshot) ... ok
+test_change_of_room_link_and_js_only_controls (test_verified_scan.VerifiedScanChecks.test_change_of_room_link_and_js_only_controls) ... ok
+test_conflict_and_identical_duplicate_are_unknown (test_verified_scan.VerifiedScanChecks.test_conflict_and_identical_duplicate_are_unknown) ... ok
+test_gate_invalidates_earlier_evidence (test_verified_scan.VerifiedScanChecks.test_gate_invalidates_earlier_evidence) ... ok
+test_only_one_same_control_url_is_trusted (test_verified_scan.VerifiedScanChecks.test_only_one_same_control_url_is_trusted) ... ok
+test_pending_can_hydrate_but_duplicate_is_ambiguous (test_verified_scan.VerifiedScanChecks.test_pending_can_hydrate_but_duplicate_is_ambiguous) ... ok
+test_sparse_virtualized_list_and_missing_member (test_verified_scan.VerifiedScanChecks.test_sparse_virtualized_list_and_missing_member) ... ok
+test_grid (test_wall.WallTests.test_grid) ... ok
+test_reconcile (test_wall.WallTests.test_reconcile) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.019s
+
+OK (skipped=2)

@@ -1,0 +1,26 @@
+{
+  "version": "2.0",
+  "functionRoot": "./functions",
+  "functions": [
+    {
+      "name": "updateLiveStatus",
+      "type": "HTTP",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 20,
+      "installDependency": true,
+      "public": true,
+      "gatewayPath": "/api/updateLiveStatus"
+    },
+    {
+      "name": "getLiveStatus",
+      "type": "HTTP",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 20,
+      "installDependency": true,
+      "public": true,
+      "gatewayPath": "/api/getLiveStatus"
+    }
+  ]
+}

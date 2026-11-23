@@ -1,0 +1,11 @@
+✔ collector to dashboard roundtrip, idempotency, conditional write and CORS (10.934912ms)
+✔ rejects invalid URLs, inconsistent rows and missing writer secret (6.984386ms)
+✔ racing submissions converge to newest snapshot (5.312002ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 140.400974

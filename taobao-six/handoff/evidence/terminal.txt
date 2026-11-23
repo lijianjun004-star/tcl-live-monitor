@@ -1,0 +1,8 @@
+请在这个 Chrome 窗口打开 TCL 主播卡片。如需登录，请手动完成。看到卡片后回到此终端按回车计数：2026-11-23 12:41:44 北京时间  开播总数 6 家，未开播 0 家，未知 0 家
+开播店铺：TCL电视官方旗舰店、TCL集团官方旗舰店、TCL空调官方旗舰店、TCL冰箱旗舰店、TCL洗衣机官方旗舰店、TCL智能家居旗舰
+TCL电视官方旗舰店  开播  liveId=1395749701542483  https://tbzb.taobao.com/live?liveId=1395749701542483
+TCL集团官方旗舰店  开播  liveId=3275552239423375  https://tbzb.taobao.com/live?liveId=3275552239423375
+TCL空调官方旗舰店  开播  liveId=4498727350153741  https://tbzb.taobao.com/live?liveId=4498727350153741
+TCL冰箱旗舰店  开播  liveId=1879940921420635  https://tbzb.taobao.com/live?liveId=1879940921420635
+TCL洗衣机官方旗舰店  开播  liveId=1127180169987657  https://tbzb.taobao.com/live?liveId=1127180169987657
+TCL智能家居旗舰  开播  liveId=4374599017660154  https://tbzb.taobao.com/live?liveId=4374599017660154

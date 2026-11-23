@@ -1,0 +1,16 @@
+{
+  "name": "TCL Taobao · Chrome desktop",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.11" },
+    "ghcr.io/devcontainers/features/desktop-lite:1": { "webPort": "6080" }
+  },
+  "remoteUser": "vscode",
+  "containerEnv": { "DISPLAY": ":1" },
+  "forwardPorts": [6080],
+  "portsAttributes": {
+    "6080": { "label": "Chrome desktop (noVNC)", "onAutoForward": "silent" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "ignore" },
+  "postCreateCommand": ["bash", "-euc", "test \"$(dpkg --print-architecture)\" = amd64 || { echo 'Google Chrome stable requires an amd64 Codespace'; exit 1; }; d=$(mktemp -d); trap 'rm -rf \"$d\"' EXIT; curl --fail --silent --show-error --location --retry 3 https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o \"$d/chrome.deb\"; sudo apt-get update -qq; sudo apt-get install -y \"$d/chrome.deb\"; python -m pip install playwright==1.62.0; google-chrome-stable --version"]
+}

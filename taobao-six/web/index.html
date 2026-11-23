@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f3f4f1">
+  <meta name="color-scheme" content="light">
+  <title>TCL · 淘宝直播看板</title>
+  <style>
+    :root {
+      --page:#f3f4f1; --ink:#192528; --muted:#526364; --red:#ae2435;
+      --line:#d6dcda; --panel:#fff; --dim:#677676;
+      font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif;
+      color:var(--ink); background:var(--page); font-size:16px;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none!important}
+    body{margin:0}
+    main{width:min(100%,46rem);margin:auto;padding:1.3rem 1rem 3rem;padding-bottom:max(3rem,env(safe-area-inset-bottom))}
+    header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:0 0 1rem}
+    .heading{display:flex;align-items:center;gap:.7rem}
+    .brand{color:var(--red);font-family:Arial,sans-serif;font-weight:900;font-size:1.4rem;letter-spacing:-.07em}
+    h1{border-left:1px solid var(--line);padding-left:.7rem;font-size:1rem;line-height:1.25;margin:0}
+    button, a, summary{touch-action:manipulation}
+    :focus-visible{outline:3px solid #167088;outline-offset:2px}
+    button{font:inherit;font-size:.85rem;min-height:44px;padding:.55rem .85rem;border:1px solid #bdc9c6;border-radius:.5rem;color:var(--ink);background:#fff;cursor:pointer}
+    button:disabled{cursor:wait;color:var(--dim)}
+    .overview{background:#1d3033;color:#fff;padding:1.35rem 1.35rem 1rem;border-radius:.85rem}
+    .low{color:#d1dfdc;font-size:.83rem;margin:0}
+    .count{display:flex;align-items:baseline;gap:.38rem;margin:.1rem 0 .8rem;font-variant-numeric:tabular-nums}
+    #liveCount{font-family:Inter,Arial,sans-serif;font-size:clamp(3.2rem,12vw,4.5rem);font-weight:650;letter-spacing:-.06em;line-height:1.2}
+    .den{color:#c5d7d3;font-size:1.3rem}
+    .unit{font-size:.85rem;color:#d1dfdc;margin-left:.2rem}
+    .meta{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.3rem .5rem;padding-top:.8rem;border-top:1px solid #465957;color:#d1dfdc;font-size:.8rem}
+    .meta time{font-variant-numeric:tabular-nums;color:white}
+    .message{font-size:.88rem;line-height:1.6;margin:.75rem 0 0;padding:.65rem .85rem;border-radius:.45rem;color:#704600;background:#fff0c4;border-left:3px solid #d39c21}
+    #state{color:var(--muted);font-size:.87rem;line-height:1.6;margin:.75rem 0 0}
+    section{margin:1.45rem 0 0}
+    h2,summary{font-size:1.03rem;font-weight:680;margin:0 0 .65rem}
+    ul{list-style:none;padding:0;margin:0}
+    .list{background:var(--panel);border:1px solid var(--line);border-radius:.7rem;overflow:hidden}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:.65rem;padding:.8rem 1rem}
+    .row+.row{border-top:1px solid #e8ecea}
+    .identity{min-width:0}
+    .name{font-size:.98rem;line-height:1.45;margin:0;overflow-wrap:anywhere}
+    .details{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem .6rem;margin:.3rem 0 0;font-size:.78rem;color:var(--muted)}
+    .badge{display:inline-flex;align-items:center;gap:.28rem;padding:.13rem .46rem;border-radius:.3rem;color:#a11d32;background:#ffeaed;font-size:.73rem;font-weight:650}
+    .badge::before{content:"";width:.4rem;height:.4rem;border-radius:50%;background:currentColor}
+    a{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 .3rem;color:var(--red);font-size:.85rem;font-weight:650;text-underline-offset:.2rem}
+    .nolink,.blank{color:var(--muted);font-size:.85rem}
+    .blank{padding:1rem;margin:0;line-height:1.55}
+    details{margin-top:1.1rem}
+    summary{margin:0;min-height:44px;padding:.65rem 0;cursor:pointer;color:var(--muted)}
+    .fold .row{font-size:.92rem;color:var(--muted);justify-content:flex-start}
+    .fold .row::before{content:"";flex:none;background:#a4b0ae;border-radius:50%;width:.4rem;height:.4rem}
+    @media(min-width:600px){main{padding-top:2.8rem}.overview{padding:1.6rem 1.8rem 1.1rem}.row{padding:.85rem 1.15rem}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="heading"><span class="brand" lang="en">TCL</span><h1>淘宝直播看板</h1></div>
+    <button id="refresh" type="button">刷新</button>
+  </header>
+  <div id="outdated" class="message" role="status" hidden></div>
+  <div class="overview">
+    <p class="low" id="overviewTitle">开播店铺</p>
+    <div class="count" aria-label="开播数与店铺总数">
+      <span id="liveCount">—</span><span class="den">/ <span id="totalCount">—</span></span><span class="unit">家</span>
+    </div>
+    <div class="meta"><span>最后同步 · 北京时间</span><time id="syncTime">等待数据</time></div>
+  </div>
+  <p id="state" role="status" aria-live="polite">正在读取最新快照…</p>
+  <noscript><p class="message">请启用 JavaScript 以读取直播状态。</p></noscript>
+  <section id="results" hidden>
+    <h2 id="liveTitle">开播中</h2>
+    <div class="list"><ul id="liveList"></ul><p class="blank" id="noneLive" hidden>本次观测未发现开播店铺。</p></div>
+    <details id="offlineGroup">
+      <summary id="offlineTitle">未开播</summary>
+      <ul class="list fold" id="offlineList"></ul>
+    </details>
+  </section>
+</main>
+<script>
+'use strict';
+// 若函数和静态站点不使用同一域名，将此值改成 CloudBase 控制台给出的 HTTPS 读取接口地址。
+const READ_API = '/api/getLiveStatus';
+const REFRESH_MS = 60000;
+const STALE_MS = 5 * REFRESH_MS;
+let current = null;
+let loading = false;
+
+const el = id => document.getElementById(id);
+function parsedTime(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value)) return NaN;
+  return Date.parse(value);
+}
+function formatBeijing(ms) {
+  return new Date(ms + 8 * 3600000).toISOString().slice(0,19).replace('T',' ');
+}
+function duration(ms) {
+  const min = Math.floor(ms / REFRESH_MS);
+  if (min < 1) return '不足 1 分钟';
+  const h = Math.floor(min / 60);
+  return h ? h + ' 小时 ' + (min % 60) + ' 分钟' : min + ' 分钟';
+}
+function safeRoomUrl(raw) {
+  if (typeof raw !== 'string') return null;
+  try {
+    const u = new URL(raw);
+    const ids = u.searchParams.getAll('liveId');
+    if (u.origin !== 'https://tbzb.taobao.com' || u.username || u.password ||
+        !/^\/live\/?$/.test(u.pathname) || ids.length !== 1 || !/^[1-9]\d{0,30}$/.test(ids[0])) return null;
+    return 'https://tbzb.taobao.com/live?liveId=' + ids[0];
+  } catch { return null; }
+}
+function parseSnapshot(data) {
+  if (!data || !Array.isArray(data.shops) || data.totalCount !== data.shops.length ||
+      !Number.isInteger(data.liveCount) || !Number.isFinite(parsedTime(data.updatedAt))) throw Error('invalid');
+  const ms = parsedTime(data.updatedAt);
+  const seen = new Set();
+  const shops = data.shops.map(s => {
+    if (!s || typeof s.name !== 'string' || !s.name.trim() || typeof s.isLive !== 'boolean') throw Error('invalid');
+    const name = s.name.trim();
+    if (seen.has(name)) throw Error('invalid');
+    seen.add(name);
+    const start = parsedTime(s.startTime);
+    return {name, live:s.isLive, link:s.isLive ? safeRoomUrl(s.liveUrl) : null,
+      start:Number.isFinite(start) && start <= ms && s.isLive ? start : null};
+  });
+  if (data.liveCount !== shops.filter(s => s.live).length) throw Error('invalid');
+  return {ms, iso:data.updatedAt, shops, liveCount:data.liveCount, totalCount:data.totalCount};
+}
+function status(text) {
+  el('state').textContent = text;
+  el('state').hidden = !text;
+}
+function make(tag, className, value) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (value != null) node.textContent = value;
+  return node;
+}
+function updateFreshness() {
+  if (!current) return;
+  const stale = Date.now() - current.ms > STALE_MS;
+  el('outdated').hidden = !stale;
+  el('outdated').textContent = stale ? '超过 5 分钟未同步，采集端可能离线或需要重新验证。下方显示上次观测。' : '';
+  el('overviewTitle').textContent = stale ? '上次观测的开播店铺' : '开播店铺';
+  el('liveTitle').textContent = stale ? '上次观测为开播' : '开播中';
+}
+function render(snap) {
+  el('liveCount').textContent = snap.liveCount;
+  el('totalCount').textContent = snap.totalCount;
+  el('syncTime').dateTime = snap.iso;
+  el('syncTime').textContent = formatBeijing(snap.ms);
+  const live = el('liveList'), offline = el('offlineList');
+  live.textContent = ''; offline.textContent = '';
+  for (const s of snap.shops) {
+    if (!s.live) {
+      const row = make('li','row');
+      row.appendChild(make('span','name',s.name));
+      offline.appendChild(row);
+      continue;
+    }
+    const row = make('li','row');
+    const id = make('div','identity');
+    id.appendChild(make('h3','name',s.name));
+    const meta = make('p','details');
+    meta.appendChild(make('span','badge','开播'));
+    // 时长截至最新有效观测；中断同步时不继续累加。
+    meta.appendChild(make('span',null, s.start === null ? '起点待核对' : '已观测 ' + duration(snap.ms - s.start)));
+    id.appendChild(meta); row.appendChild(id);
+    if (s.link) {
+      const link = make('a',null,'点击直达');
+      link.href = s.link;
+      link.setAttribute('aria-label','进入' + s.name + '直播间');
+      row.appendChild(link);
+    } else {
+      row.appendChild(make('span','nolink','链接待核对'));
+    }
+    live.appendChild(row);
+  }
+  const n = snap.totalCount - snap.liveCount;
+  el('offlineTitle').textContent = '未开播（' + n + '）';
+  el('offlineGroup').hidden = !n;
+  el('noneLive').hidden = snap.liveCount > 0;
+  el('results').hidden = false;
+  updateFreshness();
+}
+async function refresh() {
+  if (loading) return;
+  loading = true;
+  const b = el('refresh');
+  b.disabled = true; b.textContent = '读取中…';
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(READ_API,{cache:'no-store',credentials:'omit',signal:ctrl.signal});
+    if (res.status === 404) {
+      status(current ? '未取得最新快照，保留上次观测。' : '尚未读到快照，请确认采集端已上传、读取接口已发布。');
+      return;
+    }
+    if (!res.ok) throw Error('http');
+    const next = parseSnapshot(await res.json());
+    if (current && next.ms < current.ms) throw Error('older');
+    current = next;
+    render(next);
+    status('');
+  } catch {
+    status(current ? '刷新失败，保留上次观测。可稍后手动刷新。' : '暂时无法读取快照。请检查网络或读取接口后刷新。');
+  } finally {
+    clearTimeout(timeout); loading = false;
+    b.disabled = false; b.textContent = '刷新';
+    updateFreshness();
+  }
+}
+el('refresh').addEventListener('click',refresh);
+document.addEventListener('visibilitychange',() => { if (!document.hidden) { updateFreshness(); refresh(); } });
+setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
+setInterval(updateFreshness, 5000);
+refresh();
+</script>
+</body>
+</html>

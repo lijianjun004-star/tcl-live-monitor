@@ -1,0 +1,8 @@
+/chrome_profile/
+/live_debug/
+/runtime/
+.env
+.env.*
+__pycache__/
+node_modules/
+.venv/
