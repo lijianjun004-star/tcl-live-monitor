@@ -15,6 +15,8 @@ on:
       - 'Douyin daily broadcast check (4 scoring \+ 3 monitor-only accounts, read-only public guest)'
       - "Tmall/Taobao daily broadcast check (registered shops, read-only public guest)"
       - "JD fixed-window full-broadcast rate (08:00-24:00 Beijing, read-only)"
+      # V2 runs, including those pressed by the external clock, so the results page follows each round.
+      - "TCL V2 monitor"
     types: [completed]
   workflow_dispatch:
   # The two triggers below exist so GitHub parses this file on every change: a pull request shows a

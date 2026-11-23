@@ -1,0 +1,29 @@
+name: V2 external clock (offline tests only)
+# Checks external/cloudflare-v2-clock against v2-monitor.yml. Never calls GitHub or Cloudflare.
+on:
+  pull_request:
+    paths:
+      - 'external/cloudflare-v2-clock/**'
+      - '.github/workflows/v2-monitor.yml'
+      - '.github/workflows/v2-clock-quality.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'external/cloudflare-v2-clock/**'
+      - '.github/workflows/v2-monitor.yml'
+      - '.github/workflows/v2-clock-quality.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Clock relay tests
+        run: node --test external/cloudflare-v2-clock/tests/*.test.mjs

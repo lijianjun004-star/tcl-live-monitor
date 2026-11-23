@@ -104,9 +104,45 @@ class AliLiveMonitor(MonitorEngine):
                                  diagnostics={"cookie_mode": self.session.mode(target.account_group),
                                               "business_evidence": business_report({}, None, why or code.value)[1]})
 
-        room = await guarded(lambda: self.observe_room(target, resolved, ctx), ctx.budget + 20, failed)
+        human = getattr(ctx, "human", None)
+        allowance = human.timeout_allowance if human is not None else 0
+        room = await guarded(lambda: self.observe_room(target, resolved, ctx), ctx.budget + 20 + allowance, failed)
         ctx.breaker.record(target.group_key, room["code"], target_key=target.key, layer="monitor")
         return room, True
+
+    async def _human_handoff(self, human, page, page_policy, state, signal, verifying, target) -> str:
+        """Open the gated page for a person, then wait for a determined livedetail sample."""
+        why = state["why"]
+        page_policy.gate = None
+        state.update(limit=None, why=None, page_gate=False)
+        signal.clear()
+        verifying[0] = True
+
+        async def gate_present() -> bool:
+            if limit_url_kind(page.url):
+                return True
+            try:
+                text = await page.locator("body").inner_text(timeout=1000)
+            except Exception:
+                return True
+            return dom_gate(text or "") == "challenge"
+
+        try:
+            try:
+                # Requests after the latch were refused, so load the page and its challenge again once.
+                await page.reload(wait_until="domcontentloaded", timeout=20000)
+            except Exception:
+                pass
+            solved = await human.verify(page, label=target.display_name or target.key,
+                                        solved=lambda: state["detect_at"] is not None,
+                                        gate_present=gate_present, touch=True)
+        except Exception:
+            solved = False
+        finally:
+            verifying[0] = False
+        if not solved:
+            state["why"] = why
+        return "solved" if solved else "not_solved"
 
     async def observe_room(self, target: Target, resolved: dict, ctx: RunContext) -> dict:
         identity = {"account_id": target.account_id or account_from_room_url(resolved["room_url"]),
@@ -125,6 +161,8 @@ class AliLiveMonitor(MonitorEngine):
         business = {"livedetail": [], "itemlist": []}
         item_tasks = []
         state = {"limit": None, "why": None, "page_gate": False, "http": None, "detect_at": None}
+        human = getattr(ctx, "human", None)
+        verifying = [False]
         signal = asyncio.Event()
         attached = [True]
         mtop = {"requests_allowed": 0, "requests_blocked": 0, "responses": 0}
@@ -145,6 +183,8 @@ class AliLiveMonitor(MonitorEngine):
                     detail[event] += 1
 
         def stop(kind: str, why: str, *, page_gate=False) -> None:
+            if verifying[0] and kind == "challenge":
+                return  # a person is working on this challenge; keep the page's own requests open
             page_policy.gate = kind
             if page_gate or not state["limit"]:
                 state["limit"], state["why"], state["page_gate"] = kind, why, page_gate
@@ -266,6 +306,15 @@ class AliLiveMonitor(MonitorEngine):
                     await asyncio.wait_for(signal.wait(), timeout=min(0.25, remaining))
                 except asyncio.TimeoutError:
                     pass
+            if human is not None and human.can_start() and pending and not state["limit"]:
+                # Let already received livedetail answers report a challenge before deciding.
+                await asyncio.wait(list(pending), timeout=4)
+            if (human is not None and state["limit"] == "challenge" and state["detect_at"] is None
+                    and human.can_start()):
+                observation["human_verification"] = await self._human_handoff(
+                    human, page, page_policy, state, signal, verifying, target)
+                if observation["human_verification"] != "solved":
+                    stop("challenge", state["why"] or "platform_challenge", page_gate=True)
             if signal.is_set() and not state["limit"]:
                 await asyncio.sleep(max(0.0, min(GRACE_SECONDS, deadline - loop.time())))
             detach()

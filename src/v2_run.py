@@ -192,8 +192,11 @@ async def run(args, env: Mapping[str, str]) -> int:
     factory_cm = nullcontext(None)
     if args.engine == "live":
         from core.browser import BrowserFactory
+        from core.human_verify import HumanVerifier
 
-        factory_cm = BrowserFactory()
+        # V2_HEADED=1: a normal windowed browser on the operator's own computer (self-hosted runner).
+        factory_cm = BrowserFactory(headless=env.get("V2_HEADED") != "1")
+        ctx.human = HumanVerifier.from_env(env)
     unique_engines = {id(e): e for pair in engines.values() for e in pair}.values()
     try:
         async with factory_cm as factory:
@@ -218,6 +221,8 @@ async def run(args, env: Mapping[str, str]) -> int:
                         await engine.close()
                     except Exception:
                         pass
+                if ctx.human is not None:
+                    await ctx.human.close()
     except Exception as error:  # e.g. Chromium cannot start: no browser state can be trusted
         failure = {**meta, "started_utc": started, "completed_utc": iso(), "schema_version": SCHEMA_VERSION,
                    "engine": args.engine, "verdict": "runtime_error", "error_type": type(error).__name__,
@@ -274,6 +279,7 @@ async def run(args, env: Mapping[str, str]) -> int:
         "circuit_breaker": ctx.breaker.report(), "cache_problem": cache.load_problem,
         "notification": notify, "state_snapshot_advanced": notify["status"] in {"sent", "no_changes"},
         "stability_across_runs": "not_measured",
+        "human_verification": ctx.human.report() if ctx.human is not None else {"status": "disabled"},
     }
     write_json(args.out / "run_summary.json", summary)
     files = [p for p in args.out.rglob("*") if p.is_file() and p.name not in ("SHA256SUMS.txt", "drive_status.json")]
