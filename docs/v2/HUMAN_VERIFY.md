@@ -18,11 +18,13 @@
 - 只在北京时间 08:00～24:00 推送，夜里不打扰。
 - 链接经 Cloudflare 临时网址（trycloudflare.com）转发，不写进 Actions 日志或证据文件。口令只在这一次验证期间有效。
 - 只处理验证类门禁。需要登录的情况（`LOGIN_REQUIRED`）不处理。
-- 淘宝是否接受云端浏览器的验证结果，要以真实运行记录为准。运行摘要 `run_summary.json` 的 `human_verification` 记录次数（sessions、solved、timeouts、push_failed）；房间诊断 `passive_observation.human_verification` 记录 `solved` 或 `not_solved`。
+- 淘宝是否接受验证结果取决于运行环境：GitHub 海外运行器上实测不接受（见上）。运行摘要 `run_summary.json` 的 `human_verification` 记录次数（sessions、solved、timeouts、push_failed）；房间诊断 `passive_observation.human_verification` 记录 `solved` 或 `not_solved`。
 
 ## 开关
 
-默认开启。在仓库 Settings → Secrets and variables → Actions → Variables 新建 `HUMAN_VERIFY`，值设为 `0` 即关闭。需要已配置 Bark 的 `WEBHOOK_URL`。
+**默认关闭。** 2026-11-23 实测（运行 45086892501）：GitHub 云端打开 TCL电视官方旗舰店的店铺页时，立即被转到 `tcldq.world.tmall.com/…/_____tmd_____/punish`，页面标题为"验证码拦截"。推送和远程画面正常，用户在 5 分钟内操作 916 次，淘宝始终没有放行。所以在 GitHub 海外运行器上开启这个功能只会增加打扰。
+
+在淘宝信任的环境（国内机器、正常有界面的浏览器）运行时，在仓库 Settings → Secrets and variables → Actions → Variables 新建 `HUMAN_VERIFY`，值设为 `1` 即开启。需要已配置 Bark 的 `WEBHOOK_URL`。
 
 可选环境变量：`HUMAN_VERIFY_WAIT_SECONDS`（默认 300）、`HUMAN_VERIFY_MAX_SESSIONS`（默认 3）。
 

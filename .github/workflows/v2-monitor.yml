@@ -64,7 +64,7 @@ jobs:
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
       - name: Download cloudflared for phone verification (quick tunnel, no account)
-        if: vars.HUMAN_VERIFY != '0'
+        if: vars.HUMAN_VERIFY == '1'
         continue-on-error: true
         run: |
           curl -fsSL -o cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
@@ -105,8 +105,9 @@ jobs:
           GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
           FAIL_ON_CANARY: ${{ github.event_name == 'workflow_dispatch' && inputs.fail_on_canary }}
           # Phone verification of slider / drawn-path challenges (src/core/human_verify.py).
-          # Set the repository variable HUMAN_VERIFY to 0 to turn it off.
-          HUMAN_VERIFY: ${{ vars.HUMAN_VERIFY != '0' && '1' || '0' }}
+          # Off by default: on GitHub-hosted runners Taobao did not accept a person's slider
+          # (run 45086892501). Set the repository variable HUMAN_VERIFY to 1 on a trusted runner.
+          HUMAN_VERIFY: ${{ vars.HUMAN_VERIFY == '1' && '1' || '0' }}
           PYTHONUNBUFFERED: '1'
         run: |
           flag=""
