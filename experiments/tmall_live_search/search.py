@@ -1,9 +1,16 @@
-"""One-shot: what does the Taobao live search page (query "TCL") return to an anonymous visitor?
+"""What does the Taobao live search page (query "TCL") return?
 
-Opens https://tbzb.taobao.com/search?searchQuery=TCL once in a desktop browser, Alibaba hosts only,
-no login, no challenge interaction. Prints whether a challenge appeared, and for each result:
-anchor name, live-status fields, the public session liveId, and whether the anchor matches a
-registered Tmall target (config/probe-targets.json). Account ids themselves are never printed.
+Default: one anonymous read in Playwright's Chromium, Alibaba hosts only (run 45090743621: the
+page redirected to login.taobao.com and returned no results).
+
+SEARCH_USE_CHROME=1 (on the operator's own computer): opens the installed Google Chrome with a
+dedicated profile (SEARCH_PROFILE_DIR, default ~/.tcl-live-monitor/chrome-profile), in a window.
+If Taobao asks for a login, the operator logs in by hand in that window; the script waits up to
+SEARCH_LOGIN_WAIT seconds (default 300) and never reads or stores the password. The profile keeps
+the login for later runs. Challenges are left to the operator in the same window.
+
+Prints, for each result: anchor name, live-status fields, the public session liveId, and whether
+the anchor matches a registered Tmall target (config/probe-targets.json). Account ids are never printed.
 """
 from __future__ import annotations
 
@@ -73,17 +80,27 @@ def summarize(node):
 
 async def main():
     found, functions, gate_hits = [], set(), []
+    use_chrome = os.environ.get("SEARCH_USE_CHROME") == "1"
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(executable_path=os.environ.get("PATH_TEST_CHROMIUM") or None)
-        context = await browser.new_context(user_agent=DESKTOP_UA, locale="zh-CN", viewport={"width": 1280, "height": 900})
+        if use_chrome:
+            profile = Path(os.environ.get("SEARCH_PROFILE_DIR") or Path.home() / ".tcl-live-monitor" / "chrome-profile")
+            profile.mkdir(parents=True, exist_ok=True)
+            # The operator's own Chrome, windowed, with a profile used only for this monitor.
+            context = await pw.chromium.launch_persistent_context(
+                str(profile), channel="chrome", headless=False, locale="zh-CN", viewport={"width": 1280, "height": 900})
+            browser = None
+            print("CHROME_PROFILE", "dedicated profile in use")
+        else:
+            browser = await pw.chromium.launch(executable_path=os.environ.get("PATH_TEST_CHROMIUM") or None)
+            context = await browser.new_context(user_agent=DESKTOP_UA, locale="zh-CN", viewport={"width": 1280, "height": 900})
 
-        async def route(r):
-            host = (urlsplit(r.request.url).hostname or "").lower()
-            if r.request.resource_type in ("media", "font") or not ali_host(host):
-                await r.abort()
-            else:
-                await r.fallback()
-        await context.route("**/*", route)
+            async def route(r):
+                host = (urlsplit(r.request.url).hostname or "").lower()
+                if r.request.resource_type in ("media", "font") or not ali_host(host):
+                    await r.abort()
+                else:
+                    await r.fallback()
+            await context.route("**/*", route)
 
         async def on_response(res):
             try:
@@ -116,6 +133,20 @@ async def main():
             await page.goto(URL, wait_until="domcontentloaded", timeout=30000)
         except Exception as error:
             print("NAVIGATION_ERROR", type(error).__name__)
+        if use_chrome and limit_url_kind(page.url) == "login":
+            wait = int(os.environ.get("SEARCH_LOGIN_WAIT") or 300)
+            print(f"LOGIN_NEEDED 请在打开的 Chrome 窗口里登录淘宝，最多等 {wait} 秒", flush=True)
+            for _ in range(wait // 3):
+                await page.wait_for_timeout(3000)
+                if limit_url_kind(page.url) != "login":
+                    break
+            print("LOGIN_DONE" if limit_url_kind(page.url) != "login" else "LOGIN_TIMEOUT", flush=True)
+            if limit_url_kind(page.url) != "login":
+                found.clear()
+                try:
+                    await page.goto(URL, wait_until="domcontentloaded", timeout=30000)
+                except Exception as error:
+                    print("NAVIGATION_ERROR", type(error).__name__)
         for _ in range(4):
             await page.wait_for_timeout(2500)
             try:
@@ -131,7 +162,10 @@ async def main():
                                          live: (a.href.match(/liveId=(\\d{6,20})/) || [])[1] || ''}))""")
         except Exception:
             cards = []
-        await browser.close()
+        if browser is not None:
+            await browser.close()
+        else:
+            await context.close()
     print("GATE_HITS", json.dumps(sorted(set(gate_hits))[:10]))
     print("MTOP", json.dumps(sorted(functions)[:20]))
     seen, rows = set(), []
