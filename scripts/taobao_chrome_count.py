@@ -49,6 +49,37 @@ async def check_page(page):
         raise Inconclusive("页面要求验证或登录")
 
 
+def result_frames(page):
+    return [page.main_frame] + [
+        frame for frame in page.frames if frame != page.main_frame
+        and urlsplit(frame.url).hostname == "tbzb.taobao.com"
+    ]
+
+
+async def read_cards(page, js):
+    cards, unresolved = [], 0
+    for frame in result_frames(page):
+        sample = await frame.evaluate(js)
+        cards.extend(sample["cards"])
+        unresolved += sample["unresolved"]
+    return {"cards": cards, "unresolved": unresolved}
+
+
+async def blocked_reason(page):
+    # Login frames can be preloaded and hidden; check whether the frame is visible.
+    for frame in page.frames:
+        if frame != page.main_frame and urlsplit(frame.url).hostname in {
+            "login.taobao.com", "login.m.taobao.com", "passport.taobao.com"
+        } and await (await frame.frame_element()).is_visible():
+            return "页面显示登录框"
+    for phrase in ("访问被拒绝", "访问受限", "验证后继续", "请完成验证", "访问过于频繁",
+                   "请登录后查看", "登录后查看更多", "暂无搜索结果"):
+        if await page.get_by_text(phrase, exact=False).first.is_visible():
+            return f"页面提示「{phrase}」"
+    body_len = await page.evaluate("() => (document.body?.innerText || '').trim().length")
+    return f"未取得稳定卡片列表（可见正文 {body_len} 字，页面框架 {len(page.frames)} 个）"
+
+
 async def count(page):
     js = PARSER.read_text(encoding="utf-8")
     try:
@@ -61,10 +92,10 @@ async def count(page):
     quiet = 0
     for _ in range(100):
         await check_page(page)
-        sample = await page.evaluate(js)
+        sample = await read_cards(page, js)
         if sample["unresolved"]:
             await asyncio.sleep(1)
-            sample = await page.evaluate(js)
+            sample = await read_cards(page, js)
             if sample["unresolved"]:
                 raise Inconclusive("存在无法归属到单一店铺的按钮")
         before = len(names)
@@ -75,16 +106,19 @@ async def count(page):
                 raise Inconclusive("店名重复或同一店铺状态发生变化")
             seen.add(name)
             names[name] = live
+        moved = False
+        for frame in result_frames(page):
+            if await frame.evaluate(SCROLL):
+                moved = True
         if not sample["cards"]:
             quiet = 0
         else:
-            moved = await page.evaluate(SCROLL)
             quiet = quiet + 1 if not moved and before == len(names) else 0
             if quiet >= 4:
                 await check_page(page)
                 return sorted(name for name, live in names.items() if live)
         await asyncio.sleep(0.8)
-    raise Inconclusive("限定时间内未读到稳定、可归属店铺的完整卡片列表")
+    raise Inconclusive(await blocked_reason(page))
 
 
 async def main():
