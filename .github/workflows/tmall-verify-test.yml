@@ -1,0 +1,79 @@
+name: Tmall phone verification test (one-shot, no alerts, no archive)
+# Branch-scoped push trigger for one real test of src/core/human_verify.py on the registered
+# Tmall rooms. No Bark change alerts, no Drive sync, private temp state only. Remove after use.
+on:
+  push:
+    branches:
+      - claude/shop-livestream-access-ff953r
+    paths:
+      - .github/workflows/tmall-verify-test.yml
+permissions:
+  contents: read
+concurrency:
+  group: tmall-verify-test
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Download cloudflared (quick tunnel, no account)
+        run: |
+          curl -fsSL -o cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x cloudflared
+          ./cloudflared --version
+      - name: Keep only the Tmall / Taobao targets
+        env:
+          V2_TARGETS_JSON: ${{ secrets.V2_TARGETS_JSON }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          doc = json.loads(os.environ["V2_TARGETS_JSON"])
+          doc["targets"] = [t for t in doc["targets"] if t.get("platform") in ("tmall", "taobao")]
+          path = os.path.join(os.environ["RUNNER_TEMP"], "tmall-targets.json")
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(doc, f, ensure_ascii=False)
+          print("tmall targets:", len(doc["targets"]))
+          EOF
+      - name: One Tmall round with phone verification
+        env:
+          ALI_COOKIE_GROUP_1: ${{ secrets.ALI_COOKIE_GROUP_1 }}
+          ALI_COOKIE_GROUP_2: ${{ secrets.ALI_COOKIE_GROUP_2 }}
+          ALI_COOKIE_GROUP_3: ${{ secrets.ALI_COOKIE_GROUP_3 }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_KIND: ${{ secrets.WEBHOOK_KIND }}
+          HUMAN_VERIFY: '1'
+          HUMAN_VERIFY_TUNNEL: ./cloudflared
+          PYTHONUNBUFFERED: '1'
+        run: |
+          python src/v2_run.py --engine live --targets "$RUNNER_TEMP/tmall-targets.json" \
+            --out "$RUNNER_TEMP/evidence" --state-dir "$RUNNER_TEMP/state" \
+            --dashboard "$RUNNER_TEMP/index.html" --no-notify --no-drive || echo "run exit $?"
+      - name: Report verification outcome (codes and counts only)
+        if: always()
+        run: |
+          python - <<'EOF'
+          import json, os
+          base = os.path.join(os.environ["RUNNER_TEMP"], "evidence")
+          try:
+              summary = json.load(open(os.path.join(base, "run_summary.json"), encoding="utf-8"))
+              snapshot = json.load(open(os.path.join(base, "monitor_snapshot.json"), encoding="utf-8"))
+          except Exception as error:
+              print("NO_EVIDENCE", type(error).__name__)
+              raise SystemExit(0)
+          print("BY_CODE", json.dumps(summary.get("by_code"), ensure_ascii=False))
+          print("HUMAN_VERIFICATION", json.dumps(summary.get("human_verification"), ensure_ascii=False))
+          for index, room in enumerate(snapshot.get("rooms", []), 1):
+              observed = (room.get("diagnostics") or {}).get("passive_observation") or {}
+              print("ROOM", index, room.get("code"), room.get("reason"), observed.get("human_verification", "-"))
+          EOF
