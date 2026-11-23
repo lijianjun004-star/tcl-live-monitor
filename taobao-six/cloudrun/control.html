@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>淘宝直播风控对照测试</title>
+<style>
+:root { --bg:#f4f3f0; --card:#fff; --ink:#1d2327; --muted:#5d6670; --line:#dcdad5; --accent:#b0283a;
+  --ok:#1f7a4d; --warn:#9a6400; --bad:#b0283a; }
+@media (prefers-color-scheme: dark) { :root { --bg:#141719; --card:#1d2124; --ink:#e8eaec; --muted:#a3abb3;
+  --line:#33393e; --accent:#ff6b7f; --ok:#5fd39a; --warn:#f0b54a; --bad:#ff6b7f; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif; }
+main { max-width:720px; margin:0 auto; padding:20px 16px 40px; }
+h1 { font-size:20px; margin:0 0 4px; }
+p.note { color:var(--muted); margin:0 0 16px; font-size:13px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+label { display:block; font-size:13px; color:var(--muted); margin:8px 0 4px; }
+input, textarea, select { width:100%; font:inherit; color:inherit; background:transparent; border:1px solid var(--line); border-radius:8px; padding:8px; }
+textarea { min-height:120px; font-family:ui-monospace,Menlo,monospace; font-size:13px; }
+.row { display:flex; gap:10px; } .row > div { flex:1; }
+button { font:inherit; border:0; border-radius:8px; padding:10px 14px; background:var(--accent); color:#fff; margin-top:12px; }
+button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); }
+button:disabled { opacity:.5; }
+#status { margin:8px 0 0; font-size:13px; color:var(--muted); }
+.tally { display:flex; gap:12px; flex-wrap:wrap; font-size:14px; margin-bottom:6px; }
+.item { border-top:1px solid var(--line); padding:10px 0; }
+.item:first-child { border-top:0; }
+.verdict { font-weight:600; }
+.v-playing { color:var(--ok); } .v-data_ok { color:var(--warn); } .v-refused, .v-error { color:var(--bad); } .v-inconclusive { color:var(--muted); }
+.meta { color:var(--muted); font-size:13px; word-break:break-all; }
+img.shot { width:100%; border-radius:8px; margin-top:6px; border:1px solid var(--line); }
+</style>
+</head>
+<body>
+<main>
+  <h1>淘宝直播风控对照测试</h1>
+  <p class="note">每次用真实 Chrome 以游客身份打开一个直播间，不登录、不点击。结果：<b>播放中</b>＝数据和视频都正常；<b>数据成功</b>＝未被拒但视频没走；<b>被拒</b>＝风控或 HTTP 400/403；<b>未定</b>＝预算内无结果。</p>
+  <section>
+    <label for="token">测试令牌（与云托管环境变量 PROBE_TOKEN 相同，仅保存在本页会话）</label>
+    <input id="token" type="password" autocomplete="off">
+    <label for="ids">直播间 liveId（每行一个，可替换为当前场次）</label>
+    <textarea id="ids">__DEFAULT_IDS__</textarea>
+    <div class="row">
+      <div><label for="mode">浏览器模式</label>
+        <select id="mode"><option value="headed">有头（虚拟显示器）</option><option value="headless">无头</option></select></div>
+      <div><label for="gap">两次间隔（秒，≥20）</label><input id="gap" type="number" min="20" value="30"></div>
+    </div>
+    <button id="run">开始测试</button>
+    <button id="history" class="ghost">查看已有结果</button>
+    <p id="status"></p>
+  </section>
+  <section id="out" hidden>
+    <div class="tally" id="tally"></div>
+    <div id="list"></div>
+  </section>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const LABEL = {playing:'播放中', data_ok:'数据成功', refused:'被拒', inconclusive:'未定', error:'出错'};
+try { $('token').value = sessionStorage.getItem('probeToken') || ''; } catch {}
+$('token').addEventListener('change', () => { try { sessionStorage.setItem('probeToken', $('token').value); } catch {} });
+const headers = () => ({'x-probe-token': $('token').value, 'Content-Type': 'application/json'});
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const results = [];
+
+function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+function render() {
+  $('out').hidden = !results.length;
+  const counts = {};
+  for (const r of results) counts[r.verdict] = (counts[r.verdict] || 0) + 1;
+  $('tally').textContent = '';
+  $('tally').appendChild(el('span', null, '共 ' + results.length + ' 次'));
+  for (const k of Object.keys(LABEL)) if (counts[k]) $('tally').appendChild(el('span', 'verdict v-' + k, LABEL[k] + ' ' + counts[k]));
+  $('list').textContent = '';
+  for (const r of [...results].reverse()) {
+    const item = el('div', 'item');
+    const head = el('div');
+    head.appendChild(el('span', 'verdict v-' + r.verdict, LABEL[r.verdict] || r.verdict));
+    head.appendChild(el('span', null, '  liveId ' + r.liveId + '  ' + (r.mode || '')));
+    item.appendChild(head);
+    item.appendChild(el('div', 'meta', (r.started_utc || '') + ' · ' + (r.reason || '')));
+    const v = r.video || {};
+    item.appendChild(el('div', 'meta', '数据接口：' + ((r.detail_rets || []).join(' → ') || '无') +
+      '；roomStatus=' + (r.room_status ?? '—') + ' streamStatus=' + (r.stream_status ?? '—')));
+    item.appendChild(el('div', 'meta', '页面 HTTP ' + (r.doc_status ?? '—') + '；视频流 ' +
+      ((r.streams || []).map(s => s.status + ' ' + s.host).join('，') || '无请求') +
+      '；视频 ' + (v.present ? (v.advanced ? '在播 ' + v.width + '×' + v.height : '未走') : '无') +
+      ((r.http_errors || []).length ? '；HTTP 错误 ' + r.http_errors.map(e => e.status + ' ' + e.host).join('，') : '')));
+    if (r.shot) {
+      const b = el('button', 'ghost', '查看截图');
+      b.addEventListener('click', async () => {
+        b.disabled = true;
+        try {
+          const res = await fetch('/shot/' + r.shot, {headers: headers(), cache: 'no-store'});
+          if (!res.ok) throw Error(res.status);
+          const img = el('img', 'shot'); img.alt = 'liveId ' + r.liveId + ' 截图';
+          img.src = URL.createObjectURL(await res.blob()); b.replaceWith(img);
+        } catch (e) { b.textContent = '截图读取失败'; }
+      });
+      item.appendChild(b);
+    }
+    $('list').appendChild(item);
+  }
+}
+async function loadHistory() {
+  const res = await fetch('/results', {headers: headers(), cache: 'no-store'});
+  if (!res.ok) throw Error(res.status === 401 ? '令牌不正确' : 'HTTP ' + res.status);
+  const data = await res.json();
+  results.length = 0; results.push(...data.results); render();
+}
+$('history').addEventListener('click', async () => {
+  try { await loadHistory(); $('status').textContent = ''; } catch (e) { $('status').textContent = '读取失败：' + e.message; }
+});
+$('run').addEventListener('click', async () => {
+  const ids = $('ids').value.split(/\s+/).filter(Boolean);
+  if (!ids.length || ids.some(id => !/^[1-9]\d{4,19}$/.test(id))) { $('status').textContent = 'liveId 应为数字，每行一个'; return; }
+  const gap = Math.max(20, Number($('gap').value) || 30) * 1000;
+  $('run').disabled = true;
+  for (let i = 0; i < ids.length; i++) {
+    $('status').textContent = '第 ' + (i + 1) + '/' + ids.length + ' 个：liveId ' + ids[i] + ' 测试中（约 20–40 秒）…';
+    try {
+      const res = await fetch('/probe', {method: 'POST', headers: headers(), cache: 'no-store',
+        body: JSON.stringify({liveId: ids[i], headless: $('mode').value === 'headless'})});
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) { $('status').textContent = '令牌不正确'; break; }
+      if (res.status === 429) { await sleep((data.retry_after || 20) * 1000 + 500); i--; continue; }
+      if (!res.ok) throw Error(data.error || 'HTTP ' + res.status);
+      results.push(data); render();
+    } catch (e) {
+      // A gateway timeout can cut the response while the probe still finishes; read it back.
+      $('status').textContent = '请求中断（' + e.message + '），稍后从已有结果读取…';
+      await sleep(15000);
+      try { await loadHistory(); } catch {}
+    }
+    if (i < ids.length - 1) { $('status').textContent = '等待 ' + gap / 1000 + ' 秒后测下一个…'; await sleep(gap); }
+  }
+  $('status').textContent = '本轮结束。';
+  $('run').disabled = false;
+});
+</script>
+</body>
+</html>

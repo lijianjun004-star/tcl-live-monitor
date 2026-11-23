@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!requirements.txt
+!probe_core.py
+!probe_server.py
+!control.html
+!vendor/
