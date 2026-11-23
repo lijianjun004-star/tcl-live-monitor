@@ -10,6 +10,7 @@
 | GitHub 海外运行器打开 TCL电视官方旗舰店店铺页，被直接转到 `tcldq.world.tmall.com/…/_____tmd_____/punish`（页面标题"验证码拦截"）。用户经手机远程画面操作 916 次，淘宝没有放行 | [运行 45086892501](https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/45086892501) |
 | 手机到云端的拖动转发本身是通的：练习滑块远程拖动通过 | [运行 45083249032](https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/45083249032) |
 | 同一时段，天猫 9 家店的一轮读取：5 家在播、3 家被跳转、1 家状态不明确，没有出现验证 | [运行 45086338141](https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/45086338141) |
+| 淘宝直播搜索页 `tbzb.taobao.com/search?searchQuery=TCL`（用户在自己浏览器里能看到很多直播间）：云端匿名打开直接跳到登录页 `login.taobao.com`，搜索接口 `mtop.mediaplatform.live.search.result` 有请求但没有返回结果 | [运行 45090743621](https://github.com/lijianjun004-star/tcl-live-monitor/actions/runs/45090743621) |
 
 所以，问题出在运行环境（海外机房、无界面的自动浏览器），不在代码或拖法上。目标是让同一套 V2 代码在用户家里的网络和正常的 Chrome 上运行。
 
@@ -23,7 +24,9 @@
 
 以上每一项都写进本文件末尾的"执行记录"，附运行链接。没有做到的写明原因，不能写成已完成。
 
-## 3. 仓库侧改动（在独立分支上做，开 PR）
+## 3. 仓库侧改动（已由 Claude 完成，在 PR #120 分支上，未合并）
+
+下面各项已实现，`pytest tests/v2` 296 项、`node --test` 171 项通过。Windows 和 macOS 上的实际运行还没验证，需要 Codex 在电脑上验收。
 
 1. `v2-monitor.yml` 的 `live` 任务：
    - `runs-on: ${{ vars.V2_RUNNER == 'self-hosted' && fromJSON('["self-hosted","tcl-pc"]') || 'ubuntu-24.04' }}`
@@ -53,6 +56,10 @@
 - **不做反检测伪装**：不修改浏览器指纹，不隐藏自动化特征，不使用"stealth"类插件，不自动拖滑块、不自动画线、不自动识别验证码。验证只能由用户本人完成。
 - 不提高访问频率：保持每 30 分钟一轮，遇验证即停的熔断规则不变。
 
+## 5a. 搜索页入口（后续可选）
+
+搜索页需要登录才有结果。如果以后要用它一次发现所有在播的 TCL 直播间，需要在这台电脑上用一个**专用的浏览器资料目录**：用户本人手动登录一次淘宝，巡检程序复用这个目录（参考分支 `experiment/r18-safe-oss-session-monitor` 的设计）。程序不保存、不读取密码。这一项还没实现，不在本轮验收范围内。
+
 ## 6. 回滚
 
 删除仓库变量 `V2_RUNNER`，`live` 任务就回到 `ubuntu-24.04`。停止电脑上的运行器，并在 Settings → Runners 里移除它。
@@ -61,4 +68,5 @@
 
 | 日期 | 项目 | 结果 | 运行链接 |
 | --- | --- | --- | --- |
+| 2026-11-23 | 第 3 节仓库侧改动（Claude） | 已实现，离线测试通过；Windows/macOS 实际运行未验证 | PR #120 |
 | | | | |

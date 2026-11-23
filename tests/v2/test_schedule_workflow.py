@@ -30,6 +30,11 @@ def test_schedule_requires_state_before_live_and_preserves_manual_restore():
     workflow = load_workflow(WORKFLOWS / 'v2-monitor.yml')
     live = workflow['jobs']['live']
     assert live['needs'] == 'offline'
+    # Only the repository variable V2_RUNNER=self-hosted moves the job to the operator's computer.
+    assert live['runs-on'] == (
+        "${{ vars.V2_RUNNER == 'self-hosted' && fromJSON('[\"self-hosted\",\"tcl-pc\"]') || 'ubuntu-24.04' }}"
+    )
+    assert live['defaults'] == {'run': {'shell': 'bash'}}
     assert live['if'] == (
         "(github.event_name == 'schedule' && github.ref == 'refs/heads/main') || "
         "(github.event_name == 'workflow_dispatch' && inputs.engine == 'live')"
@@ -51,6 +56,8 @@ def test_schedule_requires_state_before_live_and_preserves_manual_restore():
         "${{ success() || (!cancelled() && github.run_attempt == '1' && steps.collect.outcome == 'failure') }}"
     )
     assert collect['env']['FAIL_ON_CANARY'] == "${{ github.event_name == 'workflow_dispatch' && inputs.fail_on_canary }}"
+    assert collect['env']['V2_HEADED'] == '${{ vars.V2_HEADED }}'
+    assert collect['env']['HUMAN_VERIFY'] == "${{ vars.HUMAN_VERIFY == '1' && '1' || '0' }}"
 
 
 def test_scheduled_and_manual_main_share_a_dedicated_lock():

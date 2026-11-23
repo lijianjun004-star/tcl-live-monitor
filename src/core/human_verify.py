@@ -140,7 +140,7 @@ def _handler(live: _Live):
 
 def start_quick_tunnel(binary: str, port: int, timeout: float = 60.0):
     """Start `cloudflared tunnel --url` and return (process, public base URL). Blocking."""
-    proc = subprocess.Popen([binary, "tunnel", "--no-autoupdate", "--url", f"http://127.0.0.1:{port}"],
+    proc = subprocess.Popen([str(Path(binary).resolve()), "tunnel", "--no-autoupdate", "--url", f"http://127.0.0.1:{port}"],
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     deadline = time.monotonic() + timeout
     for line in proc.stdout:

@@ -40,9 +40,14 @@ jobs:
   live:
     needs: offline
     if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.engine == 'live')
-    runs-on: ubuntu-24.04
+    # Repository variable V2_RUNNER=self-hosted moves this job to the operator's own computer
+    # (docs/v2/SELF_HOSTED_PC_RUNBOOK.md); unset, it stays on GitHub's ubuntu-24.04 runner.
+    runs-on: ${{ vars.V2_RUNNER == 'self-hosted' && fromJSON('["self-hosted","tcl-pc"]') || 'ubuntu-24.04' }}
     # Room checks take a few minutes; a person may need up to 3 x 5 minutes for challenges.
     timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:
@@ -62,14 +67,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/restore_v2_state.py
       - name: Install Chromium
-        run: python -m playwright install --with-deps chromium
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            python -m playwright install --with-deps chromium
+          else
+            python -m playwright install chromium
+          fi
       - name: Download cloudflared for phone verification (quick tunnel, no account)
         if: vars.HUMAN_VERIFY == '1'
         continue-on-error: true
         run: |
-          curl -fsSL -o cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
-          chmod +x cloudflared
-          ./cloudflared --version
+          base=https://github.com/cloudflare/cloudflared/releases/latest/download
+          case "$RUNNER_OS" in
+            Windows) file=cloudflared.exe; curl -fsSL -o "$file" "$base/cloudflared-windows-amd64.exe" ;;
+            macOS) file=cloudflared; curl -fsSL "$base/cloudflared-darwin-$( [[ "$(uname -m)" == arm64 ]] && echo arm64 || echo amd64 ).tgz" | tar -xz ;;
+            *) file=cloudflared; curl -fsSL -o "$file" "$base/cloudflared-linux-amd64" ;;
+          esac
+          chmod +x "$file"
+          "./$file" --version
+          echo "HUMAN_VERIFY_TUNNEL=./$file" >> "$GITHUB_ENV"
       - name: Restore chosen state (cache, previous snapshot, notify ledger)
         if: github.event_name == 'workflow_dispatch' && inputs.restore_state_run_id != ''
         env:
@@ -108,6 +124,8 @@ jobs:
           # Off by default: on GitHub-hosted runners Taobao did not accept a person's slider
           # (run 45086892501). Set the repository variable HUMAN_VERIFY to 1 on a trusted runner.
           HUMAN_VERIFY: ${{ vars.HUMAN_VERIFY == '1' && '1' || '0' }}
+          # V2_HEADED=1 runs a normal windowed browser (needs a logged-in desktop on a self-hosted runner).
+          V2_HEADED: ${{ vars.V2_HEADED }}
           PYTHONUNBUFFERED: '1'
         run: |
           flag=""

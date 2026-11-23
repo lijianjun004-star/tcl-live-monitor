@@ -194,7 +194,8 @@ async def run(args, env: Mapping[str, str]) -> int:
         from core.browser import BrowserFactory
         from core.human_verify import HumanVerifier
 
-        factory_cm = BrowserFactory()
+        # V2_HEADED=1: a normal windowed browser on the operator's own computer (self-hosted runner).
+        factory_cm = BrowserFactory(headless=env.get("V2_HEADED") != "1")
         ctx.human = HumanVerifier.from_env(env)
     unique_engines = {id(e): e for pair in engines.values() for e in pair}.values()
     try:
